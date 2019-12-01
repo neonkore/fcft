@@ -34,7 +34,10 @@ fcft_lib = build_target(
   dependencies: [math, threads, fontconfig, freetype, pixman, tllist],
   install: not meson.is_subproject())
 
-fcft = declare_dependency(include_directories: '.', link_with: fcft_lib)
+fcft = declare_dependency(
+  include_directories: '.',
+  link_with: fcft_lib,
+  dependencies: [fontconfig, freetype])
 
 if not meson.is_subproject()
   install_headers('fcft.h', 'stride.h', subdir: 'fcft')
