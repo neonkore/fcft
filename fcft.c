@@ -13,7 +13,7 @@
 #define LOG_MODULE "font"
 #define LOG_ENABLE_DBG 0
 #include "log.h"
-#include "stride.h"
+#include "fcft/stride.h"
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
