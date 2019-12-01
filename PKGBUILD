@@ -5,7 +5,7 @@ pkgdesc="Simple font loading and glyph rasterization library"
 arch=('x86_64')
 url=https://codeberg.org/dnkl/fcft
 license=(mit)
-makedepends=('meson' 'ninja' 'scdoc')
+makedepends=('meson' 'ninja')
 depends=('freetype2' 'fontconfig' 'pixman')
 source=()
 
