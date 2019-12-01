@@ -44,7 +44,7 @@ if not meson.is_subproject()
 
   pkg = import('pkgconfig')
   pkg.generate(libraries : [tllist],
-               subdirs : ['.'],
+               subdirs : ['fcft'],
                name : 'fcft',
                filebase : 'fcft',
                description : 'Simple font loading and glyph rasterization library')
