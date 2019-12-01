@@ -41,4 +41,11 @@ fcft = declare_dependency(
 
 if not meson.is_subproject()
   install_headers('fcft.h', 'stride.h', subdir: 'fcft')
+
+  pkg = import('pkgconfig')
+  pkg.generate(libraries : [tllist],
+               subdirs : ['.'],
+               name : 'fcft',
+               filebase : 'fcft',
+               description : 'Simple font loading and glyph rasterization library')
 endif
