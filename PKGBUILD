@@ -15,7 +15,7 @@ pkgver() {
 }
 
 build() {
-  meson --prefix=/usr --buildtype=release ..
+  meson --prefix=/usr --buildtype=release --wrap-mode=nofallback ..
   ninja
 }
 
