@@ -9,8 +9,7 @@
 #include <fontconfig/fontconfig.h>
 #include <pixman.h>
 
-#include "tllist.h"
-//#include "terminal.h"
+#include <tllist.h>
 
 typedef tll(const char *) font_list_t;
 
