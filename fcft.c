@@ -1,4 +1,4 @@
-#include "fcft.h"
+#include "fcft/fcft.h"
 
 #include <stdlib.h>
 #include <stdint.h>

@@ -24,7 +24,7 @@ pixman = dependency('pixman-1')
 tllist = dependency('tllist', version: '>=1.0.0', fallback: ['tllist', 'tllist'])
 
 fcft_lib = build_target(
-  'fcft', 'fcft.c', 'fcft.h', 'log.c', 'log.h',
+  'fcft', 'fcft.c', 'fcft/fcft.h', 'log.c', 'log.h',
   target_type: meson.is_subproject() ? 'static_library' : 'library',
   dependencies: [math, threads, fontconfig, freetype, pixman, tllist],
   install: not meson.is_subproject())
@@ -35,7 +35,7 @@ fcft = declare_dependency(
   dependencies: [tllist, fontconfig, freetype])
 
 if not meson.is_subproject()
-  install_headers('fcft.h', 'stride.h', subdir: 'fcft')
+  install_headers('fcft/fcft.h', 'stride.h', subdir: 'fcft')
 
   pkg = import('pkgconfig')
   pkg.generate(libraries : [fcft_lib, tllist, fontconfig, freetype],
