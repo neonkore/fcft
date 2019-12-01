@@ -43,7 +43,7 @@ if not meson.is_subproject()
   install_headers('fcft.h', 'stride.h', subdir: 'fcft')
 
   pkg = import('pkgconfig')
-  pkg.generate(libraries : [tllist],
+  pkg.generate(libraries : [tllist, fontconfig, freetype],
                subdirs : ['fcft'],
                name : 'fcft',
                filebase : 'fcft',
