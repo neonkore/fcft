@@ -34,3 +34,7 @@ fcft_lib = library(
   install: true)
 
 fcft = declare_dependency(include_directories: '.', link_with: fcft_lib)
+
+if not meson.is_subproject()
+  install_headers('fcft.h', 'stride.h', subdir: 'fcft')
+endif
