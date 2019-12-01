@@ -6,7 +6,7 @@ arch=('x86_64')
 url=https://codeberg.org/dnkl/fcft
 license=(mit)
 makedepends=('meson' 'ninja')
-depends=('freetype2' 'fontconfig' 'pixman' 'tllist')
+depends=('freetype2' 'fontconfig' 'pixman' 'tllist>=1.0.0')
 source=()
 
 pkgver() {

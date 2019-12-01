@@ -21,7 +21,7 @@ freetype = dependency('freetype2')
 fontconfig = dependency('fontconfig')
 pixman = dependency('pixman-1')
 
-tllist = dependency('tllist', fallback: ['tllist', 'tllist'])
+tllist = dependency('tllist', version: '>=1.0.0', fallback: ['tllist', 'tllist'])
 
 fcft_lib = build_target(
   'fcft', 'fcft.c', 'fcft.h', 'log.c', 'log.h',
