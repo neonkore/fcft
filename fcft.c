@@ -8,7 +8,13 @@
 #include <assert.h>
 #include <threads.h>
 
-#include <freetype/tttables.h>
+#include <ft2build.h>
+#include FT_FREETYPE_H
+#include FT_LCD_FILTER_H
+#include FT_TRUETYPE_TABLES_H
+#include <fontconfig/fontconfig.h>
+
+#include <tllist.h>
 
 #define LOG_MODULE "font"
 #define LOG_ENABLE_DBG 0
@@ -20,14 +26,55 @@
 static FT_Library ft_lib;
 static mtx_t ft_lock;
 
+/* Per-font glyph cache size */
 static const size_t glyph_cache_size = 512;
+typedef tll(struct glyph) hash_entry_t;
 
-struct font_cache_entry {
-    uint64_t hash;
-    struct font *font;
+struct font_fallback {
+    char *pattern;
+    struct font_priv *font;
 };
 
+struct font_priv {
+    struct font public;
+
+    char *name;
+
+    mtx_t lock;
+    FT_Face face;
+    int load_flags;
+    int render_flags;
+    FT_LcdFilter lcd_filter;
+
+    double pixel_size_fixup; /* Scale factor - should only be used with ARGB32 glyphs */
+    bool bgr;  /* True for FC_RGBA_BGR and FC_RGBA_VBGR */
+
+    bool is_fallback;
+    tll(struct font_fallback) fallbacks;
+
+    size_t ref_counter;
+
+    /* Fields below are only valid for non-fallback fonts */
+    FcPattern *fc_pattern;
+    FcFontSet *fc_fonts;
+    int fc_idx;
+    struct font_priv **fc_loaded_fallbacks; /* fc_fonts->nfont array */
+
+    hash_entry_t **glyph_cache;
+};
+
+/* Global font cache */
+struct font_cache_entry {
+    uint64_t hash;
+    struct font_priv *font;
+};
 static tll(struct font_cache_entry) font_cache = tll_init();
+
+static inline struct font_priv *
+pub2priv(struct font *pub)
+{
+    return (struct font_priv *)pub;
+}
 
 static void __attribute__((constructor))
 init(void)
@@ -61,7 +108,7 @@ static void __attribute__((destructor))
 fini(void)
 {
     while (tll_length(font_cache) > 0)
-        font_destroy(tll_pop_front(font_cache).font);
+        font_destroy(&tll_pop_front(font_cache).font->public);
 
     mtx_destroy(&ft_lock);
     FT_Done_FreeType(ft_lib);
@@ -79,9 +126,12 @@ ft_error_string(FT_Error err)
     #include FT_ERRORS_H
     return "unknown error";
 }
+
 static void
-underline_strikeout_metrics(struct font *font)
+underline_strikeout_metrics(struct font_priv *font)
 {
+    struct font *pub = &font->public;
+
     FT_Face ft_face = font->face;
     double y_scale = ft_face->size->metrics.y_scale / 65536.;
     double height = ft_face->size->metrics.height / 64.;
@@ -90,35 +140,35 @@ underline_strikeout_metrics(struct font *font)
     LOG_DBG("ft: y-scale: %f, height: %f, descent: %f",
             y_scale, height, descent);
 
-    font->underline.position = ft_face->underline_position * y_scale / 64.;
-    font->underline.thickness = ft_face->underline_thickness * y_scale / 64.;
+    pub->underline.position = ft_face->underline_position * y_scale / 64.;
+    pub->underline.thickness = ft_face->underline_thickness * y_scale / 64.;
 
-    if (font->underline.position == 0.) {
-        font->underline.position = descent / 2.;
-        font->underline.thickness = fabs(descent / 5.);
+    if (pub->underline.position == 0.) {
+        pub->underline.position = descent / 2.;
+        pub->underline.thickness = fabs(descent / 5.);
     }
 
     LOG_DBG("underline: pos=%f, thick=%f",
-            font->underline.position, font->underline.thickness);
+            pub->underline.position, pub->underline.thickness);
 
     TT_OS2 *os2 = FT_Get_Sfnt_Table(ft_face, ft_sfnt_os2);
     if (os2 != NULL) {
-        font->strikeout.position = os2->yStrikeoutPosition * y_scale / 64.;
-        font->strikeout.thickness = os2->yStrikeoutSize * y_scale / 64.;
+        pub->strikeout.position = os2->yStrikeoutPosition * y_scale / 64.;
+        pub->strikeout.thickness = os2->yStrikeoutSize * y_scale / 64.;
     }
 
-    if (font->strikeout.position == 0.) {
-        font->strikeout.position = height / 2. + descent;
-        font->strikeout.thickness = font->underline.thickness;
+    if (pub->strikeout.position == 0.) {
+        pub->strikeout.position = height / 2. + descent;
+        pub->strikeout.thickness = pub->underline.thickness;
     }
 
     LOG_DBG("strikeout: pos=%f, thick=%f",
-            font->strikeout.position, font->strikeout.thickness);
+            pub->strikeout.position, pub->strikeout.thickness);
 }
 
 static bool
 from_font_set(FcPattern *pattern, FcFontSet *fonts, int start_idx,
-              struct font *font, bool is_fallback)
+              struct font_priv *font, bool is_fallback)
 {
     memset(font, 0, sizeof(*font));
 
@@ -316,22 +366,22 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int start_idx,
     double descent = ft_face->size->metrics.descender / 64.;
     double ascent = ft_face->size->metrics.ascender / 64.;
 
-    font->height = ceil(height * font->pixel_size_fixup);
-    font->descent = ceil(-descent * font->pixel_size_fixup);
-    font->ascent = ceil(ascent * font->pixel_size_fixup);
-    font->max_x_advance = ceil(max_x_advance * font->pixel_size_fixup);
+    font->public.height = ceil(height * font->pixel_size_fixup);
+    font->public.descent = ceil(-descent * font->pixel_size_fixup);
+    font->public.ascent = ceil(ascent * font->pixel_size_fixup);
+    font->public.max_x_advance = ceil(max_x_advance * font->pixel_size_fixup);
 
     LOG_DBG("%s: size=%f, pixel-size=%f, dpi=%f, fixup-factor: %f, "
             "line-height: %d, ascent: %d, descent: %d, x-advance: %d",
             font->name, size, pixel_size, dpi, font->pixel_size_fixup,
-            font->height, font->ascent, font->descent,
-            font->max_x_advance);
+            font->public.height, font->public.ascent, font->public.descent,
+            font->public.max_x_advance);
 
     underline_strikeout_metrics(font);
     return true;
 }
 
-static struct font *
+static struct font_priv *
 from_name(const char *name, bool is_fallback)
 {
     LOG_DBG("instantiating %s", name);
@@ -358,7 +408,7 @@ from_name(const char *name, bool is_fallback)
         return NULL;
     }
 
-    struct font *font = malloc(sizeof(*font));
+    struct font_priv *font = malloc(sizeof(*font));
 
     if (!from_font_set(pattern, fonts, 0, font, is_fallback)) {
         free(font);
@@ -389,11 +439,11 @@ sdbm_hash(const char *s)
 }
 
 static uint64_t
-font_hash(font_list_t names, const char *attributes)
+font_hash(const char *names[], size_t count, const char *attributes)
 {
     uint64_t hash = 0;
-    tll_foreach(names, it)
-        hash ^= sdbm_hash(it->item);
+    for (size_t i = 0; i < count; i++)
+        hash ^= sdbm_hash(names[i]);
 
     if (attributes != NULL)
         hash ^= sdbm_hash(attributes);
@@ -402,27 +452,27 @@ font_hash(font_list_t names, const char *attributes)
 }
 
 struct font *
-font_from_name(font_list_t names, const char *attributes)
+font_from_name(const char *names[], size_t count, const char *attributes)
 {
-    if (tll_length(names) == 0)
+    if (count == 0)
         return false;
 
-    uint64_t hash = font_hash(names, attributes);
+    uint64_t hash = font_hash(names, count, attributes);
     tll_foreach(font_cache, it) {
         if (it->item.hash == hash) {
             it->item.font->ref_counter++;
-            return it->item.font;
+            return &it->item.font->public;
         }
     }
 
-    struct font *font = NULL;
+    struct font_priv *font = NULL;
 
     bool have_attrs = attributes != NULL && strlen(attributes) > 0;
     size_t attr_len = have_attrs ? strlen(attributes) + 1 : 0;
 
     bool first = true;
-    tll_foreach(names, it) {
-        const char *base_name = it->item;
+    for (size_t i = 0; i < count; i++) {
+        const char *base_name = names[i];
 
         char name[strlen(base_name) + attr_len + 1];
         strcpy(name, base_name);
@@ -447,19 +497,21 @@ font_from_name(font_list_t names, const char *attributes)
     }
 
     tll_push_back(font_cache, ((struct font_cache_entry){.hash = hash, .font = font}));
-    return font;
+
+    assert((void *)&font->public == (void *)font);
+    return &font->public;
 }
 
 struct font *
-font_clone(const struct font *font)
+font_clone(const struct font *_font)
 {
-    if (font == NULL)
+    if (_font == NULL)
         return NULL;
 
-    struct font *ret = (struct font *)font;
-    assert(ret->ref_counter >= 1);
-    ret->ref_counter++;
-    return ret;
+    struct font_priv *font = (struct font_priv *)_font;
+    assert(font->ref_counter >= 1);
+    font->ref_counter++;
+    return &font->public;
 }
 
 static size_t
@@ -469,7 +521,7 @@ hash_index(wchar_t wc)
 }
 
 static bool
-glyph_for_wchar(const struct font *font, wchar_t wc, struct glyph *glyph)
+glyph_for_wchar(const struct font_priv *font, wchar_t wc, struct glyph *glyph)
 {
     *glyph = (struct glyph){
         .wc = wc,
@@ -519,7 +571,7 @@ glyph_for_wchar(const struct font *font, wchar_t wc, struct glyph *glyph)
         for (int i = font->fc_idx + 1; i < font->fc_fonts->nfont; i++) {
             if (font->fc_loaded_fallbacks[i] == NULL) {
                 /* Load font */
-                struct font *fallback = malloc(sizeof(*fallback));
+                struct font_priv *fallback = malloc(sizeof(*fallback));
                 if (!from_font_set(font->fc_pattern, font->fc_fonts, i, fallback, true))
                 {
                     LOG_WARN("failed to load fontconfig fallback font");
@@ -720,8 +772,9 @@ err:
 }
 
 const struct glyph *
-font_glyph_for_wc(struct font *font, wchar_t wc)
+font_glyph_for_wc(struct font *_font, wchar_t wc)
 {
+    struct font_priv *font = (struct font_priv *)_font;
     mtx_lock(&font->lock);
 
     assert(font->glyph_cache != NULL);
@@ -755,10 +808,12 @@ font_glyph_for_wc(struct font *font, wchar_t wc)
 }
 
 void
-font_destroy(struct font *font)
+font_destroy(struct font *_font)
 {
-    if (font == NULL)
+    if (_font == NULL)
         return;
+
+    struct font_priv *font = (struct font_priv *)_font;
 
     if (--font->ref_counter > 0)
         return;
@@ -773,7 +828,7 @@ font_destroy(struct font *font)
     free(font->name);
 
     tll_foreach(font->fallbacks, it) {
-        font_destroy(it->item.font);
+        font_destroy(&it->item.font->public);
         free(it->item.pattern);
     }
     tll_free(font->fallbacks);
@@ -790,7 +845,7 @@ font_destroy(struct font *font)
         assert(font->fc_loaded_fallbacks != NULL);
 
         for (size_t i = 0; i < font->fc_fonts->nfont; i++)
-            font_destroy(font->fc_loaded_fallbacks[i]);
+            font_destroy(&font->fc_loaded_fallbacks[i]->public);
 
         free(font->fc_loaded_fallbacks);
     }

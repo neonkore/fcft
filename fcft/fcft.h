@@ -1,17 +1,10 @@
 #pragma once
 
 #include <stdbool.h>
+#include <wchar.h>
 #include <threads.h>
 
-#include <ft2build.h>
-#include FT_FREETYPE_H
-#include FT_LCD_FILTER_H
-#include <fontconfig/fontconfig.h>
 #include <pixman.h>
-
-#include <tllist.h>
-
-typedef tll(const char *) font_list_t;
 
 struct glyph {
     wchar_t wc;
@@ -27,25 +20,7 @@ struct glyph {
     bool valid;
 };
 
-typedef tll(struct glyph) hash_entry_t;
-
-struct font_fallback {
-    char *pattern;
-    struct font *font;
-};
-
 struct font {
-    char *name;
-
-    mtx_t lock;
-    FT_Face face;
-    int load_flags;
-    int render_flags;
-    FT_LcdFilter lcd_filter;
-
-    double pixel_size_fixup; /* Scale factor - should only be used with ARGB32 glyphs */
-    bool bgr;  /* True for FC_RGBA_BGR and FC_RGBA_VBGR */
-
     /* font extents */
     int height;
     int descent;
@@ -61,22 +36,10 @@ struct font {
         double position;
         double thickness;
     } strikeout;
-
-    bool is_fallback;
-    tll(struct font_fallback) fallbacks;
-
-    size_t ref_counter;
-
-    /* Fields below are only valid for non-fallback fonts */
-    FcPattern *fc_pattern;
-    FcFontSet *fc_fonts;
-    int fc_idx;
-    struct font **fc_loaded_fallbacks; /* fc_fonts->nfont array */
-
-    hash_entry_t **glyph_cache;
 };
 
-struct font *font_from_name(font_list_t names, const char *attributes);
+/* First entry is the main/primary font, the remaining (if any) are custom fallback fonts */
+struct font *font_from_name(const char *names[], size_t count, const char *attributes);
 struct font *font_clone(const struct font *font);
 const struct glyph *font_glyph_for_wc(struct font *font, wchar_t wc);
 void font_destroy(struct font *font);
