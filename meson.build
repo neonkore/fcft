@@ -31,7 +31,7 @@ endif
 fcft_lib = library(
   'fcft', 'fcft.c', 'fcft.h', 'log.c', 'log.h',
   dependencies: [math, threads, fontconfig, freetype, pixman, tllist],
-  install: true)
+  install: (not meson.is_subproject()))
 
 fcft = declare_dependency(include_directories: '.', link_with: fcft_lib)
 
