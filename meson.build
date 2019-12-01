@@ -28,10 +28,11 @@ else
   tllist = dependency('tllist')
 endif
 
-fcft_lib = library(
+fcft_lib = build_target(
   'fcft', 'fcft.c', 'fcft.h', 'log.c', 'log.h',
+  target_type: meson.is_subproject() ? 'static_library' : 'library',
   dependencies: [math, threads, fontconfig, freetype, pixman, tllist],
-  install: (not meson.is_subproject()))
+  install: not meson.is_subproject())
 
 fcft = declare_dependency(include_directories: '.', link_with: fcft_lib)
 
