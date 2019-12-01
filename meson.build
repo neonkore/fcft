@@ -23,7 +23,7 @@ pixman = dependency('pixman-1')
 
 tllist = subproject('tllist').get_variable('tllist')
 
-fcft = library(
-  'fcft', 'font.c', 'font.h', 'log.c', 'log.h',
+fcft_lib = library(
+  'fcft', 'fcft.c', 'fcft.h', 'log.c', 'log.h',
   dependencies: [math, threads, fontconfig, freetype, pixman, tllist],
   install: true)
