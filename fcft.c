@@ -156,7 +156,7 @@ underline_strikeout_metrics(struct font_priv *font)
             underline_position, underline_thickness,
             pub->underline.position, pub->underline.thickness);
 
-    double strikeout_position, strikeout_thickness;
+    double strikeout_position = 0., strikeout_thickness = 0.;
     TT_OS2 *os2 = FT_Get_Sfnt_Table(ft_face, ft_sfnt_os2);
     if (os2 != NULL) {
         strikeout_position = os2->yStrikeoutPosition * y_scale / 64.;
