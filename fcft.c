@@ -149,7 +149,7 @@ underline_strikeout_metrics(struct font_priv *font)
         underline_thickness = fabs(descent / 5.);
     }
 
-    pub->underline.position = round(underline_position - underline_thickness / 2.);
+    pub->underline.position = ceil(underline_position + underline_thickness / 2.);
     pub->underline.thickness = round(max(1., underline_thickness));
 
     LOG_DBG("underline: pos=%f, thick=%f -> pos=%d, thick=%d",
@@ -168,7 +168,7 @@ underline_strikeout_metrics(struct font_priv *font)
         strikeout_thickness = underline_thickness;
     }
 
-    pub->strikeout.position = round(strikeout_position - strikeout_thickness / 2.);
+    pub->strikeout.position = ceil(strikeout_position + strikeout_thickness / 2.);
     pub->strikeout.thickness = round(max(1., strikeout_thickness));
 
     LOG_DBG("strikeout: pos=%f, thick=%f -> pos=%d, thick=%d",
