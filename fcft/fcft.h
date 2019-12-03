@@ -2,7 +2,6 @@
 
 #include <stdbool.h>
 #include <wchar.h>
-#include <threads.h>
 
 #include <pixman.h>
 
