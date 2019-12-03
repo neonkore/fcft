@@ -27,13 +27,13 @@ struct font {
     int max_x_advance;
 
     struct {
-        double position;
-        double thickness;
+        int position;
+        int thickness;
     } underline;
 
     struct {
-        double position;
-        double thickness;
+        int position;
+        int thickness;
     } strikeout;
 };
 

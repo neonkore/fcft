@@ -22,6 +22,7 @@
 #include "fcft/stride.h"
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
+#define max(x, y) ((x) > (y) ? (x) : (y))
 
 static FT_Library ft_lib;
 static mtx_t ft_lock;
@@ -140,29 +141,38 @@ underline_strikeout_metrics(struct font_priv *font)
     LOG_DBG("ft: y-scale: %f, height: %f, descent: %f",
             y_scale, height, descent);
 
-    pub->underline.position = ft_face->underline_position * y_scale / 64.;
-    pub->underline.thickness = ft_face->underline_thickness * y_scale / 64.;
+    double underline_position = ft_face->underline_position * y_scale / 64.;
+    double underline_thickness = ft_face->underline_thickness * y_scale / 64.;
 
-    if (pub->underline.position == 0.) {
-        pub->underline.position = descent / 2.;
-        pub->underline.thickness = fabs(descent / 5.);
+    if (underline_position == 0.) {
+        underline_position = descent / 2.;
+        underline_thickness = fabs(descent / 5.);
     }
 
-    LOG_DBG("underline: pos=%f, thick=%f",
+    pub->underline.position = round(underline_position - underline_thickness / 2.);
+    pub->underline.thickness = round(max(1., underline_thickness));
+
+    LOG_DBG("underline: pos=%f, thick=%f -> pos=%d, thick=%d",
+            underline_position, underline_thickness,
             pub->underline.position, pub->underline.thickness);
 
+    double strikeout_position, strikeout_thickness;
     TT_OS2 *os2 = FT_Get_Sfnt_Table(ft_face, ft_sfnt_os2);
     if (os2 != NULL) {
-        pub->strikeout.position = os2->yStrikeoutPosition * y_scale / 64.;
-        pub->strikeout.thickness = os2->yStrikeoutSize * y_scale / 64.;
+        strikeout_position = os2->yStrikeoutPosition * y_scale / 64.;
+        strikeout_thickness = os2->yStrikeoutSize * y_scale / 64.;
     }
 
-    if (pub->strikeout.position == 0.) {
-        pub->strikeout.position = height / 2. + descent;
-        pub->strikeout.thickness = pub->underline.thickness;
+    if (strikeout_position == 0.) {
+        strikeout_position = height / 2. + descent;
+        strikeout_thickness = underline_thickness;
     }
 
-    LOG_DBG("strikeout: pos=%f, thick=%f",
+    pub->strikeout.position = round(strikeout_position - strikeout_thickness / 2.);
+    pub->strikeout.thickness = round(max(1., strikeout_thickness));
+
+    LOG_DBG("strikeout: pos=%f, thick=%f -> pos=%d, thick=%d",
+            strikeout_position, strikeout_thickness,
             pub->strikeout.position, pub->strikeout.thickness);
 }
 
