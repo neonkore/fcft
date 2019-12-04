@@ -149,8 +149,18 @@ underline_strikeout_metrics(struct font_priv *font)
         underline_position = -2 * underline_thickness; /* My own */
     }
 
-    /* Use ceil() to prefer the underline being closer to the baseline */
-    pub->underline.position = ceil(underline_position + underline_thickness / 2.);
+    /*
+     * Position refers to the line's center, thus we need to take the
+     * thickness into account to determine the line top.
+     *
+     * Since a *negative* number means the position is *under* the
+     * baseline, we need to *add* half the width to adjust the
+     * position "upwards".
+     *
+     * When rounding the thickness, take care not go below 1.0 as that
+     * would make it invisible.
+     */
+    pub->underline.position = round(underline_position + underline_thickness / 2.);
     pub->underline.thickness = round(max(1., underline_thickness));
 
     LOG_DBG("underline: pos=%f, thick=%f -> pos=%f, pos=%d, thick=%d",
