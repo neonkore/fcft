@@ -145,7 +145,7 @@ underline_strikeout_metrics(struct font_priv *font)
         LOG_DBG("estimating underline position and thickness");
         underline_thickness = fabs(descent / 5.);
 
-        //underline_position = descent / 2.;           /* Alacritty's algorithm *(
+        //underline_position = descent / 2.;           /* Alacritty's algorithm */
         underline_position = -2 * underline_thickness; /* My own */
     }
 
