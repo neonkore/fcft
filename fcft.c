@@ -396,7 +396,7 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int start_idx,
      * max_advance values. Use the width for ' ', if possible */
     FT_UInt idx = FT_Get_Char_Index(font->face, L' ');
     if ((ft_err = FT_Load_Glyph(font->face, idx, font->load_flags)) == 0)
-        max_x_advance = font->face->glyph->advance.x / 64. * font->pixel_size_fixup;
+        max_x_advance = font->face->glyph->advance.x / 64.;
 
     font->public.height = ceil(height * font->pixel_size_fixup);
     font->public.descent = ceil(-descent * font->pixel_size_fixup);
