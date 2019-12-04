@@ -135,12 +135,8 @@ underline_strikeout_metrics(struct font_priv *font)
 
     FT_Face ft_face = font->face;
     double y_scale = ft_face->size->metrics.y_scale / 65536.;
-    // double height = ft_face->size->metrics.height / 64.;
     double ascent = ft_face->size->metrics.ascender / 64.;
     double descent = ft_face->size->metrics.descender / 64.;
-
-    LOG_DBG("ft: y-scale: %f, height: %f, descent: %f",
-            y_scale, height, descent);
 
     double underline_position = ft_face->underline_position * y_scale / 64.;
     double underline_thickness = ft_face->underline_thickness * y_scale / 64.;
