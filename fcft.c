@@ -136,6 +136,7 @@ underline_strikeout_metrics(struct font_priv *font)
     FT_Face ft_face = font->face;
     double y_scale = ft_face->size->metrics.y_scale / 65536.;
     double height = ft_face->size->metrics.height / 64.;
+    double ascent = ft_face->size->metrics.ascender / 64.;
     double descent = ft_face->size->metrics.descender / 64.;
 
     LOG_DBG("ft: y-scale: %f, height: %f, descent: %f",
@@ -145,15 +146,19 @@ underline_strikeout_metrics(struct font_priv *font)
     double underline_thickness = ft_face->underline_thickness * y_scale / 64.;
 
     if (underline_position == 0.) {
-        underline_position = descent / 2.;
         underline_thickness = fabs(descent / 5.);
+
+        //underline_position = descent / 2.;           /* Alacritty's algorithm *(
+        underline_position = -2 * underline_thickness; /* My own */
     }
 
+    /* Use ceil() to prefer the underline being closer to the baseline */
     pub->underline.position = ceil(underline_position + underline_thickness / 2.);
     pub->underline.thickness = round(max(1., underline_thickness));
 
-    LOG_DBG("underline: pos=%f, thick=%f -> pos=%d, thick=%d",
+    LOG_DBG("underline: pos=%f, thick=%f -> pos=%f, pos=%d, thick=%d",
             underline_position, underline_thickness,
+            underline_position + underline_thickness / 2.,
             pub->underline.position, pub->underline.thickness);
 
     double strikeout_position = 0., strikeout_thickness = 0.;
@@ -164,15 +169,18 @@ underline_strikeout_metrics(struct font_priv *font)
     }
 
     if (strikeout_position == 0.) {
-        strikeout_position = height / 2. + descent;
         strikeout_thickness = underline_thickness;
+
+        //strikeout_position = height / 2. + descent;                     /* Alacritty's algorithm */
+        strikeout_position = 3. * ascent / 8. - underline_thickness / 2.; /* xterm's algorithm */
     }
 
-    pub->strikeout.position = ceil(strikeout_position + strikeout_thickness / 2.);
+    pub->strikeout.position = round(strikeout_position + strikeout_thickness / 2.);
     pub->strikeout.thickness = round(max(1., strikeout_thickness));
 
-    LOG_DBG("strikeout: pos=%f, thick=%f -> pos=%d, thick=%d",
+    LOG_DBG("strikeout: pos=%f, thick=%f -> pos=%f, pos=%d, thick=%d",
             strikeout_position, strikeout_thickness,
+            strikeout_position + strikeout_thickness / 2.,
             pub->strikeout.position, pub->strikeout.thickness);
 }
 
