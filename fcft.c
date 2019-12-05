@@ -392,19 +392,28 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int start_idx,
     double descent = ft_face->size->metrics.descender / 64.;
     double ascent = ft_face->size->metrics.ascender / 64.;
 
-    /* Some fonts (Noto Sans Mono, for example) provides bad
-     * max_advance values. Use the width for ' ', if possible */
-    FT_UInt idx = FT_Get_Char_Index(font->face, L' ');
-    if ((ft_err = FT_Load_Glyph(font->face, idx, font->load_flags)) == 0)
-        max_x_advance = font->face->glyph->advance.x / 64.;
-
     font->public.height = ceil(height * font->pixel_size_fixup);
     font->public.descent = ceil(-descent * font->pixel_size_fixup);
     font->public.ascent = ceil(ascent * font->pixel_size_fixup);
     font->public.max_x_advance = ceil(max_x_advance * font->pixel_size_fixup);
 
-    LOG_DBG("%s: size=%f, pixel-size=%f, dpi=%f, fixup-factor: %f, "
-            "line-height: %d, ascent: %d, descent: %d, x-advance: %d",
+    /*
+     * Some fonts (Noto Sans Mono, for example) provides bad
+     * max_advance values for grid-based applications, like terminal
+     * emulators.
+     *
+     * For this reason we also provide the width of a regular space
+     * character, to help these applications determine the cell size.
+     */
+    FT_UInt idx = FT_Get_Char_Index(font->face, L' ');
+    if (idx != 0 &&
+        (ft_err = FT_Load_Glyph(font->face, idx, font->load_flags)) == 0)
+    {
+        font->public.space_x_advance = ceil(
+            font->face->glyph->advance.x / 64. * font->pixel_size_fixup);
+    } else
+        font->public.space_x_advance = -1;
+
             font->name, size, pixel_size, dpi, font->pixel_size_fixup,
             font->public.height, font->public.ascent, font->public.descent,
             font->public.max_x_advance);
