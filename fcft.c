@@ -414,9 +414,16 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int start_idx,
     } else
         font->public.space_x_advance = -1;
 
+
+#if defined(LOG_ENABLE_DBG) && LOG_ENABLE_DBG
+    LOG_DBG("%s: size=%.2fpt/%.2fpx, dpi=%.2f, fixup-factor: %.4f, "
+            "line-height: %dpx, ascent: %dpx, descent: %dpx, x-advance (max/space): %d/%dpx",
             font->name, size, pixel_size, dpi, font->pixel_size_fixup,
             font->public.height, font->public.ascent, font->public.descent,
-            font->public.max_x_advance);
+            font->public.max_x_advance, font->public.space_x_advance);
+#else
+    LOG_INFO("%s: size=%.2fpt/%dpx, dpi=%d", font->name, size, (int)pixel_size, (int)dpi);
+#endif
 
     underline_strikeout_metrics(font);
     return true;
@@ -425,7 +432,7 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int start_idx,
 static struct font_priv *
 from_name(const char *name, bool is_fallback)
 {
-    LOG_DBG("instantiating %s", name);
+    LOG_DBG("instantiating %s%s", name, is_fallback ? " (fallback)" : "");
 
     FcPattern *pattern = FcNameParse((const unsigned char *)name);
     if (pattern == NULL) {
