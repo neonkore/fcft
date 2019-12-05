@@ -8,6 +8,21 @@ project('fcft', 'c',
           'werror=true',
           'b_ndebug=if-release'])
 
+# See https://autotools.io/libtool/version.html, it explains the
+# problem, but note that the way you tell libtool the library version
+# is not what the final so file name will end up having.
+#
+# libtool calls these CURRENT, REVISION and AGE. But since we don't
+# define them in the same way, we don't call them that.
+#
+# Note that MAJOR is the *only* version number that affects the
+# SONAME, and thus actual linking.
+so_version = [
+  '0',      # MAJOR: increment on non-backward compatible ABI changes
+  '0',      # MINOR: increment with backward compatible ABI changes
+  '0',      # PATCH: increment with non-ABI affecting changes
+]
+
 is_debug_build = get_option('buildtype').startswith('debug')
 
 add_project_arguments(
@@ -26,6 +41,7 @@ tllist = dependency('tllist', version: '>=1.0.0', fallback: ['tllist', 'tllist']
 fcft_lib = build_target(
   'fcft', 'fcft.c', 'fcft/fcft.h', 'fcft/stride.h', 'log.c', 'log.h',
   target_type: meson.is_subproject() ? 'static_library' : 'library',
+  version: '.'.join(so_version),
   dependencies: [math, threads, fontconfig, freetype, pixman, tllist],
   install: not meson.is_subproject())
 
