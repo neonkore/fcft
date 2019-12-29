@@ -38,3 +38,39 @@ checked.
 * Kerning
 
 Remember, this is a _simple_ library, not a full blown layout engine.
+
+
+## Integrating
+
+You can either install fcft as a system library, or use it as a meson
+subproject (assuming your project is meson based, of course).
+
+
+### Installing
+
+If you install fcft as a system library, you can use `pkg-config` to
+get the compiler flags needed to find and link against fcft.
+
+
+### Meson
+
+If your project is meson based, you can use fcft as a subproject. In
+your main project's `meson.build`, do something like:
+
+```meson
+fcft = subproject('fcft').get_variable('fcft')
+executable('you-executable', ..., dependencies: [fcft])
+```
+
+Or, if fcft has been installed as a system library, a regular
+
+```meson
+fcft = dependency('fcft')
+```
+
+will suffice. Optionally, you can combine the two; search for a system
+library first, and fallback to a subproject:
+
+```meson
+fcft = dependency('fcft', version: '>=0.4.0', fallback: ['fcft', 'fcft'])
+```
