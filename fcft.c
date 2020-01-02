@@ -335,7 +335,7 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int start_idx,
     if (FcPatternGetBool(final_pattern, FC_EMBEDDED_BITMAP, 0, &fc_embeddedbitmap) != FcResultMatch)
         fc_embeddedbitmap = FcTrue;
 
-    if (!fc_embeddedbitmap)
+    if (!fc_embeddedbitmap && scalable)
         load_flags |= FT_LOAD_NO_BITMAP;
 
     int render_flags = 0;
