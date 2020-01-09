@@ -194,7 +194,7 @@ underline_strikeout_metrics(struct font_priv *font)
 
 static bool
 from_font_set(FcPattern *pattern, FcFontSet *fonts, int start_idx,
-              struct font_priv *font, bool is_fallback)
+              struct font_priv *font, bool is_fallback, wchar_t must_have_char)
 {
     memset(font, 0, sizeof(*font));
 
@@ -211,6 +211,17 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int start_idx,
                 FcPatternDestroy(pat);
                 continue;
             }
+        }
+
+        FcCharSet *charset;
+        if (must_have_char != -1 &&
+            FcPatternGetCharSet(pat, FC_CHARSET, 0, &charset) == FcResultMatch &&
+            !FcCharSetHasChar(charset, must_have_char))
+        {
+            LOG_DBG("%s: does not have %C (0x%04x), skipping",
+                    face_file, must_have_char, must_have_char);
+            FcPatternDestroy(pat);
+            continue;
         }
 
         final_pattern = pat;
@@ -430,7 +441,7 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int start_idx,
 }
 
 static struct font_priv *
-from_name(const char *name, bool is_fallback)
+from_name(const char *name, bool is_fallback, wchar_t must_have_char)
 {
     LOG_DBG("instantiating %s%s", name, is_fallback ? " (fallback)" : "");
 
@@ -458,7 +469,7 @@ from_name(const char *name, bool is_fallback)
 
     struct font_priv *font = malloc(sizeof(*font));
 
-    if (!from_font_set(pattern, fonts, 0, font, is_fallback)) {
+    if (!from_font_set(pattern, fonts, 0, font, is_fallback, must_have_char)) {
         free(font);
         FcFontSetDestroy(fonts);
         FcPatternDestroy(pattern);
@@ -532,7 +543,7 @@ font_from_name(const char *names[], size_t count, const char *attributes)
         if (first) {
             first = false;
 
-            font = from_name(name, false);
+            font = from_name(name, false, -1);
             if (font == NULL)
                 return NULL;
 
@@ -595,7 +606,7 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc, struct glyph *glyph)
 
         tll_foreach(font->fallbacks, it) {
             if (it->item.font == NULL) {
-                it->item.font = from_name(it->item.pattern, true);
+                it->item.font = from_name(it->item.pattern, true, wc);
                 if (it->item.font == NULL)
                     continue;
             }
@@ -620,7 +631,7 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc, struct glyph *glyph)
             if (font->fc_loaded_fallbacks[i] == NULL) {
                 /* Load font */
                 struct font_priv *fallback = malloc(sizeof(*fallback));
-                if (!from_font_set(font->fc_pattern, font->fc_fonts, i, fallback, true))
+                if (!from_font_set(font->fc_pattern, font->fc_fonts, i, fallback, true, wc))
                 {
                     LOG_WARN("failed to load fontconfig fallback font");
                     free(fallback);
