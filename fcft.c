@@ -242,7 +242,7 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int start_idx,
 
     double pixel_size;
     if (FcPatternGetDouble(final_pattern, FC_PIXEL_SIZE, 0, &pixel_size) != FcResultMatch) {
-        LOG_ERR("%s: failed to get pizel size", face_file);
+        LOG_ERR("%s: failed to get pixel size", face_file);
         FcPatternDestroy(final_pattern);
         return false;
     }
