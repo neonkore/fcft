@@ -229,6 +229,9 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int start_idx,
         break;
     }
 
+    if (font_idx == -1)
+        return false;
+
     assert(font_idx != -1);
     assert(final_pattern != NULL);
 
