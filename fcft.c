@@ -193,47 +193,34 @@ underline_strikeout_metrics(struct font_priv *font)
 }
 
 static bool
-from_font_set(FcPattern *pattern, FcFontSet *fonts, int start_idx,
+from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
               struct font_priv *font, bool is_fallback, wchar_t must_have_char)
 {
     memset(font, 0, sizeof(*font));
 
+    FcPattern *final_pattern = FcFontRenderPrepare(
+        NULL, pattern, fonts->fonts[font_idx]);
+    assert(final_pattern != NULL);
+
     FcChar8 *face_file = NULL;
-    FcPattern *final_pattern = NULL;
-    int font_idx = -1;
-
-    for (int i = start_idx; i < fonts->nfont; i++) {
-        FcPattern *pat = FcFontRenderPrepare(NULL, pattern, fonts->fonts[i]);
-        assert(pat != NULL);
-
-        if (FcPatternGetString(pat, FC_FT_FACE, 0, &face_file) != FcResultMatch) {
-            if (FcPatternGetString(pat, FC_FILE, 0, &face_file) != FcResultMatch) {
-                FcPatternDestroy(pat);
-                continue;
-            }
-        }
-
-        FcCharSet *charset;
-        if (must_have_char != -1 &&
-            FcPatternGetCharSet(pat, FC_CHARSET, 0, &charset) == FcResultMatch &&
-            !FcCharSetHasChar(charset, must_have_char))
-        {
-            LOG_DBG("%s: does not have %C (0x%04x), skipping",
-                    face_file, must_have_char, must_have_char);
-            FcPatternDestroy(pat);
-            continue;
-        }
-
-        final_pattern = pat;
-        font_idx = i;
-        break;
+    if (FcPatternGetString(final_pattern, FC_FT_FACE, 0, &face_file) != FcResultMatch &&
+        FcPatternGetString(final_pattern, FC_FILE, 0, &face_file) != FcResultMatch)
+    {
+        LOG_ERR("no face file path in pattern");
+        FcPatternDestroy(final_pattern);
+        return false;
     }
 
-    if (font_idx == -1)
+    FcCharSet *charset;
+    if (must_have_char != -1 &&
+        FcPatternGetCharSet(final_pattern, FC_CHARSET, 0, &charset) == FcResultMatch &&
+        !FcCharSetHasChar(charset, must_have_char))
+    {
+        LOG_DBG("%s: does not have %C (0x%04x)",
+                face_file, must_have_char, must_have_char);
+        FcPatternDestroy(final_pattern);
         return false;
-
-    assert(font_idx != -1);
-    assert(final_pattern != NULL);
+    }
 
     double dpi;
     if (FcPatternGetDouble(final_pattern, FC_DPI, 0, &dpi) != FcResultMatch)
@@ -628,23 +615,20 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc, struct glyph *glyph)
         assert(font->fc_pattern != NULL);
         assert(font->fc_fonts != NULL);
         assert(font->fc_loaded_fallbacks != NULL);
-        assert(font->fc_idx != -1);
+        assert(font->fc_idx == 0);
 
-        for (int i = font->fc_idx + 1; i < font->fc_fonts->nfont; i++) {
+        for (int i = 1; i < font->fc_fonts->nfont; i++) {
             if (font->fc_loaded_fallbacks[i] == NULL) {
                 /* Load font */
                 struct font_priv *fallback = malloc(sizeof(*fallback));
                 if (!from_font_set(font->fc_pattern, font->fc_fonts, i, fallback, true, wc))
                 {
-                    LOG_WARN("failed to load fontconfig fallback font");
                     free(fallback);
                     continue;
                 }
 
                 LOG_DBG("loaded new fontconfig fallback font");
-                assert(fallback->fc_idx >= i);
-
-                i = fallback->fc_idx;
+                assert(fallback->fc_idx == i);
                 font->fc_loaded_fallbacks[i] = fallback;
             }
 
