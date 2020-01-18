@@ -1,5 +1,5 @@
 pkgname=fcft
-pkgver=0.4.1
+pkgver=0.4.2
 pkgrel=1
 pkgdesc="Simple font loading and glyph rasterization library"
 arch=('x86_64')
