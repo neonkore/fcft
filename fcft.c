@@ -921,3 +921,44 @@ font_destroy(struct font *_font)
     free(font->glyph_cache);
     free(font);
 }
+
+bool
+font_kerning(struct font *_font, wchar_t left, wchar_t right, long *x, long *y)
+{
+    struct font_priv *font = (struct font_priv *)_font;
+
+    if (x != NULL)
+        *x = 0;
+    if (y != NULL)
+        *y = 0;
+
+    if (!FT_HAS_KERNING(font->face))
+        return false;
+
+    FT_UInt left_idx = FT_Get_Char_Index(font->face, left);
+    if (left_idx == 0)
+        return false;
+
+    FT_UInt right_idx = FT_Get_Char_Index(font->face, right);
+    if (right_idx == 0)
+        return false;
+
+    FT_Vector kerning;
+    FT_Error err = FT_Get_Kerning(
+        font->face, left_idx, right_idx, FT_KERNING_DEFAULT, &kerning);
+
+    if (err != 0) {
+        LOG_WARN("%s: failed to get kerning for %C -> %C: %s",
+                 font->name, left, right, ft_error_string(err));
+        return false;
+    }
+
+    if (x != NULL)
+        *x = kerning.x / 64;
+    if (y != NULL)
+        *y = kerning.y / 64;
+
+    LOG_DBG("%s: kerning: %C -> %C: x=%ld 26.6, y=%ld 26.6",
+            font->name, left, right, kerning.x, kerning.y);
+    return true;
+}
