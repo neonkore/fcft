@@ -578,7 +578,7 @@ font_enable_subpixel_antialias(struct font *_font)
     if (font->subpixel_antialias)
         return;
 
-    font->subpixel_antialias = enable;
+    font->subpixel_antialias = true;
     /* TODO: flush glyph cache */
 }
 
