@@ -41,7 +41,9 @@ struct font {
 /* First entry is the main/primary font, the remaining (if any) are custom fallback fonts */
 struct font *font_from_name(const char *names[], size_t count, const char *attributes);
 struct font *font_clone(const struct font *font);
-const struct glyph *font_glyph_for_wc(struct font *font, wchar_t wc);
 void font_destroy(struct font *font);
+
+void font_enable_subpixel_antialias(struct font *font);
+const struct glyph *font_glyph_for_wc(struct font *font, wchar_t wc);
 
 bool font_kerning(struct font *font, wchar_t left, wchar_t right, long *x, long *y);

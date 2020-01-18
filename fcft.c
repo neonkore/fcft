@@ -40,6 +40,7 @@ struct font_priv {
     struct font public;
 
     char *name;
+    bool subpixel_antialias;
 
     mtx_t lock;
     FT_Face face;
@@ -375,6 +376,13 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
     font->ref_counter = 1;
     font->fc_idx = font_idx;
 
+    /*
+     * Can't use subpixel antialiasing on transparent backgrounds, so
+     * disable by default; user can enable with
+     * font_set_subpixel_antialias()
+     */
+    font->subpixel_antialias = false;
+
     if (is_fallback) {
         font->fc_pattern = NULL;
         font->fc_fonts = NULL;
@@ -563,6 +571,17 @@ font_clone(const struct font *_font)
     return &font->public;
 }
 
+void
+font_enable_subpixel_antialias(struct font *_font)
+{
+    struct font_priv *font = (struct font_priv *)_font;
+    if (font->subpixel_antialias)
+        return;
+
+    font->subpixel_antialias = enable;
+    /* TODO: flush glyph cache */
+}
+
 static size_t
 hash_index(wchar_t wc)
 {
@@ -652,7 +671,11 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc, struct glyph *glyph)
         goto err;
     }
 
-    err = FT_Render_Glyph(font->face->glyph, font->render_flags);
+    int render_flags = font->render_flags;
+    if (!font->subpixel_antialias)
+        render_flags &= ~(FT_RENDER_MODE_LCD | FT_RENDER_MODE_LCD_V);
+
+    err = FT_Render_Glyph(font->face->glyph, render_flags);
     if (err != 0) {
         LOG_ERR("%s: failed to render glyph: %s", font->name, ft_error_string(err));
         goto err;
@@ -682,13 +705,13 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc, struct glyph *glyph)
         break;
 
     case FT_PIXEL_MODE_LCD:
-        pix_format = PIXMAN_x8r8g8b8;
+        pix_format = PIXMAN_r8g8b8;
         width = bitmap->width / 3;
         rows = bitmap->rows;
         break;
 
     case FT_PIXEL_MODE_LCD_V:
-        pix_format = PIXMAN_x8r8g8b8;
+        pix_format = PIXMAN_r8g8b8;
         width = bitmap->width;
         rows = bitmap->rows / 3;
         break;
@@ -744,22 +767,25 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc, struct glyph *glyph)
                 unsigned char _g = bitmap->buffer[r * bitmap->pitch + c + 1];
                 unsigned char _b = bitmap->buffer[r * bitmap->pitch + c + (font->bgr ? 0 : 2)];
 
-                uint32_t *p = (uint32_t *)&data[r * stride + 4 * (c / 3)];
-                *p =  _r << 16 | _g << 8 | _b;
+                *(uint8_t *)&data[r * stride + c + 0] = _r;
+                *(uint8_t *)&data[r * stride + c + 1] = _g;
+                *(uint8_t *)&data[r * stride + c + 2] = _b;
             }
         }
         break;
 
     case FT_PIXEL_MODE_LCD_V:
         /* Unverified */
+        assert(false);
         for (size_t r = 0; r < bitmap->rows; r += 3) {
             for (size_t c = 0; c < bitmap->width; c++) {
                 unsigned char _r = bitmap->buffer[(r + (font->bgr ? 2 : 0)) * bitmap->pitch + c];
                 unsigned char _g = bitmap->buffer[(r + 1) * bitmap->pitch + c];
                 unsigned char _b = bitmap->buffer[(r + (font->bgr ? 0 : 2)) * bitmap->pitch + c];
 
-                uint32_t *p = (uint32_t *)&data[r / 3 * stride + 4 * c];
-                *p =  _r << 16 | _g << 8 | _b;
+                *(uint8_t *)&data[(r + 0) * stride] = _r;
+                *(uint8_t *)&data[(r + 1) * stride] = _g;
+                *(uint8_t *)&data[(r + 2) * stride] = _b;
             }
         }
         break;
