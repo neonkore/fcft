@@ -30,12 +30,15 @@ checked.
 * Color bitmap fonts (_emoji_ fonts)
 * Font caching
 * Glyph caching
+* Kerning[^1]
+
+[^1]: only basic kerning supported (i.e. the old 'kern' tables, not
+    the new 'GPOS' tables)
 
 
 ## Not supported
 
 * Subpixel positioning
-* Kerning
 
 Remember, this is a _simple_ library, not a full blown layout engine.
 
