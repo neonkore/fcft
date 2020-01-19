@@ -40,12 +40,12 @@ struct font_priv {
     struct font public;
 
     char *name;
-    bool subpixel_antialias;
 
     mtx_t lock;
     FT_Face face;
     int load_flags;
-    int render_flags;
+    int render_flags_normal;
+    int render_flags_subpixel;
     FT_LcdFilter lcd_filter;
 
     double pixel_size_fixup; /* Scale factor - should only be used with ARGB32 glyphs */
@@ -347,16 +347,23 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
     if (!fc_embeddedbitmap && scalable)
         load_flags |= FT_LOAD_NO_BITMAP;
 
-    int render_flags;
+    int render_flags_normal, render_flags_subpixel;
     if (!fc_antialias)
-        render_flags = FT_RENDER_MODE_MONO;
+        render_flags_normal = render_flags_subpixel = FT_RENDER_MODE_MONO;
+
     else {
-        if (fc_rgba == FC_RGBA_RGB || fc_rgba == FC_RGBA_BGR)
-            render_flags = FT_RENDER_MODE_LCD;
-        else if (fc_rgba == FC_RGBA_VRGB || fc_rgba == FC_RGBA_VBGR)
-            render_flags = FT_RENDER_MODE_LCD_V;
+        if (fc_rgba == FC_RGBA_RGB || fc_rgba == FC_RGBA_BGR) {
+            render_flags_subpixel = FT_RENDER_MODE_LCD;
+            render_flags_normal = FT_RENDER_MODE_NORMAL;
+        }
+
+        else if (fc_rgba == FC_RGBA_VRGB || fc_rgba == FC_RGBA_VBGR) {
+            render_flags_subpixel = FT_RENDER_MODE_LCD_V;
+            render_flags_normal = FT_RENDER_MODE_NORMAL;
+        }
+
         else
-            render_flags = FT_RENDER_MODE_NORMAL;
+            render_flags_normal = render_flags_subpixel = FT_RENDER_MODE_NORMAL;
     }
 
     int fc_lcdfilter;
@@ -376,19 +383,13 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
     mtx_init(&font->lock, mtx_plain);
     font->face = ft_face;
     font->load_flags = load_flags | FT_LOAD_COLOR;
-    font->render_flags = render_flags;
+    font->render_flags_normal = render_flags_normal;
+    font->render_flags_subpixel = render_flags_subpixel;
     font->is_fallback = is_fallback;
     font->pixel_size_fixup = pixel_fixup;
     font->bgr = fc_rgba == FC_RGBA_BGR || fc_rgba == FC_RGBA_VBGR;
     font->ref_counter = 1;
     font->fc_idx = font_idx;
-
-    /*
-     * Can't use subpixel antialiasing on transparent backgrounds, so
-     * disable by default; user can enable with
-     * font_set_subpixel_antialias()
-     */
-    font->subpixel_antialias = false;
 
     if (is_fallback) {
         font->fc_pattern = NULL;
@@ -578,17 +579,6 @@ font_clone(const struct font *_font)
     return &font->public;
 }
 
-void
-font_enable_subpixel_antialias(struct font *_font)
-{
-    struct font_priv *font = (struct font_priv *)_font;
-    if (font->subpixel_antialias)
-        return;
-
-    font->subpixel_antialias = true;
-    /* TODO: flush glyph cache */
-}
-
 static size_t
 hash_index(wchar_t wc)
 {
@@ -596,7 +586,8 @@ hash_index(wchar_t wc)
 }
 
 static bool
-glyph_for_wchar(const struct font_priv *font, wchar_t wc, struct glyph *glyph)
+glyph_for_wchar(const struct font_priv *font, wchar_t wc,
+                bool subpixel_antialias, struct glyph *glyph)
 {
     *glyph = (struct glyph){
         .wc = wc,
@@ -627,7 +618,7 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc, struct glyph *glyph)
                     continue;
             }
 
-            if (glyph_for_wchar(it->item.font, wc, glyph)) {
+            if (glyph_for_wchar(it->item.font, wc, subpixel_antialias, glyph)) {
                 LOG_DBG("%C: used fallback: %s", wc, it->item.font->name);
                 return true;
             }
@@ -647,7 +638,8 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc, struct glyph *glyph)
             if (font->fc_loaded_fallbacks[i] == NULL) {
                 /* Load font */
                 struct font_priv *fallback = malloc(sizeof(*fallback));
-                if (!from_font_set(font->fc_pattern, font->fc_fonts, i, fallback, true, wc))
+                if (!from_font_set(font->fc_pattern, font->fc_fonts, i,
+                                   fallback, true, wc))
                 {
                     free(fallback);
                     continue;
@@ -660,7 +652,9 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc, struct glyph *glyph)
 
             assert(font->fc_loaded_fallbacks[i] != NULL);
 
-            if (glyph_for_wchar(font->fc_loaded_fallbacks[i], wc, glyph)) {
+            if (glyph_for_wchar(font->fc_loaded_fallbacks[i], wc,
+                                subpixel_antialias, glyph))
+            {
                 LOG_DBG("%C: used fontconfig fallback: %s",
                         wc, font->fc_loaded_fallbacks[i]->name);
                 return true;
@@ -678,9 +672,8 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc, struct glyph *glyph)
         goto err;
     }
 
-    int render_flags = font->render_flags;
-    if (!font->subpixel_antialias)
-        render_flags &= ~(FT_RENDER_MODE_LCD | FT_RENDER_MODE_LCD_V);
+    int render_flags = subpixel_antialias
+        ? font->render_flags_subpixel : font->render_flags_normal;
 
     err = FT_Render_Glyph(font->face->glyph, render_flags);
     if (err != 0) {
@@ -835,6 +828,7 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc, struct glyph *glyph)
         .x_advance = ceil(font->face->glyph->advance.x / 64. * font->pixel_size_fixup),
         .width = width,
         .height = rows,
+        .subpixel_antialias = subpixel_antialias,
         .valid = true,
     };
 
@@ -846,7 +840,7 @@ err:
 }
 
 const struct glyph *
-font_glyph_for_wc(struct font *_font, wchar_t wc)
+font_glyph_for_wc(struct font *_font, wchar_t wc, bool subpixel_antialias)
 {
     struct font_priv *font = (struct font_priv *)_font;
     mtx_lock(&font->lock);
@@ -857,7 +851,9 @@ font_glyph_for_wc(struct font *_font, wchar_t wc)
 
     if (hash_entry != NULL) {
         tll_foreach(*hash_entry, it) {
-            if (it->item.wc == wc) {
+            if (it->item.wc == wc &&
+                it->item.subpixel_antialias == subpixel_antialias)
+            {
                 mtx_unlock(&font->lock);
                 return it->item.valid ? &it->item : NULL;
             }
@@ -865,7 +861,7 @@ font_glyph_for_wc(struct font *_font, wchar_t wc)
     }
 
     struct glyph glyph;
-    bool got_glyph = glyph_for_wchar(font, wc, &glyph);
+    bool got_glyph = glyph_for_wchar(font, wc, subpixel_antialias, &glyph);
 
     if (hash_entry == NULL) {
         hash_entry = calloc(1, sizeof(*hash_entry));
