@@ -702,13 +702,13 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc, struct glyph *glyph)
         break;
 
     case FT_PIXEL_MODE_LCD:
-        pix_format = PIXMAN_r8g8b8;
+        pix_format = PIXMAN_x8r8g8b8;
         width = bitmap->width / 3;
         rows = bitmap->rows;
         break;
 
     case FT_PIXEL_MODE_LCD_V:
-        pix_format = PIXMAN_r8g8b8;
+        pix_format = PIXMAN_x8r8g8b8;
         width = bitmap->width;
         rows = bitmap->rows / 3;
         break;
@@ -764,9 +764,8 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc, struct glyph *glyph)
                 unsigned char _g = bitmap->buffer[r * bitmap->pitch + c + 1];
                 unsigned char _b = bitmap->buffer[r * bitmap->pitch + c + (font->bgr ? 0 : 2)];
 
-                *(uint8_t *)&data[r * stride + c + 0] = _r;
-                *(uint8_t *)&data[r * stride + c + 1] = _g;
-                *(uint8_t *)&data[r * stride + c + 2] = _b;
+                uint32_t *p = (uint32_t *)&data[r * stride + 4 * (c / 3)];
+                *p = _r << 16 | _g << 8 | _b;
             }
         }
         break;
@@ -780,9 +779,8 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc, struct glyph *glyph)
                 unsigned char _g = bitmap->buffer[(r + 1) * bitmap->pitch + c];
                 unsigned char _b = bitmap->buffer[(r + (font->bgr ? 0 : 2)) * bitmap->pitch + c];
 
-                *(uint8_t *)&data[(r + 0) * stride] = _r;
-                *(uint8_t *)&data[(r + 1) * stride] = _g;
-                *(uint8_t *)&data[(r + 2) * stride] = _b;
+                uint32_t *p = (uint32_t *)&data[r / 3 * stride + 4 * c];
+                *p =  _r << 16 | _g << 8 | _b;
             }
         }
         break;
