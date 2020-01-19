@@ -18,8 +18,8 @@ project('fcft', 'c',
 # Note that MAJOR is the *only* version number that affects the
 # SONAME, and thus actual linking.
 so_version = [
-  '0',      # MAJOR: increment on non-backward compatible ABI changes
-  '1',      # MINOR: increment with backward compatible ABI changes
+  '1',      # MAJOR: increment on non-backward compatible ABI changes
+  '0',      # MINOR: increment with backward compatible ABI changes
   '0',      # PATCH: increment with non-ABI affecting changes
 ]
 
