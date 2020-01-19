@@ -684,9 +684,6 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc, struct glyph *glyph)
     assert(font->face->glyph->format == FT_GLYPH_FORMAT_BITMAP);
 
     FT_Bitmap *bitmap = &font->face->glyph->bitmap;
-    if (bitmap->width == 0)
-        goto err;
-
     pixman_format_code_t pix_format;
     int width;
     int rows;
