@@ -340,16 +340,16 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
     if (!fc_embeddedbitmap && scalable)
         load_flags |= FT_LOAD_NO_BITMAP;
 
-    int render_flags = 0;
+    int render_flags;
     if (!fc_antialias)
-        render_flags |= FT_RENDER_MODE_MONO;
+        render_flags = FT_RENDER_MODE_MONO;
     else {
         if (fc_rgba == FC_RGBA_RGB || fc_rgba == FC_RGBA_BGR)
-            render_flags |= FT_RENDER_MODE_LCD;
+            render_flags = FT_RENDER_MODE_LCD;
         else if (fc_rgba == FC_RGBA_VRGB || fc_rgba == FC_RGBA_VBGR)
-            render_flags |= FT_RENDER_MODE_LCD_V;
+            render_flags = FT_RENDER_MODE_LCD_V;
         else
-            render_flags |= FT_RENDER_MODE_NORMAL;
+            render_flags = FT_RENDER_MODE_NORMAL;
     }
 
     int fc_lcdfilter;
