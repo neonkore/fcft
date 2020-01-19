@@ -314,21 +314,28 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
     if (FcPatternGetInteger(final_pattern, FC_RGBA, 0, &fc_rgba) != FcResultMatch)
         fc_rgba = FC_RGBA_UNKNOWN;
 
-    int load_flags = FT_LOAD_DEFAULT;;
+    int load_flags = FT_LOAD_DEFAULT;
     if (!fc_antialias) {
         if (!fc_hinting || fc_hintstyle == FC_HINT_NONE)
             load_flags |= FT_LOAD_MONOCHROME | FT_LOAD_NO_HINTING | FT_LOAD_TARGET_NORMAL;
+
         else
             load_flags |= FT_LOAD_MONOCHROME | FT_LOAD_TARGET_MONO;
-    } else {
+    }
+
+    else {
         if (!fc_hinting || fc_hintstyle == FC_HINT_NONE)
             load_flags |= FT_LOAD_NO_HINTING | FT_LOAD_TARGET_NORMAL;
+
         else if (fc_hinting && fc_hintstyle == FC_HINT_SLIGHT)
             load_flags |= FT_LOAD_TARGET_LIGHT;
+
         else if (fc_rgba == FC_RGBA_RGB || fc_rgba == FC_RGBA_BGR)
             load_flags |= FT_LOAD_TARGET_LCD;
+
         else if (fc_rgba == FC_RGBA_VRGB || fc_rgba == FC_RGBA_VBGR)
             load_flags |= FT_LOAD_TARGET_LCD_V;
+
         else
             load_flags |= FT_LOAD_TARGET_NORMAL;
     }
