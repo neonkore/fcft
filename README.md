@@ -43,6 +43,14 @@ checked.
 Remember, this is a _simple_ library, not a full blown layout engine.
 
 
+## Projects using fcft
+
+* [foot](https://codeberg.org/dnkl/foot)
+* [yambar](https://codeberg.org/dnkl/yambar)
+* [fuzzel](https://codeberg.org/dnkl/fuzzel)
+* [fnott](https://codeberg.org/dnkl/fnott)
+
+
 ## Integrating
 
 You can either install fcft as a system library, or use it as a meson
