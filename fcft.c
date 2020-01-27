@@ -238,9 +238,15 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
         return false;
     }
 
+    int face_index;
+    if (FcPatternGetInteger(final_pattern, FC_INDEX, 0, &face_index) != FcResultMatch) {
+        LOG_WARN("%s: failed to get face index", face_file);
+        face_index = 0;
+    }
+
     mtx_lock(&ft_lock);
     FT_Face ft_face;
-    FT_Error ft_err = FT_New_Face(ft_lib, (const char *)face_file, 0, &ft_face);
+    FT_Error ft_err = FT_New_Face(ft_lib, (const char *)face_file, face_index, &ft_face);
     mtx_unlock(&ft_lock);
     if (ft_err != 0) {
         LOG_ERR("%s: failed to create FreeType face", face_file);
