@@ -510,7 +510,7 @@ sdbm_hash(const char *s)
 }
 
 static uint64_t
-font_hash(const char *names[], size_t count, const char *attributes)
+font_hash(size_t count, const char *names[static count], const char *attributes)
 {
     uint64_t hash = 0;
     for (size_t i = 0; i < count; i++)
@@ -523,12 +523,13 @@ font_hash(const char *names[], size_t count, const char *attributes)
 }
 
 struct font *
-font_from_name(const char *names[], size_t count, const char *attributes)
+font_from_name(size_t count, const char *names[static count],
+               const char *attributes)
 {
     if (count == 0)
         return false;
 
-    uint64_t hash = font_hash(names, count, attributes);
+    uint64_t hash = font_hash(count, names, attributes);
     tll_foreach(font_cache, it) {
         if (it->item.hash == hash) {
             it->item.font->ref_counter++;
@@ -953,7 +954,8 @@ font_destroy(struct font *_font)
 }
 
 bool
-font_kerning(struct font *_font, wchar_t left, wchar_t right, long *x, long *y)
+font_kerning(struct font *_font, wchar_t left, wchar_t right,
+             long *restrict x, long *restrict y)
 {
     struct font_priv *font = (struct font_priv *)_font;
 

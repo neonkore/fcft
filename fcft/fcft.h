@@ -39,13 +39,16 @@ struct font {
     } strikeout;
 };
 
-/* First entry is the main/primary font, the remaining (if any) are custom fallback fonts */
+/* First entry is the main/primary font, the remaining (if any) are
+ * custom fallback fonts */
 struct font *font_from_name(
-    const char *names[], size_t count, const char *attributes);
+    size_t count, const char *names[static count], const char *attributes);
 struct font *font_clone(const struct font *font);
 void font_destroy(struct font *font);
 
-const struct glyph *font_glyph_for_wc(struct font *font, wchar_t wc, bool subpixel_antialias);
+const struct glyph *font_glyph_for_wc(
+    struct font *font, wchar_t wc, bool subpixel_antialias);
 
 bool font_kerning(
-    struct font *font, wchar_t left, wchar_t right, long *x, long *y);
+    struct font *font, wchar_t left, wchar_t right,
+    long *restrict x, long *restrict y);
