@@ -19,7 +19,7 @@ project('fcft', 'c',
 # SONAME, and thus actual linking.
 so_version = [
   '2',      # MAJOR: increment on non-backward compatible ABI changes
-  '0',      # MINOR: increment with backward compatible ABI changes
+  '1',      # MINOR: increment with backward compatible ABI changes
   '0',      # PATCH: increment with non-ABI affecting changes
 ]
 
