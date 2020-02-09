@@ -46,6 +46,9 @@ struct font *font_from_name(
 struct font *font_clone(const struct font *font);
 void font_destroy(struct font *font);
 
+/* Returns a *new* font instance */
+struct font *font_size_adjust(const struct font *font, double amount);
+
 const struct glyph *font_glyph_for_wc(
     struct font *font, wchar_t wc, bool subpixel_antialias);
 

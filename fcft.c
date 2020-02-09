@@ -40,6 +40,7 @@ struct font_priv {
     struct font public;
 
     char *name;
+    char *pattern;
 
     mtx_t lock;
     FT_Face face;
@@ -386,6 +387,7 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
     font->name = strdup((char *)face_file);
     FcPatternDestroy(final_pattern);
 
+    font->pattern = NULL;
     mtx_init(&font->lock, mtx_plain);
     font->face = ft_face;
     font->load_flags = load_flags | FT_LOAD_COLOR;
@@ -493,6 +495,7 @@ from_name(const char *name, bool is_fallback, wchar_t must_have_char)
         FcPatternDestroy(pattern);
     }
 
+    font->pattern = strdup(name);
     return font;
 }
 
@@ -584,6 +587,118 @@ font_clone(const struct font *_font)
     assert(font->ref_counter >= 1);
     font->ref_counter++;
     return &font->public;
+}
+
+static char *
+pattern_from_font_with_adjusted_size(const struct font_priv *font, double amount)
+{
+    /* Get current point size */
+    double size;
+    if (FcPatternGetDouble(font->fc_pattern, FC_SIZE, 0, &size) != FcResultMatch) {
+        LOG_ERR("%s: failed to get size", font->name);
+        return NULL;
+    }
+
+    /* Adjust it */
+    size += amount;
+
+    if (size < 1)
+        return NULL;
+
+    /* Get original string pattern, and remove "(pixel)size=" */
+    char *pattern = strdup(font->pattern);
+    size_t len = strlen(pattern);
+
+    for (size_t i = 0; i < 2; i++) {
+        char *s = strstr(pattern, i == 0 ? "pixelsize=" : "size=");
+
+        if (s != NULL) {
+            const char *e = strchr(s, ':');
+
+            size_t count = e == NULL ? &pattern[len] - s : e - s + 1;
+            memmove(s, s + count, len - (s - pattern) - count);
+
+            len -= count;
+            pattern[len] = '\0';
+        }
+    }
+
+    /* Strip trailing ':' */
+    if (pattern[len - 1] == ':')
+        pattern[--len] = '\0';
+
+    /* Append ":size=" */
+    char new_size[32];
+    snprintf(new_size, sizeof(new_size), ":size=%.2f", size);
+    pattern = realloc(pattern, strlen(pattern) + strlen(new_size) + 1);
+    strcat(pattern, new_size);
+    return pattern;
+}
+
+struct font *
+font_size_adjust(const struct font *_font, double amount)
+{
+    const struct font_priv *font = (const struct font_priv *)_font;
+    assert(!font->is_fallback);
+
+    char *pattern = pattern_from_font_with_adjusted_size(font, amount);
+    if (pattern == NULL)
+        return NULL;
+
+
+    char *fallback_patterns[tll_length(font->fallbacks)];
+
+    size_t i = 0;
+    tll_foreach(font->fallbacks, it) {
+        struct font_priv *f = from_name(it->item.pattern, false, -1);
+        if (f == NULL) {
+            fallback_patterns[i++] = NULL;
+            continue;
+        }
+
+        fallback_patterns[i++] = pattern_from_font_with_adjusted_size(f, amount);
+        font_destroy(&f->public);
+    }
+
+    uint64_t hash = 0;
+    hash ^= sdbm_hash(pattern);
+    for (size_t i = 0; i < tll_length(font->fallbacks); i++) {
+        if (fallback_patterns[i] != NULL)
+            hash ^= sdbm_hash(fallback_patterns[i]);
+    }
+
+    tll_foreach(font_cache, it) {
+        if (it->item.hash == hash) {
+            free(pattern);
+            for (size_t i = 0; i < tll_length(font->fallbacks); i++)
+                free(fallback_patterns[i]);
+
+            it->item.font->ref_counter++;
+            return &it->item.font->public;
+        }
+    }
+    /* Instantiate new font */
+    struct font_priv *new_font = from_name(pattern, false, -1);
+    free(pattern);
+
+    if (new_font == NULL)
+        return NULL;
+
+    /* Fallback patterns */
+    for (size_t i = 0; i < tll_length(font->fallbacks); i++) {
+        if (fallback_patterns[i] != NULL) {
+            tll_push_back(
+                new_font->fallbacks,
+                ((struct font_fallback){.pattern = fallback_patterns[i]}));
+        }
+    }
+
+    tll_push_back(
+        font_cache,
+        ((struct font_cache_entry){.hash = hash, .font = new_font}));
+
+    return &new_font->public;
+
 }
 
 static size_t
@@ -903,6 +1018,7 @@ font_destroy(struct font *_font)
     }
 
     free(font->name);
+    free(font->pattern);
 
     tll_foreach(font->fallbacks, it) {
         font_destroy(&it->item.font->public);
