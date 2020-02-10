@@ -7,6 +7,7 @@
 #include <math.h>
 #include <assert.h>
 #include <threads.h>
+#include <locale.h>
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -459,7 +460,14 @@ from_name(const char *name, bool is_fallback, wchar_t must_have_char)
 {
     LOG_DBG("instantiating %s%s", name, is_fallback ? " (fallback)" : "");
 
+    /* Fontconfig fails to parse floating point values unless locale is C */
+    char *cur_locale = strdup(setlocale(LC_ALL, NULL));
+    setlocale(LC_ALL, "C");
+
     FcPattern *pattern = FcNameParse((const unsigned char *)name);
+    setlocale(LC_ALL, cur_locale);
+    free(cur_locale);
+
     if (pattern == NULL) {
         LOG_ERR("%s: failed to lookup font", name);
         return NULL;
@@ -599,6 +607,8 @@ pattern_from_font_with_adjusted_size(const struct font_priv *font, double amount
         return NULL;
     }
 
+    LOG_INFO("SIZE: %f -> %f", size, size + amount);
+
     /* Adjust it */
     size += amount;
 
@@ -627,11 +637,18 @@ pattern_from_font_with_adjusted_size(const struct font_priv *font, double amount
     if (pattern[len - 1] == ':')
         pattern[--len] = '\0';
 
+    /* fontconfig *requires* floating points to use '.' as decimal point */
+    char *cur_locale = strdup(setlocale(LC_ALL, NULL));
+    setlocale(LC_ALL, "C");
+
     /* Append ":size=" */
     char new_size[32];
     snprintf(new_size, sizeof(new_size), ":size=%.2f", size);
     pattern = realloc(pattern, strlen(pattern) + strlen(new_size) + 1);
     strcat(pattern, new_size);
+
+    setlocale(LC_ALL, cur_locale);
+    free(cur_locale);
     return pattern;
 }
 
