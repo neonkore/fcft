@@ -607,8 +607,6 @@ pattern_from_font_with_adjusted_size(const struct font_priv *font, double amount
         return NULL;
     }
 
-    LOG_INFO("SIZE: %f -> %f", size, size + amount);
-
     /* Adjust it */
     size += amount;
 
