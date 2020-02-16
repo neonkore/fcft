@@ -51,11 +51,7 @@ _log(enum log_class log_class, const char *module, const char *file, int lineno,
 
     if (colorize)
         printf("\e[2m");
-#if defined(_DEBUG)
     printf("%s:%d: ", file, lineno);
-#else
-    printf("%s: ", module);
-#endif
     if (colorize)
         printf("\e[0m");
 
