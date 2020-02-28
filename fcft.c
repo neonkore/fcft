@@ -163,7 +163,7 @@ underline_strikeout_metrics(struct font_priv *font)
      * When rounding the thickness, take care not go below 1.0 as that
      * would make it invisible.
      */
-    pub->underline.position = round(underline_position + underline_thickness / 2.);
+    pub->underline.position = trunc(underline_position + underline_thickness / 2.);
     pub->underline.thickness = round(max(1., underline_thickness));
 
     LOG_DBG("underline: pos=%f, thick=%f -> pos=%f, pos=%d, thick=%d",
@@ -186,7 +186,7 @@ underline_strikeout_metrics(struct font_priv *font)
         strikeout_position = 3. * ascent / 8. - underline_thickness / 2.; /* xterm's algorithm */
     }
 
-    pub->strikeout.position = round(strikeout_position + strikeout_thickness / 2.);
+    pub->strikeout.position = trunc(strikeout_position + strikeout_thickness / 2.);
     pub->strikeout.thickness = round(max(1., strikeout_thickness));
 
     LOG_DBG("strikeout: pos=%f, thick=%f -> pos=%f, pos=%d, thick=%d",
