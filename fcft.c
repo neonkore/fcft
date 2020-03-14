@@ -618,12 +618,12 @@ pattern_from_font_with_adjusted_size(const struct font_priv *font, double amount
     size_t len = strlen(pattern);
 
     for (size_t i = 0; i < 2; i++) {
-        char *s = strstr(pattern, i == 0 ? "pixelsize=" : "size=");
+        char *s = strstr(pattern, i == 0 ? ":pixelsize=" : ":size=");
 
         if (s != NULL) {
-            const char *e = strchr(s, ':');
+            const char *e = strchr(s + 1, ':');
 
-            size_t count = e == NULL ? &pattern[len] - s : e - s + 1;
+            size_t count = e == NULL ? &pattern[len] - s : e - s;
             memmove(s, s + count, len - (s - pattern) - count);
 
             len -= count;
