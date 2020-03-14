@@ -650,6 +650,8 @@ pattern_from_font_with_adjusted_size(const struct font_priv *font, double amount
 
     setlocale(LC_ALL, cur_locale);
     free(cur_locale);
+    LOG_DBG("adjust: amount=%f, pattern \"%s\" -> \"%s\"",
+            amount, font->pattern, pattern);
     return pattern;
 }
 
