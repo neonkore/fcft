@@ -945,15 +945,17 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
         bitmap->pixel_mode == FT_PIXEL_MODE_LCD ||
         bitmap->pixel_mode == FT_PIXEL_MODE_LCD_V);
 
-
     if (font->pixel_size_fixup != 1.) {
-        struct pixman_transform scale;
-        pixman_transform_init_identity(&scale);
-        pixman_transform_scale(
-            &scale, NULL,
-            pixman_double_to_fixed(1.0 / font->pixel_size_fixup),
-            pixman_double_to_fixed(1.0 / font->pixel_size_fixup));
-        pixman_image_set_transform(pix, &scale);
+        struct pixman_f_transform scale;
+        pixman_f_transform_init_scale(
+            &scale,
+            1. / font->pixel_size_fixup,
+            1. / font->pixel_size_fixup);
+
+        struct pixman_transform _scale;
+        pixman_transform_from_pixman_f_transform(&_scale, &scale);
+        pixman_image_set_transform(pix, &_scale);
+
         pixman_image_set_filter(pix, PIXMAN_FILTER_BEST, NULL, 0);
     }
 
