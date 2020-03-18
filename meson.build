@@ -1,5 +1,5 @@
 project('fcft', 'c',
-        version: '1.1.4',
+        version: '1.1.5',
         license: 'MIT',
         meson_version: '>=0.47.0',
         default_options: [
@@ -20,7 +20,7 @@ project('fcft', 'c',
 so_version = [
   '2',      # MAJOR: increment on non-backward compatible ABI changes
   '1',      # MINOR: increment with backward compatible ABI changes
-  '3',      # PATCH: increment with non-ABI affecting changes
+  '4',      # PATCH: increment with non-ABI affecting changes
 ]
 
 is_debug_build = get_option('buildtype').startswith('debug')
