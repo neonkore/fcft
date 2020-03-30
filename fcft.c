@@ -323,36 +323,36 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
         fc_rgba = FC_RGBA_UNKNOWN;
 
     int load_flags = FT_LOAD_DEFAULT;
+    int load_target = FT_LOAD_TARGET_NORMAL;
+
     if (!fc_antialias) {
         if (!fc_hinting || fc_hintstyle == FC_HINT_NONE)
-            load_flags |= FT_LOAD_MONOCHROME | FT_LOAD_NO_HINTING | FT_LOAD_TARGET_NORMAL;
-
+            load_flags |= FT_LOAD_NO_HINTING;
         else
-            load_flags |= FT_LOAD_MONOCHROME | FT_LOAD_TARGET_MONO;
+            load_target = FT_LOAD_TARGET_MONO;
+
+        load_flags |= FT_LOAD_MONOCHROME;
     }
 
     else {
         if (!fc_hinting || fc_hintstyle == FC_HINT_NONE)
-            load_flags |= FT_LOAD_NO_HINTING | FT_LOAD_TARGET_NORMAL;
+            load_flags |= FT_LOAD_NO_HINTING;
 
         else if (fc_hinting && fc_hintstyle == FC_HINT_SLIGHT)
-            load_flags |= FT_LOAD_TARGET_LIGHT;
+            load_target = FT_LOAD_TARGET_LIGHT;
 
         else if (fc_rgba == FC_RGBA_RGB || fc_rgba == FC_RGBA_BGR)
-            load_flags |= FT_LOAD_TARGET_LCD;
+            load_target = FT_LOAD_TARGET_LCD;
 
         else if (fc_rgba == FC_RGBA_VRGB || fc_rgba == FC_RGBA_VBGR)
-            load_flags |= FT_LOAD_TARGET_LCD_V;
-
-        else
-            load_flags |= FT_LOAD_TARGET_NORMAL;
+            load_target = FT_LOAD_TARGET_LCD_V;
     }
 
     FcBool fc_embeddedbitmap;
     if (FcPatternGetBool(final_pattern, FC_EMBEDDED_BITMAP, 0, &fc_embeddedbitmap) != FcResultMatch)
         fc_embeddedbitmap = FcTrue;
 
-    if (!fc_embeddedbitmap && scalable)
+    if (!fc_embeddedbitmap && outline)
         load_flags |= FT_LOAD_NO_BITMAP;
 
     int render_flags_normal, render_flags_subpixel;
@@ -391,7 +391,7 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
     font->pattern = NULL;
     mtx_init(&font->lock, mtx_plain);
     font->face = ft_face;
-    font->load_flags = load_flags | FT_LOAD_COLOR;
+    font->load_flags = load_target | load_flags | FT_LOAD_COLOR;
     font->render_flags_normal = render_flags_normal;
     font->render_flags_subpixel = render_flags_subpixel;
     font->is_fallback = is_fallback;
