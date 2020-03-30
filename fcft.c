@@ -355,6 +355,13 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
     if (!fc_embeddedbitmap && outline)
         load_flags |= FT_LOAD_NO_BITMAP;
 
+    FcBool fc_autohint;
+    if (FcPatternGetBool(final_pattern, FC_AUTOHINT, 0, &fc_autohint) != FcResultMatch)
+        fc_autohint = FcFalse;
+
+    if (fc_autohint)
+        load_flags |= FT_LOAD_FORCE_AUTOHINT;
+
     int render_flags_normal, render_flags_subpixel;
     if (!fc_antialias)
         render_flags_normal = render_flags_subpixel = FT_RENDER_MODE_MONO;
