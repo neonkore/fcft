@@ -1050,7 +1050,8 @@ font_destroy(struct font *_font)
     free(font->pattern);
 
     tll_foreach(font->fallbacks, it) {
-        font_destroy(&it->item.font->public);
+        if (it->item.font != NULL)
+            font_destroy(&it->item.font->public);
         free(it->item.pattern);
     }
     tll_free(font->fallbacks);
@@ -1067,7 +1068,8 @@ font_destroy(struct font *_font)
         assert(font->fc_loaded_fallbacks != NULL);
 
         for (size_t i = 0; i < font->fc_fonts->nfont; i++)
-            font_destroy(&font->fc_loaded_fallbacks[i]->public);
+            if (font->fc_loaded_fallbacks[i] != NULL)
+                font_destroy(&font->fc_loaded_fallbacks[i]->public);
 
         free(font->fc_loaded_fallbacks);
     }
