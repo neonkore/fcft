@@ -74,12 +74,6 @@ struct font_cache_entry {
 };
 static tll(struct font_cache_entry) font_cache = tll_init();
 
-static inline struct font_priv *
-pub2priv(struct font *pub)
-{
-    return (struct font_priv *)pub;
-}
-
 static void __attribute__((constructor))
 init(void)
 {
