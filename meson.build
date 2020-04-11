@@ -64,7 +64,8 @@ threads = dependency('threads')
 freetype = dependency('freetype2')
 fontconfig = dependency('fontconfig')
 pixman = dependency('pixman-1')
-stdthreads = cc.find_library('stdthreads', required: false)
+# required on the freebsd platform (maybe even on others)
+stdthreads = cc.find_library('stdthreads', required: host_machine.system() == 'freebsd')
 
 tllist = dependency('tllist', version: '>=1.0.0', fallback: ['tllist', 'tllist'])
 
