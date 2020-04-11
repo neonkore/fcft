@@ -1,0 +1,31 @@
+image: alpine/edge
+packages:
+  - meson
+  - ninja
+  - gcc
+  - pkgconf
+  - scdoc
+  - freetype-dev
+  - fontconfig-dev
+  - pixman-dev
+
+sources:
+  - https://codeberg.org/dnkl/tllist
+  - https://codeberg.org/dnkl/fcft
+
+# triggers:
+#   - action: email
+#     condition: failure
+#     to: <committer>
+
+tasks:
+  - debug: |
+      mkdir -p bld/debug
+      meson --buildtype=debug fcft bld/debug
+      ninja -C bld/debug -k0
+      meson test -C bld/debug --print-errorlogs
+  - release: |
+      mkdir -p bld/release
+      meson --buildtype=minsize fcft bld/release
+      ninja -C bld/release -k0
+      meson test -C bld/release --print-errorlogs
