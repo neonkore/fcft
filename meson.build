@@ -1,5 +1,5 @@
 project('fcft', 'c',
-        version: '1.1.5',
+        version: '1.1.6',
         license: 'MIT',
         meson_version: '>=0.47.0',
         default_options: [
