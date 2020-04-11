@@ -7,7 +7,7 @@
 
 struct glyph {
     wchar_t wc;
-    int cols;
+    int cols;              /* wcwidth(wc) */
 
     pixman_image_t *pix;
     int x;
@@ -15,8 +15,9 @@ struct glyph {
     int x_advance;
     int width;
     int height;
-    bool subpixel_antialias;
 
+    /* Internal */
+    bool subpixel_antialias;
     bool valid;
 };
 
