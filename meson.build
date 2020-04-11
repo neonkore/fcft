@@ -64,6 +64,8 @@ threads = dependency('threads')
 freetype = dependency('freetype2')
 fontconfig = dependency('fontconfig')
 pixman = dependency('pixman-1')
+# required on the freebsd platform (maybe even on others)
+stdthreads = cc.find_library('stdthreads', required: host_machine.system() == 'freebsd')
 
 tllist = dependency('tllist', version: '>=1.0.0', fallback: ['tllist', 'tllist'])
 
@@ -71,7 +73,7 @@ fcft_lib = build_target(
   'fcft', 'fcft.c', 'fcft/fcft.h', 'fcft/stride.h', 'log.c', 'log.h',
   target_type: meson.is_subproject() ? 'static_library' : 'library',
   version: '.'.join(so_version),
-  dependencies: [math, threads, fontconfig, freetype, pixman, tllist],
+  dependencies: [math, threads, fontconfig, freetype, pixman, tllist, stdthreads],
   install: not meson.is_subproject())
 
 fcft = declare_dependency(
