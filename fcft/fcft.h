@@ -5,6 +5,15 @@
 
 #include <pixman.h>
 
+enum subpixel_order {
+    FCFT_SUBPIXEL_ORDER_DEFAULT,
+    FCFT_SUBPIXEL_ORDER_NONE,
+    FCFT_SUBPIXEL_ORDER_HORIZONTAL_RGB,
+    FCFT_SUBPIXEL_ORDER_HORIZONTAL_BGR,
+    FCFT_SUBPIXEL_ORDER_VERTICAL_RGB,
+    FCFT_SUBPIXEL_ORDER_VERTICAL_BGR,
+};
+
 struct glyph {
     wchar_t wc;
     int cols;              /* wcwidth(wc) */
@@ -17,7 +26,7 @@ struct glyph {
     int height;
 
     /* Internal */
-    bool subpixel_antialias;
+    enum subpixel_order subpixel;
     bool valid;
 };
 
@@ -51,7 +60,7 @@ void font_destroy(struct font *font);
 struct font *font_size_adjust(const struct font *font, double amount);
 
 const struct glyph *font_glyph_for_wc(
-    struct font *font, wchar_t wc, bool subpixel_antialias);
+    struct font *font, wchar_t wc, enum subpixel_order subpixel);
 
 bool font_kerning(
     struct font *font, wchar_t left, wchar_t right,

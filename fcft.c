@@ -17,7 +17,7 @@
 
 #include <tllist.h>
 
-#define LOG_MODULE "font"
+#define LOG_MODULE "fcft"
 #define LOG_ENABLE_DBG 0
 #include "log.h"
 #include "fcft/stride.h"
@@ -46,8 +46,11 @@ struct font_priv {
     mtx_t lock;
     FT_Face face;
     int load_flags;
+
+    bool antialias;
     int render_flags_normal;
     int render_flags_subpixel;
+
     FT_LcdFilter lcd_filter;
 
     double pixel_size_fixup; /* Scale factor - should only be used with ARGB32 glyphs */
@@ -393,6 +396,7 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
     mtx_init(&font->lock, mtx_plain);
     font->face = ft_face;
     font->load_flags = load_target | load_flags | FT_LOAD_COLOR;
+    font->antialias = fc_antialias;
     font->render_flags_normal = render_flags_normal;
     font->render_flags_subpixel = render_flags_subpixel;
     font->is_fallback = is_fallback;
@@ -730,7 +734,7 @@ hash_index(wchar_t wc)
 
 static bool
 glyph_for_wchar(const struct font_priv *font, wchar_t wc,
-                bool subpixel_antialias, struct glyph *glyph)
+                enum subpixel_order subpixel, struct glyph *glyph)
 {
     *glyph = (struct glyph){
         .wc = wc,
@@ -761,7 +765,7 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
                     continue;
             }
 
-            if (glyph_for_wchar(it->item.font, wc, subpixel_antialias, glyph)) {
+            if (glyph_for_wchar(it->item.font, wc, subpixel, glyph)) {
                 LOG_DBG("%C: used fallback: %s", wc, it->item.font->name);
                 return true;
             }
@@ -796,7 +800,7 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
             assert(font->fc_loaded_fallbacks[i] != NULL);
 
             if (glyph_for_wchar(font->fc_loaded_fallbacks[i], wc,
-                                subpixel_antialias, glyph))
+                                subpixel, glyph))
             {
                 LOG_DBG("%C: used fontconfig fallback: %s",
                         wc, font->fc_loaded_fallbacks[i]->name);
@@ -815,8 +819,38 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
         goto err;
     }
 
-    int render_flags = subpixel_antialias
-        ? font->render_flags_subpixel : font->render_flags_normal;
+    int render_flags;
+    bool bgr;
+
+    if (font->antialias) {
+        switch (subpixel) {
+        case FCFT_SUBPIXEL_ORDER_NONE:
+            render_flags = font->render_flags_normal;
+            bgr = false;
+            break;
+
+        case FCFT_SUBPIXEL_ORDER_HORIZONTAL_RGB:
+        case FCFT_SUBPIXEL_ORDER_HORIZONTAL_BGR:
+            render_flags = FT_RENDER_MODE_LCD;
+            bgr = subpixel == FCFT_SUBPIXEL_ORDER_HORIZONTAL_BGR;
+            break;
+
+        case FCFT_SUBPIXEL_ORDER_VERTICAL_RGB:
+        case FCFT_SUBPIXEL_ORDER_VERTICAL_BGR:
+            render_flags = FT_RENDER_MODE_LCD_V;
+            bgr = subpixel == FCFT_SUBPIXEL_ORDER_VERTICAL_BGR;
+            break;
+
+        case FCFT_SUBPIXEL_ORDER_DEFAULT:
+        default:
+            render_flags = font->render_flags_subpixel;
+            bgr = font->bgr;
+            break;
+        }
+    } else {
+        render_flags = font->render_flags_normal;
+        bgr = false;
+    }
 
     err = FT_Render_Glyph(font->face->glyph, render_flags);
     if (err != 0) {
@@ -903,9 +937,9 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
     case FT_PIXEL_MODE_LCD:
         for (size_t r = 0; r < bitmap->rows; r++) {
             for (size_t c = 0; c < bitmap->width; c += 3) {
-                unsigned char _r = bitmap->buffer[r * bitmap->pitch + c + (font->bgr ? 0 : 2)];
+                unsigned char _r = bitmap->buffer[r * bitmap->pitch + c + (bgr ? 0 : 2)];
                 unsigned char _g = bitmap->buffer[r * bitmap->pitch + c + 1];
-                unsigned char _b = bitmap->buffer[r * bitmap->pitch + c + (font->bgr ? 2 : 0)];
+                unsigned char _b = bitmap->buffer[r * bitmap->pitch + c + (bgr ? 2 : 0)];
 
                 uint32_t *p = (uint32_t *)&data[r * stride + 4 * (c / 3)];
                 *p = _r << 16 | _g << 8 | _b;
@@ -917,9 +951,9 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
         /* Unverified */
         for (size_t r = 0; r < bitmap->rows; r += 3) {
             for (size_t c = 0; c < bitmap->width; c++) {
-                unsigned char _r = bitmap->buffer[(r + (font->bgr ? 0 : 2)) * bitmap->pitch + c];
+                unsigned char _r = bitmap->buffer[(r + (bgr ? 0 : 2)) * bitmap->pitch + c];
                 unsigned char _g = bitmap->buffer[(r + 1) * bitmap->pitch + c];
-                unsigned char _b = bitmap->buffer[(r + (font->bgr ? 2 : 0)) * bitmap->pitch + c];
+                unsigned char _b = bitmap->buffer[(r + (bgr ? 2 : 0)) * bitmap->pitch + c];
 
                 uint32_t *p = (uint32_t *)&data[r / 3 * stride + 4 * c];
                 *p =  _r << 16 | _g << 8 | _b;
@@ -972,7 +1006,7 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
         .x_advance = ceil(font->face->glyph->advance.x / 64. * font->pixel_size_fixup),
         .width = width / (1. / font->pixel_size_fixup),
         .height = rows / (1. / font->pixel_size_fixup),
-        .subpixel_antialias = subpixel_antialias,
+        .subpixel = subpixel,
         .valid = true,
     };
 
@@ -984,7 +1018,7 @@ err:
 }
 
 const struct glyph *
-font_glyph_for_wc(struct font *_font, wchar_t wc, bool subpixel_antialias)
+font_glyph_for_wc(struct font *_font, wchar_t wc, enum subpixel_order subpixel)
 {
     struct font_priv *font = (struct font_priv *)_font;
     mtx_lock(&font->lock);
@@ -996,7 +1030,7 @@ font_glyph_for_wc(struct font *_font, wchar_t wc, bool subpixel_antialias)
     if (hash_entry != NULL) {
         tll_foreach(*hash_entry, it) {
             if (it->item.wc == wc &&
-                it->item.subpixel_antialias == subpixel_antialias)
+                it->item.subpixel == subpixel)
             {
                 mtx_unlock(&font->lock);
                 return it->item.valid ? &it->item : NULL;
@@ -1005,7 +1039,7 @@ font_glyph_for_wc(struct font *_font, wchar_t wc, bool subpixel_antialias)
     }
 
     struct glyph glyph;
-    bool got_glyph = glyph_for_wchar(font, wc, subpixel_antialias, &glyph);
+    bool got_glyph = glyph_for_wchar(font, wc, subpixel, &glyph);
 
     if (hash_entry == NULL) {
         hash_entry = calloc(1, sizeof(*hash_entry));
