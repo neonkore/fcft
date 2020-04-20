@@ -903,9 +903,9 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
     case FT_PIXEL_MODE_LCD:
         for (size_t r = 0; r < bitmap->rows; r++) {
             for (size_t c = 0; c < bitmap->width; c += 3) {
-                unsigned char _r = bitmap->buffer[r * bitmap->pitch + c + (font->bgr ? 2 : 0)];
+                unsigned char _r = bitmap->buffer[r * bitmap->pitch + c + (font->bgr ? 0 : 2)];
                 unsigned char _g = bitmap->buffer[r * bitmap->pitch + c + 1];
-                unsigned char _b = bitmap->buffer[r * bitmap->pitch + c + (font->bgr ? 0 : 2)];
+                unsigned char _b = bitmap->buffer[r * bitmap->pitch + c + (font->bgr ? 2 : 0)];
 
                 uint32_t *p = (uint32_t *)&data[r * stride + 4 * (c / 3)];
                 *p = _r << 16 | _g << 8 | _b;
@@ -915,12 +915,11 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
 
     case FT_PIXEL_MODE_LCD_V:
         /* Unverified */
-        assert(false);
         for (size_t r = 0; r < bitmap->rows; r += 3) {
             for (size_t c = 0; c < bitmap->width; c++) {
-                unsigned char _r = bitmap->buffer[(r + (font->bgr ? 2 : 0)) * bitmap->pitch + c];
+                unsigned char _r = bitmap->buffer[(r + (font->bgr ? 0 : 2)) * bitmap->pitch + c];
                 unsigned char _g = bitmap->buffer[(r + 1) * bitmap->pitch + c];
-                unsigned char _b = bitmap->buffer[(r + (font->bgr ? 0 : 2)) * bitmap->pitch + c];
+                unsigned char _b = bitmap->buffer[(r + (font->bgr ? 2 : 0)) * bitmap->pitch + c];
 
                 uint32_t *p = (uint32_t *)&data[r / 3 * stride + 4 * c];
                 *p =  _r << 16 | _g << 8 | _b;
