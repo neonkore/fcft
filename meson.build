@@ -20,7 +20,7 @@ project('fcft', 'c',
 so_version = [
   '2',      # MAJOR: increment on non-backward compatible ABI changes
   '1',      # MINOR: increment with backward compatible ABI changes
-  '5',      # PATCH: increment with non-ABI affecting changes
+  '6',      # PATCH: increment with non-ABI affecting changes
 ]
 
 is_debug_build = get_option('buildtype').startswith('debug')
