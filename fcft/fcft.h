@@ -19,7 +19,7 @@ enum fcft_subpixel {
     FCFT_SUBPIXEL_VERTICAL_BGR,
 };
 
-struct glyph {
+struct fcft_glyph {
     wchar_t wc;
     int cols;              /* wcwidth(wc) */
 
@@ -64,7 +64,7 @@ void fcft_destroy(struct font *font);
 /* Returns a *new* font instance */
 struct font *fcft_size_adjust(const struct font *font, double amount);
 
-const struct glyph *fcft_glyph_for_wc(
+const struct fcft_glyph *fcft_glyph_for_wc(
     struct font *font, wchar_t wc, enum fcft_subpixel subpixel);
 
 bool fcft_kerning(

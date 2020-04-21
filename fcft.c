@@ -30,7 +30,7 @@ static mtx_t ft_lock;
 
 /* Per-font glyph cache size */
 static const size_t glyph_cache_size = 512;
-typedef tll(struct glyph) hash_entry_t;
+typedef tll(struct fcft_glyph) hash_entry_t;
 
 struct font_fallback {
     char *pattern;
@@ -734,9 +734,9 @@ hash_index(wchar_t wc)
 
 static bool
 glyph_for_wchar(const struct font_priv *font, wchar_t wc,
-                enum fcft_subpixel subpixel, struct glyph *glyph)
+                enum fcft_subpixel subpixel, struct fcft_glyph *glyph)
 {
-    *glyph = (struct glyph){
+    *glyph = (struct fcft_glyph){
         .wc = wc,
         .valid = false,
     };
@@ -997,7 +997,7 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
     if (cols < 0)
         cols = 0;
 
-    *glyph = (struct glyph){
+    *glyph = (struct fcft_glyph){
         .wc = wc,
         .cols = cols,
         .pix = pix,
@@ -1017,7 +1017,7 @@ err:
     return false;
 }
 
-const struct glyph *
+const struct fcft_glyph *
 fcft_glyph_for_wc(struct font *_font, wchar_t wc,
                   enum fcft_subpixel subpixel)
 {
@@ -1039,7 +1039,7 @@ fcft_glyph_for_wc(struct font *_font, wchar_t wc,
         }
     }
 
-    struct glyph glyph;
+    struct fcft_glyph glyph;
     bool got_glyph = glyph_for_wchar(font, wc, subpixel, &glyph);
 
     if (hash_entry == NULL) {
