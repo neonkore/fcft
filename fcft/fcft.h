@@ -60,6 +60,8 @@ void fcft_destroy(struct fcft_font *font);
 /* Returns a *new* font instance */
 struct fcft_font *fcft_size_adjust(const struct fcft_font *font, double amount);
 
+/* Rasterize 'wc' using 'font'. Use the defined subpixel mode *if*
+ * antialiasing is enabled for this font */
 const struct fcft_glyph *fcft_glyph_for_wc(
     struct fcft_font *font, wchar_t wc, enum fcft_subpixel subpixel);
 
