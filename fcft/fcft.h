@@ -5,9 +5,14 @@
 
 #include <pixman.h>
 
+/*
+ * Defines the subpixel order to use.
+ *
+ * Note that this is *ignored* if antialiasing has been disabled.
+ */
 enum fcft_subpixel {
-    FCFT_SUBPIXEL_DEFAULT,
-    FCFT_SUBPIXEL_NONE,
+    FCFT_SUBPIXEL_DEFAULT,          /* Use subpixel order from FontConfig */
+    FCFT_SUBPIXEL_NONE,             /* Disable subpixel antialiasing (use grayscale antialiasing) */
     FCFT_SUBPIXEL_HORIZONTAL_RGB,
     FCFT_SUBPIXEL_HORIZONTAL_BGR,
     FCFT_SUBPIXEL_VERTICAL_RGB,
