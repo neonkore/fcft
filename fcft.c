@@ -734,7 +734,7 @@ hash_index(wchar_t wc)
 
 static bool
 glyph_for_wchar(const struct font_priv *font, wchar_t wc,
-                enum subpixel_order subpixel, struct glyph *glyph)
+                enum fcft_subpixel subpixel, struct glyph *glyph)
 {
     *glyph = (struct glyph){
         .wc = wc,
@@ -824,24 +824,24 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
 
     if (font->antialias) {
         switch (subpixel) {
-        case FCFT_SUBPIXEL_ORDER_NONE:
+        case FCFT_SUBPIXEL_NONE:
             render_flags = font->render_flags_normal;
             bgr = false;
             break;
 
-        case FCFT_SUBPIXEL_ORDER_HORIZONTAL_RGB:
-        case FCFT_SUBPIXEL_ORDER_HORIZONTAL_BGR:
+        case FCFT_SUBPIXEL_HORIZONTAL_RGB:
+        case FCFT_SUBPIXEL_HORIZONTAL_BGR:
             render_flags = FT_RENDER_MODE_LCD;
-            bgr = subpixel == FCFT_SUBPIXEL_ORDER_HORIZONTAL_BGR;
+            bgr = subpixel == FCFT_SUBPIXEL_HORIZONTAL_BGR;
             break;
 
-        case FCFT_SUBPIXEL_ORDER_VERTICAL_RGB:
-        case FCFT_SUBPIXEL_ORDER_VERTICAL_BGR:
+        case FCFT_SUBPIXEL_VERTICAL_RGB:
+        case FCFT_SUBPIXEL_VERTICAL_BGR:
             render_flags = FT_RENDER_MODE_LCD_V;
-            bgr = subpixel == FCFT_SUBPIXEL_ORDER_VERTICAL_BGR;
+            bgr = subpixel == FCFT_SUBPIXEL_VERTICAL_BGR;
             break;
 
-        case FCFT_SUBPIXEL_ORDER_DEFAULT:
+        case FCFT_SUBPIXEL_DEFAULT:
         default:
             render_flags = font->render_flags_subpixel;
             bgr = font->bgr;
@@ -1018,7 +1018,8 @@ err:
 }
 
 const struct glyph *
-fcft_glyph_for_wc(struct font *_font, wchar_t wc, enum subpixel_order subpixel)
+fcft_glyph_for_wc(struct font *_font, wchar_t wc,
+                  enum fcft_subpixel subpixel)
 {
     struct font_priv *font = (struct font_priv *)_font;
     mtx_lock(&font->lock);

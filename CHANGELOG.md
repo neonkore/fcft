@@ -8,6 +8,8 @@
 ### Changed
 
 * API: `font_` prefix changed to `fcft_`
+* API: `enum subpixel_order` renamed to `enum fcft_subpixel`, and
+  `ORDER` was removed from the enum values.
 
 
 ### Deprecated

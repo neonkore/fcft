@@ -5,13 +5,13 @@
 
 #include <pixman.h>
 
-enum subpixel_order {
-    FCFT_SUBPIXEL_ORDER_DEFAULT,
-    FCFT_SUBPIXEL_ORDER_NONE,
-    FCFT_SUBPIXEL_ORDER_HORIZONTAL_RGB,
-    FCFT_SUBPIXEL_ORDER_HORIZONTAL_BGR,
-    FCFT_SUBPIXEL_ORDER_VERTICAL_RGB,
-    FCFT_SUBPIXEL_ORDER_VERTICAL_BGR,
+enum fcft_subpixel {
+    FCFT_SUBPIXEL_DEFAULT,
+    FCFT_SUBPIXEL_NONE,
+    FCFT_SUBPIXEL_HORIZONTAL_RGB,
+    FCFT_SUBPIXEL_HORIZONTAL_BGR,
+    FCFT_SUBPIXEL_VERTICAL_RGB,
+    FCFT_SUBPIXEL_VERTICAL_BGR,
 };
 
 struct glyph {
@@ -26,7 +26,7 @@ struct glyph {
     int height;
 
     /* Internal */
-    enum subpixel_order subpixel;
+    enum fcft_subpixel subpixel;
     bool valid;
 };
 
@@ -60,7 +60,7 @@ void fcft_destroy(struct font *font);
 struct font *fcft_size_adjust(const struct font *font, double amount);
 
 const struct glyph *fcft_glyph_for_wc(
-    struct font *font, wchar_t wc, enum subpixel_order subpixel);
+    struct font *font, wchar_t wc, enum fcft_subpixel subpixel);
 
 bool fcft_kerning(
     struct font *font, wchar_t left, wchar_t right,
