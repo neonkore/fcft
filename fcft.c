@@ -38,7 +38,7 @@ struct font_fallback {
 };
 
 struct font_priv {
-    struct font public;
+    struct fcft_font public;
 
     char *name;
     char *pattern;
@@ -71,11 +71,11 @@ struct font_priv {
 };
 
 /* Global font cache */
-struct font_cache_entry {
+struct fcft_font_cache_entry {
     uint64_t hash;
     struct font_priv *font;
 };
-static tll(struct font_cache_entry) font_cache = tll_init();
+static tll(struct fcft_font_cache_entry) font_cache = tll_init();
 
 static void __attribute__((constructor))
 init(void)
@@ -131,7 +131,7 @@ ft_error_string(FT_Error err)
 static void
 underline_strikeout_metrics(struct font_priv *font)
 {
-    struct font *pub = &font->public;
+    struct fcft_font *pub = &font->public;
 
     FT_Face ft_face = font->face;
     double y_scale = ft_face->size->metrics.y_scale / 65536.;
@@ -538,7 +538,7 @@ font_hash(size_t count, const char *names[static count], const char *attributes)
     return hash;
 }
 
-struct font *
+struct fcft_font *
 fcft_from_name(size_t count, const char *names[static count],
                const char *attributes)
 {
@@ -584,14 +584,14 @@ fcft_from_name(size_t count, const char *names[static count],
             font->fallbacks, ((struct font_fallback){.pattern = strdup(name)}));
     }
 
-    tll_push_back(font_cache, ((struct font_cache_entry){.hash = hash, .font = font}));
+    tll_push_back(font_cache, ((struct fcft_font_cache_entry){.hash = hash, .font = font}));
 
     assert((void *)&font->public == (void *)font);
     return &font->public;
 }
 
-struct font *
-fcft_clone(const struct font *_font)
+struct fcft_font *
+fcft_clone(const struct fcft_font *_font)
 {
     if (_font == NULL)
         return NULL;
@@ -660,8 +660,8 @@ pattern_from_font_with_adjusted_size(const struct font_priv *font, double amount
     return pattern;
 }
 
-struct font *
-fcft_size_adjust(const struct font *_font, double amount)
+struct fcft_font *
+fcft_size_adjust(const struct fcft_font *_font, double amount)
 {
     const struct font_priv *font = (const struct font_priv *)_font;
     assert(!font->is_fallback);
@@ -720,7 +720,7 @@ fcft_size_adjust(const struct font *_font, double amount)
 
     tll_push_back(
         font_cache,
-        ((struct font_cache_entry){.hash = hash, .font = new_font}));
+        ((struct fcft_font_cache_entry){.hash = hash, .font = new_font}));
 
     return &new_font->public;
 
@@ -1018,7 +1018,7 @@ err:
 }
 
 const struct fcft_glyph *
-fcft_glyph_for_wc(struct font *_font, wchar_t wc,
+fcft_glyph_for_wc(struct fcft_font *_font, wchar_t wc,
                   enum fcft_subpixel subpixel)
 {
     struct font_priv *font = (struct font_priv *)_font;
@@ -1057,7 +1057,7 @@ fcft_glyph_for_wc(struct font *_font, wchar_t wc,
 }
 
 void
-fcft_destroy(struct font *_font)
+fcft_destroy(struct fcft_font *_font)
 {
     if (_font == NULL)
         return;
@@ -1129,7 +1129,7 @@ fcft_destroy(struct font *_font)
 }
 
 bool
-fcft_kerning(struct font *_font, wchar_t left, wchar_t right,
+fcft_kerning(struct fcft_font *_font, wchar_t left, wchar_t right,
              long *restrict x, long *restrict y)
 {
     struct font_priv *font = (struct font_priv *)_font;

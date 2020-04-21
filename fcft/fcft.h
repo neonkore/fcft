@@ -35,7 +35,7 @@ struct fcft_glyph {
     bool valid;
 };
 
-struct font {
+struct fcft_font {
     /* font extents */
     int height;
     int descent;
@@ -56,17 +56,17 @@ struct font {
 
 /* First entry is the main/primary font, the remaining (if any) are
  * custom fallback fonts */
-struct font *fcft_from_name(
+struct fcft_font *fcft_from_name(
     size_t count, const char *names[static count], const char *attributes);
-struct font *fcft_clone(const struct font *font);
-void fcft_destroy(struct font *font);
+struct fcft_font *fcft_clone(const struct fcft_font *font);
+void fcft_destroy(struct fcft_font *font);
 
 /* Returns a *new* font instance */
-struct font *fcft_size_adjust(const struct font *font, double amount);
+struct fcft_font *fcft_size_adjust(const struct fcft_font *font, double amount);
 
 const struct fcft_glyph *fcft_glyph_for_wc(
-    struct font *font, wchar_t wc, enum fcft_subpixel subpixel);
+    struct fcft_font *font, wchar_t wc, enum fcft_subpixel subpixel);
 
 bool fcft_kerning(
-    struct font *font, wchar_t left, wchar_t right,
+    struct fcft_font *font, wchar_t left, wchar_t right,
     long *restrict x, long *restrict y);
