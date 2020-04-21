@@ -109,7 +109,7 @@ static void __attribute__((destructor))
 fini(void)
 {
     while (tll_length(font_cache) > 0)
-        font_destroy(&tll_pop_front(font_cache).font->public);
+        fcft_destroy(&tll_pop_front(font_cache).font->public);
 
     mtx_destroy(&ft_lock);
     FT_Done_FreeType(ft_lib);
@@ -539,7 +539,7 @@ font_hash(size_t count, const char *names[static count], const char *attributes)
 }
 
 struct font *
-font_from_name(size_t count, const char *names[static count],
+fcft_from_name(size_t count, const char *names[static count],
                const char *attributes)
 {
     if (count == 0)
@@ -591,7 +591,7 @@ font_from_name(size_t count, const char *names[static count],
 }
 
 struct font *
-font_clone(const struct font *_font)
+fcft_clone(const struct font *_font)
 {
     if (_font == NULL)
         return NULL;
@@ -661,7 +661,7 @@ pattern_from_font_with_adjusted_size(const struct font_priv *font, double amount
 }
 
 struct font *
-font_size_adjust(const struct font *_font, double amount)
+fcft_size_adjust(const struct font *_font, double amount)
 {
     const struct font_priv *font = (const struct font_priv *)_font;
     assert(!font->is_fallback);
@@ -682,7 +682,7 @@ font_size_adjust(const struct font *_font, double amount)
         }
 
         fallback_patterns[i++] = pattern_from_font_with_adjusted_size(f, amount);
-        font_destroy(&f->public);
+        fcft_destroy(&f->public);
     }
 
     uint64_t hash = 0;
@@ -1018,7 +1018,7 @@ err:
 }
 
 const struct glyph *
-font_glyph_for_wc(struct font *_font, wchar_t wc, enum subpixel_order subpixel)
+fcft_glyph_for_wc(struct font *_font, wchar_t wc, enum subpixel_order subpixel)
 {
     struct font_priv *font = (struct font_priv *)_font;
     mtx_lock(&font->lock);
@@ -1056,7 +1056,7 @@ font_glyph_for_wc(struct font *_font, wchar_t wc, enum subpixel_order subpixel)
 }
 
 void
-font_destroy(struct font *_font)
+fcft_destroy(struct font *_font)
 {
     if (_font == NULL)
         return;
@@ -1078,7 +1078,7 @@ font_destroy(struct font *_font)
 
     tll_foreach(font->fallbacks, it) {
         if (it->item.font != NULL)
-            font_destroy(&it->item.font->public);
+            fcft_destroy(&it->item.font->public);
         free(it->item.pattern);
     }
     tll_free(font->fallbacks);
@@ -1096,7 +1096,7 @@ font_destroy(struct font *_font)
 
         for (size_t i = 0; i < font->fc_fonts->nfont; i++)
             if (font->fc_loaded_fallbacks[i] != NULL)
-                font_destroy(&font->fc_loaded_fallbacks[i]->public);
+                fcft_destroy(&font->fc_loaded_fallbacks[i]->public);
 
         free(font->fc_loaded_fallbacks);
     }
@@ -1128,7 +1128,7 @@ font_destroy(struct font *_font)
 }
 
 bool
-font_kerning(struct font *_font, wchar_t left, wchar_t right,
+fcft_kerning(struct font *_font, wchar_t left, wchar_t right,
              long *restrict x, long *restrict y)
 {
     struct font_priv *font = (struct font_priv *)_font;

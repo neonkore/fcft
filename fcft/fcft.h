@@ -51,17 +51,17 @@ struct font {
 
 /* First entry is the main/primary font, the remaining (if any) are
  * custom fallback fonts */
-struct font *font_from_name(
+struct font *fcft_from_name(
     size_t count, const char *names[static count], const char *attributes);
-struct font *font_clone(const struct font *font);
-void font_destroy(struct font *font);
+struct font *fcft_clone(const struct font *font);
+void fcft_destroy(struct font *font);
 
 /* Returns a *new* font instance */
-struct font *font_size_adjust(const struct font *font, double amount);
+struct font *fcft_size_adjust(const struct font *font, double amount);
 
-const struct glyph *font_glyph_for_wc(
+const struct glyph *fcft_glyph_for_wc(
     struct font *font, wchar_t wc, enum subpixel_order subpixel);
 
-bool font_kerning(
+bool fcft_kerning(
     struct font *font, wchar_t left, wchar_t right,
     long *restrict x, long *restrict y);

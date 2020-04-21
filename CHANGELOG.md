@@ -6,6 +6,10 @@
 ## Unreleased
 ### Added
 ### Changed
+
+* API: `font_` prefix changed to `fcft_`
+
+
 ### Deprecated
 ### Removed
 ### Fixed
