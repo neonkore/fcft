@@ -29,10 +29,6 @@ struct fcft_glyph {
     int x_advance;
     int width;
     int height;
-
-    /* Internal */
-    enum fcft_subpixel subpixel;
-    bool valid;
 };
 
 struct fcft_font {

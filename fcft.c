@@ -28,9 +28,16 @@
 static FT_Library ft_lib;
 static mtx_t ft_lock;
 
+struct glyph_priv {
+    struct fcft_glyph public;
+
+    enum fcft_subpixel subpixel;
+    bool valid;
+};
+
 /* Per-font glyph cache size */
 static const size_t glyph_cache_size = 512;
-typedef tll(struct fcft_glyph) hash_entry_t;
+typedef tll(struct glyph_priv) hash_entry_t;
 
 struct font_fallback {
     char *pattern;
@@ -734,10 +741,12 @@ hash_index(wchar_t wc)
 
 static bool
 glyph_for_wchar(const struct font_priv *font, wchar_t wc,
-                enum fcft_subpixel subpixel, struct fcft_glyph *glyph)
+                enum fcft_subpixel subpixel, struct glyph_priv *glyph)
 {
-    *glyph = (struct fcft_glyph){
-        .wc = wc,
+    *glyph = (struct glyph_priv){
+        .public = {
+            .wc = wc,
+        },
         .valid = false,
     };
 
@@ -997,15 +1006,17 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
     if (cols < 0)
         cols = 0;
 
-    *glyph = (struct fcft_glyph){
-        .wc = wc,
-        .cols = cols,
-        .pix = pix,
-        .x = font->face->glyph->bitmap_left * font->pixel_size_fixup,
-        .y = font->face->glyph->bitmap_top * font->pixel_size_fixup,
-        .x_advance = ceil(font->face->glyph->advance.x / 64. * font->pixel_size_fixup),
-        .width = width / (1. / font->pixel_size_fixup),
-        .height = rows / (1. / font->pixel_size_fixup),
+    *glyph = (struct glyph_priv){
+        .public = {
+            .wc = wc,
+            .cols = cols,
+            .pix = pix,
+            .x = font->face->glyph->bitmap_left * font->pixel_size_fixup,
+            .y = font->face->glyph->bitmap_top * font->pixel_size_fixup,
+            .x_advance = ceil(font->face->glyph->advance.x / 64. * font->pixel_size_fixup),
+            .width = width / (1. / font->pixel_size_fixup),
+            .height = rows / (1. / font->pixel_size_fixup),
+        },
         .subpixel = subpixel,
         .valid = true,
     };
@@ -1030,16 +1041,16 @@ fcft_glyph_for_wc(struct fcft_font *_font, wchar_t wc,
 
     if (hash_entry != NULL) {
         tll_foreach(*hash_entry, it) {
-            if (it->item.wc == wc &&
+            if (it->item.public.wc == wc &&
                 it->item.subpixel == subpixel)
             {
                 mtx_unlock(&font->lock);
-                return it->item.valid ? &it->item : NULL;
+                return it->item.valid ? &it->item.public : NULL;
             }
         }
     }
 
-    struct fcft_glyph glyph;
+    struct glyph_priv glyph;
     bool got_glyph = glyph_for_wchar(font, wc, subpixel, &glyph);
 
     if (hash_entry == NULL) {
@@ -1053,7 +1064,7 @@ fcft_glyph_for_wc(struct fcft_font *_font, wchar_t wc,
     tll_push_back(*hash_entry, glyph);
 
     mtx_unlock(&font->lock);
-    return got_glyph ? &tll_back(*hash_entry) : NULL;
+    return got_glyph ? &tll_back(*hash_entry).public : NULL;
 }
 
 void
@@ -1116,8 +1127,8 @@ fcft_destroy(struct fcft_font *_font)
             if (!it->item.valid)
                 continue;
 
-            void *image = pixman_image_get_data(it->item.pix);
-            pixman_image_unref(it->item.pix);
+            void *image = pixman_image_get_data(it->item.public.pix);
+            pixman_image_unref(it->item.public.pix);
             free(image);
         }
 

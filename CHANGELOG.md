@@ -10,6 +10,7 @@
 * API: `font_` prefix changed to `fcft_`.
 * API: renamed `struct font` to `struct fcft_font`.
 * API: renamed `struct glyph` to `struct fcft_glyph`.
+* API: internal members of `struct fcft_glyph` removed.
 * API: renamed `enum subpixel_order` to `enum fcft_subpixel`, and
   `ORDER` was removed from the enum values.
 
