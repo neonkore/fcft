@@ -1,15 +1,9 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.1.7](#1-1-7)
 
+## 1.1.7
 
-## Unreleased
-### Added
-### Changed
-### Deprecated
-### Removed
 ### Fixed
 
-* LCD RGB/BGR modes where reversed
-
-### Security
+* LCD RGB/BGR modes were reversed
