@@ -426,14 +426,16 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
     }
 
     double max_x_advance = ft_face->size->metrics.max_advance / 64.;
-    double height= ft_face->size->metrics.height / 64.;
+    double max_y_advance = ft_face->size->metrics.height / 64.;
+    double height = ft_face->size->metrics.height / 64.;
     double descent = ft_face->size->metrics.descender / 64.;
     double ascent = ft_face->size->metrics.ascender / 64.;
 
     font->public.height = ceil(height * font->pixel_size_fixup);
     font->public.descent = ceil(-descent * font->pixel_size_fixup);
     font->public.ascent = ceil(ascent * font->pixel_size_fixup);
-    font->public.max_x_advance = ceil(max_x_advance * font->pixel_size_fixup);
+    font->public.max_advance.x = ceil(max_x_advance * font->pixel_size_fixup);
+    font->public.max_advance.y = ceil(max_y_advance * font->pixel_size_fixup);
 
     /*
      * Some fonts (Noto Sans Mono, for example) provides bad
@@ -447,10 +449,14 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
     if (idx != 0 &&
         (ft_err = FT_Load_Glyph(font->face, idx, font->load_flags)) == 0)
     {
-        font->public.space_x_advance = ceil(
+        font->public.space_advance.x = ceil(
             font->face->glyph->advance.x / 64. * font->pixel_size_fixup);
-    } else
-        font->public.space_x_advance = -1;
+        font->public.space_advance.y = ceil(
+            font->face->glyph->advance.y / 64. * font->pixel_size_fixup);
+    } else {
+        font->public.space_advance.x = -1;
+        font->public.space_advance.y = -1;
+    }
 
 
 #if defined(LOG_ENABLE_DBG) && LOG_ENABLE_DBG

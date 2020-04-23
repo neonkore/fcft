@@ -39,8 +39,18 @@ struct fcft_font {
     int height;
     int descent;
     int ascent;
-    int max_x_advance;    /* Width of font's widest glyph */
-    int space_x_advance;  /* Width of space (0x20), if available, -1 otherwise */
+
+    /* Width/height of font's widest glyph */
+    struct {
+        int x;
+        int y;
+    } max_advance;
+
+    /* Width/height of space (0x20), if available, -1 otherwise */
+    struct {
+        int x;
+        int y;
+    } space_advance;
 
     struct {
         int position;
