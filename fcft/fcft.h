@@ -26,7 +26,10 @@ struct fcft_glyph {
     pixman_image_t *pix;
     int x;
     int y;
-    int x_advance;
+    struct {
+        int x;
+        int y;
+    } advance;
     int width;
     int height;
 };
