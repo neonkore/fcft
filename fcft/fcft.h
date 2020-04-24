@@ -24,14 +24,16 @@ struct fcft_glyph {
     int cols;              /* wcwidth(wc) */
 
     pixman_image_t *pix;
+
     int x;
     int y;
+    int width;
+    int height;
+
     struct {
         int x;
         int y;
     } advance;
-    int width;
-    int height;
 };
 
 struct fcft_font {
