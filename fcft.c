@@ -1038,8 +1038,8 @@ err:
 }
 
 const struct fcft_glyph *
-fcft_glyph_for_wc(struct fcft_font *_font, wchar_t wc,
-                  enum fcft_subpixel subpixel)
+fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
+                     enum fcft_subpixel subpixel)
 {
     struct font_priv *font = (struct font_priv *)_font;
     mtx_lock(&font->lock);

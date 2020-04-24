@@ -75,5 +75,5 @@ main(void)
 
 # SEE ALSO
 
-*fcft_clone*(3), *fcft_destroy*(3), *fcft_glyph_for_wc*(3),
+*fcft_clone*(3), *fcft_destroy*(3), *fcft_glyph_rasterize*(3),
 *fcft_kerning*(3), *fcft_size_adjust*(3)
