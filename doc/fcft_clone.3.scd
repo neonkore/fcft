@@ -25,7 +25,7 @@ original font, *and* the clone.
 # RETURN VALUE
 
 On success, *fcft_clone*() returns a pointer to a new *fcft_font*
-instance. On error, NULL is returned.
+object. On error, NULL is returned.
 
 # SEE ALSO
 
