@@ -1,10 +1,20 @@
 # Changelog
 
 * [Unreleased](#unreleased)
+* [2.0.0](#2-0-0)
 * [1.1.7](#1-1-7)
 
 ## Unreleased
 ### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+### Security
+
+
+## 2.0.0
+
 ### Changed
 
 * API: `font_` prefix changed to `fcft_`.
@@ -24,15 +34,10 @@
 * Use `meson.override_dependency()`.
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * `fcft_kerning()` did not scale the returned kerning distances with
   the font's pixel size fixup multiplier.
-
-
-### Security
 
 
 ## 1.1.7
