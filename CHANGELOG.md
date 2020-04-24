@@ -25,6 +25,11 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* `fcft_kerning()` did not scale the returned kerning distances with
+  the font's pixel size fixup multiplier.
+
+
 ### Security
 
 

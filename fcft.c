@@ -1180,9 +1180,9 @@ fcft_kerning(struct fcft_font *_font, wchar_t left, wchar_t right,
     }
 
     if (x != NULL)
-        *x = kerning.x / 64;
+        *x = kerning.x / 64. * font->pixel_size_fixup;
     if (y != NULL)
-        *y = kerning.y / 64;
+        *y = kerning.y / 64. * font->pixel_size_fixup;
 
     LOG_DBG("%s: kerning: %C -> %C: x=%ld 26.6, y=%ld 26.6",
             font->name, left, right, kerning.x, kerning.y);
