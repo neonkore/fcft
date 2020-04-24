@@ -108,22 +108,22 @@ factors, but will be one of *PIXMAN\_a1*, *PIXMAN\_a8*,
 	*FT\_PIXEL\_MODE\_BGRA*. I.e. the glyph is a plain RGBA image. Use
 	as source when blending.
 
-_x_ is the glyph's horizontal offset. Add this to the current pen
-position when blending.
+_x_ is the glyph's horizontal offset, in pixels. Add this to the
+current pen position when blending.
 
-_y_ is the glyph's vertical offset. Add this to the current pen
-position when blending.
+_y_ is the glyph's vertical offset, in pixels. Add this to the current
+pen position when blending.
 
-_width_ is the glyph's width. Use as 'width' argument when blending.
-
-_height_ is the glyph's height. Use as 'height' argument when
+_width_ is the glyph's width, in pixels. Use as 'width' argument when
 blending.
 
-_advance.x_ is the glyph's horizontal 'advance'. Add this to the pen
-position after blending, if rendering horizontal text.
+_height_ is the glyph's height, in pixels. Use as 'height' argument
+when blending.
 
-_advance.y_ is the glyph's vertical 'advance'. Add this to the pen
-position after blending, if rendering vertical text.
+_advance_ is the glyph's 'advance', in pixels. Add this to the pen
+position after blending; _x_ for a horizontal layout and _y_ for a
+vertical layout.
+
 
 # SEE ALSO
 
