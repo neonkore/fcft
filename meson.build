@@ -67,7 +67,7 @@ pixman = dependency('pixman-1')
 # required on the freebsd platform (maybe even on others)
 stdthreads = cc.find_library('stdthreads', required: host_machine.system() == 'freebsd')
 
-tllist = dependency('tllist', version: '>=1.0.0', fallback: ['tllist', 'tllist'])
+tllist = dependency('tllist', version: '>=1.0.1', fallback: 'tllist')
 
 fcft_lib = build_target(
   'fcft', 'fcft.c', 'fcft/fcft.h', 'fcft/stride.h', 'log.c', 'log.h',
