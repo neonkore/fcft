@@ -1,7 +1,7 @@
 project('fcft', 'c',
         version: '2.0.0',
         license: 'MIT',
-        meson_version: '>=0.47.0',
+        meson_version: '>=0.54.0',
         default_options: [
           'c_std=c11',
           'warning_level=1',
@@ -78,6 +78,7 @@ fcft_lib = build_target(
 
 fcft = declare_dependency(
   include_directories: '.', link_with: fcft_lib, dependencies: [pixman])
+meson.override_dependency('fcft', fcft)
 
 if not meson.is_subproject()
   install_headers('fcft/fcft.h', 'fcft/stride.h', subdir: 'fcft')

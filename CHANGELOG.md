@@ -20,6 +20,8 @@
 * API: renamed `fcft_font.space_x_advance` to
   `fcft_font.space_advance.x` and added `fcft_font.space_advance.y`.
 * API: renamed `fcft_glyph_for_wc()` to `fcft_glyph_rasterize()`.
+* Require meson >= 0.54.
+* Use `meson.override_dependency()`.
 
 
 ### Deprecated
