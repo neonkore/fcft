@@ -464,7 +464,7 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
             "line-height: %dpx, ascent: %dpx, descent: %dpx, x-advance (max/space): %d/%dpx",
             font->name, size, pixel_size, dpi, font->pixel_size_fixup,
             font->public.height, font->public.ascent, font->public.descent,
-            font->public.max_x_advance, font->public.space_x_advance);
+            font->public.max_advance.x, font->public.space_advance.x);
 #else
     LOG_INFO("%s: size=%.2fpt/%dpx, dpi=%d", font->name, size, (int)pixel_size, (int)dpi);
 #endif
