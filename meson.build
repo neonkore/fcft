@@ -87,3 +87,5 @@ if not meson.is_subproject()
     fcft_lib,
     description : 'Simple font loading and glyph rasterization library')
 endif
+
+subdir('doc')
