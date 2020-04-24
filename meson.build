@@ -86,6 +86,6 @@ if not meson.is_subproject()
   pkg.generate(
     fcft_lib,
     description : 'Simple font loading and glyph rasterization library')
-endif
 
-subdir('doc')
+  subdir('doc')
+endif
