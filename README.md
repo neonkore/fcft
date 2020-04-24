@@ -87,5 +87,5 @@ will suffice. Optionally, you can combine the two; search for a system
 library first, and fallback to a subproject:
 
 ```meson
-fcft = dependency('fcft', version: '>=0.4.0', fallback: ['fcft', 'fcft'])
+fcft = dependency('fcft', version: '>=0.4.0', fallback: 'fcft')
 ```
