@@ -38,6 +38,66 @@ being ignored, and the next one in the list is tried instead.
 On success, *fcft_from_name*() returns a pointer to an allocated
 *fcft_font* object. On error, NULL is returned.
 
+```
+struct fcft_font {
+    int height;
+    int descent;
+    int ascent;
+
+    struct {
+        int x;
+        int y;
+    } max_advance;
+
+    struct {
+        int x;
+        int y;
+    } space_advance;
+
+    struct {
+        int position;
+        int thickness;
+    } underline;
+
+    struct {
+        int position;
+        int thickness;
+    } strikeout;
+};
+```
+
+_height_ is the line height, in pixels.
+
+_descent_ is the distance between the baseline and the font's lowest
+descending glyph, in pixels. In fcft's case, it is generally positive
+(a negative value means the _descent_ stretches *up* from the
+baseline).
+
+_ascent_ is the distance between the baseline and the font's highest
+ascending glyph, in pixels. Generally a positive number (a negative
+value means the _ascent_ stretches *down* below the baseline).
+
+_ascent_ + _descent_ is often the same as _height_, but not
+necessarily. _height_ may be larger, meaning the font intentionally
+adds extra (vertical) space between lines. Or it may be smaller, in
+which case lines overlap.
+
+_max\_advance_ is the amount, in pixels, the font's widest glyph
+advances the pen position; _x_ for a horizontal layout, and _y_ for a
+vertical layout.
+
+_space\_advance_ is the amount, in pixels, the glyph for *space*
+(0x20) advances the pen position; _x_ for a horizontal layout, and _y_
+for a vertical layout.
+
+_underline_ describes how to render underlines. _position_ is the
+distance, in pixels, from the baseline. A positive value means *above*
+the baseline, and a negative value means *below* the
+baseline. _thickness_ is the line's thickness, in pixels.
+
+_strikeout_ describes how to render strikeouts. See _underline_ for a
+description of its members.
+
 # EXAMPLE
 
 In this example, we instantiate _Times New Roman_ at a point size of 8
