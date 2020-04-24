@@ -963,7 +963,6 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
         break;
 
     case FT_PIXEL_MODE_LCD_V:
-        /* Unverified */
         for (size_t r = 0; r < bitmap->rows; r += 3) {
             for (size_t c = 0; c < bitmap->width; c++) {
                 unsigned char _r = bitmap->buffer[(r + (bgr ? 0 : 2)) * bitmap->pitch + c];

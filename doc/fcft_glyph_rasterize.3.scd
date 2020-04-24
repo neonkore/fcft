@@ -1,0 +1,130 @@
+fcft_glyph_rasterize(3) "2.0.0" "fcft"
+
+# NAME
+
+fcft_glyph_rasterize - rasterize a glyph for a wide character
+
+# SYNOPSIS
+
+*\#include <fcft/fcft.h>*
+
+*const struct fcft_glyph \*fcft_glyph_rasterize(*
+	*struct fcft_font \**_font_*, wchar_t *_wc_*,
+	enum fcft_subpixel *_subpixel_*);*
+
+# DESCRIPTION
+
+*fcft_glyph_rasterize*() rasterizes the wide character _wc_ using the
+primary font, or one of the fallback fonts, in _font_.
+
+_wc_ is first searched for in the primary font. If not found, the
+fallback fonts are searched (in the order they were specified in
+*fcft_from_name*(3)). If not found in any of the fallback fonts, the
+FontConfig fallback list for the primary font is searched.
+
+_subpixel_ allows you to specify which subpixel mode to use. It is one of:
+
+```
+enum fcft_subpixel {
+    FCFT_SUBPIXEL_DEFAULT,
+    FCFT_SUBPIXEL_NONE,
+    FCFT_SUBPIXEL_HORIZONTAL_RGB,
+    FCFT_SUBPIXEL_HORIZONTAL_BGR,
+    FCFT_SUBPIXEL_VERTICAL_RGB,
+    FCFT_SUBPIXEL_VERTICAL_BGR,
+};
+```
+
+If *FCFT\_SUBPIXEL\_DEFAULT* is specified, the subpixel mode
+configured in FontConfig is used. If *FCFT\_SUBPIXEL\_NONE* is
+specified, grayscale antialiasing will be used. For all other values,
+the specified mode is used.
+
+Note that if antialiasing has been disabled (in FontConfig, either
+globally, or specifically for the current font), then _subpixel_ is
+ignored.
+
+The intention is to enable programs to use per-monitor subpixel
+modes. Incidentally, *enum fcft_subpixel* matches *enum
+wl_output_subpixel*, the enum used in Wayland.
+
+Note: you probably do not want anything by *FCFT_SUBPIXEL_NONE* if
+blending with a transparent background.
+
+# RETURN VALUE
+
+On error, NULL is returned.
+
+On success, a pointer to a rasterized glyph is returned. The glyph is
+cached in fcft, making subsequent calls with the same arguments very
+fast (i.e. there is no need for programs to cache glyphs by
+themselves).
+
+The glyph object is managed by _font_. There is no need to explicitly
+free it; it is freed when _font_ is destroyed (with
+*fcft_destroy*(3)).
+
+```
+struct fcft_glyph {
+    wchar_t wc;
+    int cols;
+
+    pixman_image_t *pix;
+
+    int x;
+    int y;
+    int width;
+    int height;
+
+    struct {
+        int x;
+        int y;
+    } advance;
+};
+```
+
+_wc_ is the same _wc_ from the *fcft_glyph_rasterize*() call.
+
+_cols_ is the number of "columns" the glyph occupies (effectively,
+*wcwidth*(_wc_*)*).
+
+_pix_ is the rasterized glyph. Its format depends on a number of
+factors, but will be one of *PIXMAN\_a1*, *PIXMAN\_a8*,
+*PIXMAN\_x8r8g8b8*, *PIXMAN\_a8r8g8b8*. Use
+*pixman_image_get_format*() to find out which one it is.
+
+	*PIXMAN\_a1* corresponds to *FT\_PIXEL\_MODE\_MONO*. I.e. the
+	glyph is an un-antialiased bitmask. Use as a mask when blending.
+
+	*PIXMAN\_a8* corresponds to *FT\_PIXEL\_MODE\_GRAY*. I.e. the
+	glyph is a grayscale antialiased bitmask. use as a mask when
+	blending.
+
+	*PIXMAN\_x8r8g8b8* corresponds to either *FT\_PIXEL\_MODE\_LCD* or
+	*FT\_PIXEL\_MODE\_LCD\_V*. *pixman_image_set_component_alpha*()
+	has been called by fcft for you. Use as a mask when blending.
+
+	*PIXMAN\_a8r8g8b8* corresponds to
+	*FT\_PIXEL\_MODE\_BGRA*. I.e. the glyph is a plain RGBA image. Use
+	as source when blending.
+
+_x_ is the glyph's horizontal offset. Add this to the current pen
+position when blending.
+
+_y_ is the glyph's vertical offset. Add this to the current pen
+position when blending.
+
+_width_ is the glyph's width. Use as 'width' argument when blending.
+
+_height_ is the glyph's height. Use as 'height' argument when
+blending.
+
+_advance.x_ is the glyph's horizontal 'advance'. Add this to the pen
+position after blending, if rendering horizontal text.
+
+_advance.y_ is the glyph's vertical 'advance'. Add this to the pen
+position after blending, if rendering vertical text.
+
+# SEE ALSO
+
+*fcft_destroy*(3), *fcft_kerning*(3)
