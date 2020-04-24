@@ -20,6 +20,11 @@ pixels.
 
 Both characters must exist in the primary font.
 
+*fcft_kerning*() is just a convenience function around
+*FT_Get_Kerning*() and as such, it only supports legacy _kern_
+tables. In particular, OpenType fonts' _GPOS_ tables are *not*
+supported. fcft is not a text shaping library.
+
 # RETURN VALUE
 
 On success, *fcft_kerning*() returns true, and _x_ and _y_ are updated
@@ -31,5 +36,3 @@ On error, false is returned. This may happen for several reasons:
 - One, or both, of the two characters have no corresponding glyph in
   the primary font.
 - There is no kerning information for this character combination.
-
-# SEE ALSO
