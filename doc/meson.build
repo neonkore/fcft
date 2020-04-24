@@ -7,6 +7,7 @@ foreach man_src : ['fcft_clone.3.scd',
                    'fcft_destroy.3.scd',
                    'fcft_from_name.3.scd',
                    'fcft_glyph_rasterize.3.scd',
+                   'fcft_kerning.3.scd',
                    'fcft_size_adjust.3.scd']
   parts = man_src.split('.')
   name = parts[-3]
