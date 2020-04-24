@@ -13,6 +13,10 @@ considered. If none of the user configured fallback fonts has the
 requested glyph, the FontConfig generated list of fallback fonts are
 checked.
 
+The API is documented as man pages. These are built and installed when
+fcft is built as a standalone project, but **not** when built as a
+subproject.
+
 
 ## Requirements
 
