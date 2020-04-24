@@ -1,11 +1,11 @@
 pkgname=fcft
-pkgver=1.1.7
+pkgver=2.0.0
 pkgrel=1
 pkgdesc="Simple font loading and glyph rasterization library"
 arch=('x86_64')
 url=https://codeberg.org/dnkl/fcft
 license=(mit)
-makedepends=('meson' 'ninja' 'tllist>=1.0.0')
+makedepends=('meson' 'ninja' 'tllist>=1.0.0' 'scdoc')
 depends=('freetype2' 'fontconfig' 'pixman')
 source=()
 

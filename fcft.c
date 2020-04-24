@@ -17,7 +17,7 @@
 
 #include <tllist.h>
 
-#define LOG_MODULE "font"
+#define LOG_MODULE "fcft"
 #define LOG_ENABLE_DBG 0
 #include "log.h"
 #include "fcft/stride.h"
@@ -28,9 +28,16 @@
 static FT_Library ft_lib;
 static mtx_t ft_lock;
 
+struct glyph_priv {
+    struct fcft_glyph public;
+
+    enum fcft_subpixel subpixel;
+    bool valid;
+};
+
 /* Per-font glyph cache size */
 static const size_t glyph_cache_size = 512;
-typedef tll(struct glyph) hash_entry_t;
+typedef tll(struct glyph_priv) hash_entry_t;
 
 struct font_fallback {
     char *pattern;
@@ -38,7 +45,7 @@ struct font_fallback {
 };
 
 struct font_priv {
-    struct font public;
+    struct fcft_font public;
 
     char *name;
     char *pattern;
@@ -46,8 +53,11 @@ struct font_priv {
     mtx_t lock;
     FT_Face face;
     int load_flags;
+
+    bool antialias;
     int render_flags_normal;
     int render_flags_subpixel;
+
     FT_LcdFilter lcd_filter;
 
     double pixel_size_fixup; /* Scale factor - should only be used with ARGB32 glyphs */
@@ -68,11 +78,11 @@ struct font_priv {
 };
 
 /* Global font cache */
-struct font_cache_entry {
+struct fcft_font_cache_entry {
     uint64_t hash;
     struct font_priv *font;
 };
-static tll(struct font_cache_entry) font_cache = tll_init();
+static tll(struct fcft_font_cache_entry) font_cache = tll_init();
 
 static void __attribute__((constructor))
 init(void)
@@ -106,7 +116,7 @@ static void __attribute__((destructor))
 fini(void)
 {
     while (tll_length(font_cache) > 0)
-        font_destroy(&tll_pop_front(font_cache).font->public);
+        fcft_destroy(&tll_pop_front(font_cache).font->public);
 
     mtx_destroy(&ft_lock);
     FT_Done_FreeType(ft_lib);
@@ -128,7 +138,7 @@ ft_error_string(FT_Error err)
 static void
 underline_strikeout_metrics(struct font_priv *font)
 {
-    struct font *pub = &font->public;
+    struct fcft_font *pub = &font->public;
 
     FT_Face ft_face = font->face;
     double y_scale = ft_face->size->metrics.y_scale / 65536.;
@@ -393,6 +403,7 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
     mtx_init(&font->lock, mtx_plain);
     font->face = ft_face;
     font->load_flags = load_target | load_flags | FT_LOAD_COLOR;
+    font->antialias = fc_antialias;
     font->render_flags_normal = render_flags_normal;
     font->render_flags_subpixel = render_flags_subpixel;
     font->is_fallback = is_fallback;
@@ -415,14 +426,16 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
     }
 
     double max_x_advance = ft_face->size->metrics.max_advance / 64.;
-    double height= ft_face->size->metrics.height / 64.;
+    double max_y_advance = ft_face->size->metrics.height / 64.;
+    double height = ft_face->size->metrics.height / 64.;
     double descent = ft_face->size->metrics.descender / 64.;
     double ascent = ft_face->size->metrics.ascender / 64.;
 
     font->public.height = ceil(height * font->pixel_size_fixup);
     font->public.descent = ceil(-descent * font->pixel_size_fixup);
     font->public.ascent = ceil(ascent * font->pixel_size_fixup);
-    font->public.max_x_advance = ceil(max_x_advance * font->pixel_size_fixup);
+    font->public.max_advance.x = ceil(max_x_advance * font->pixel_size_fixup);
+    font->public.max_advance.y = ceil(max_y_advance * font->pixel_size_fixup);
 
     /*
      * Some fonts (Noto Sans Mono, for example) provides bad
@@ -436,10 +449,14 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
     if (idx != 0 &&
         (ft_err = FT_Load_Glyph(font->face, idx, font->load_flags)) == 0)
     {
-        font->public.space_x_advance = ceil(
+        font->public.space_advance.x = ceil(
             font->face->glyph->advance.x / 64. * font->pixel_size_fixup);
-    } else
-        font->public.space_x_advance = -1;
+        font->public.space_advance.y = ceil(
+            font->face->glyph->advance.y / 64. * font->pixel_size_fixup);
+    } else {
+        font->public.space_advance.x = -1;
+        font->public.space_advance.y = -1;
+    }
 
 
 #if defined(LOG_ENABLE_DBG) && LOG_ENABLE_DBG
@@ -447,7 +464,7 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
             "line-height: %dpx, ascent: %dpx, descent: %dpx, x-advance (max/space): %d/%dpx",
             font->name, size, pixel_size, dpi, font->pixel_size_fixup,
             font->public.height, font->public.ascent, font->public.descent,
-            font->public.max_x_advance, font->public.space_x_advance);
+            font->public.max_advance.x, font->public.space_advance.x);
 #else
     LOG_INFO("%s: size=%.2fpt/%dpx, dpi=%d", font->name, size, (int)pixel_size, (int)dpi);
 #endif
@@ -534,8 +551,8 @@ font_hash(size_t count, const char *names[static count], const char *attributes)
     return hash;
 }
 
-struct font *
-font_from_name(size_t count, const char *names[static count],
+struct fcft_font *
+fcft_from_name(size_t count, const char *names[static count],
                const char *attributes)
 {
     if (count == 0)
@@ -580,14 +597,14 @@ font_from_name(size_t count, const char *names[static count],
             font->fallbacks, ((struct font_fallback){.pattern = strdup(name)}));
     }
 
-    tll_push_back(font_cache, ((struct font_cache_entry){.hash = hash, .font = font}));
+    tll_push_back(font_cache, ((struct fcft_font_cache_entry){.hash = hash, .font = font}));
 
     assert((void *)&font->public == (void *)font);
     return &font->public;
 }
 
-struct font *
-font_clone(const struct font *_font)
+struct fcft_font *
+fcft_clone(const struct fcft_font *_font)
 {
     if (_font == NULL)
         return NULL;
@@ -656,8 +673,8 @@ pattern_from_font_with_adjusted_size(const struct font_priv *font, double amount
     return pattern;
 }
 
-struct font *
-font_size_adjust(const struct font *_font, double amount)
+struct fcft_font *
+fcft_size_adjust(const struct fcft_font *_font, double amount)
 {
     const struct font_priv *font = (const struct font_priv *)_font;
     assert(!font->is_fallback);
@@ -678,7 +695,7 @@ font_size_adjust(const struct font *_font, double amount)
         }
 
         fallback_patterns[i++] = pattern_from_font_with_adjusted_size(f, amount);
-        font_destroy(&f->public);
+        fcft_destroy(&f->public);
     }
 
     uint64_t hash = 0;
@@ -716,7 +733,7 @@ font_size_adjust(const struct font *_font, double amount)
 
     tll_push_back(
         font_cache,
-        ((struct font_cache_entry){.hash = hash, .font = new_font}));
+        ((struct fcft_font_cache_entry){.hash = hash, .font = new_font}));
 
     return &new_font->public;
 
@@ -730,10 +747,12 @@ hash_index(wchar_t wc)
 
 static bool
 glyph_for_wchar(const struct font_priv *font, wchar_t wc,
-                bool subpixel_antialias, struct glyph *glyph)
+                enum fcft_subpixel subpixel, struct glyph_priv *glyph)
 {
-    *glyph = (struct glyph){
-        .wc = wc,
+    *glyph = (struct glyph_priv){
+        .public = {
+            .wc = wc,
+        },
         .valid = false,
     };
 
@@ -761,7 +780,7 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
                     continue;
             }
 
-            if (glyph_for_wchar(it->item.font, wc, subpixel_antialias, glyph)) {
+            if (glyph_for_wchar(it->item.font, wc, subpixel, glyph)) {
                 LOG_DBG("%C: used fallback: %s", wc, it->item.font->name);
                 return true;
             }
@@ -796,7 +815,7 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
             assert(font->fc_loaded_fallbacks[i] != NULL);
 
             if (glyph_for_wchar(font->fc_loaded_fallbacks[i], wc,
-                                subpixel_antialias, glyph))
+                                subpixel, glyph))
             {
                 LOG_DBG("%C: used fontconfig fallback: %s",
                         wc, font->fc_loaded_fallbacks[i]->name);
@@ -815,8 +834,38 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
         goto err;
     }
 
-    int render_flags = subpixel_antialias
-        ? font->render_flags_subpixel : font->render_flags_normal;
+    int render_flags;
+    bool bgr;
+
+    if (font->antialias) {
+        switch (subpixel) {
+        case FCFT_SUBPIXEL_NONE:
+            render_flags = font->render_flags_normal;
+            bgr = false;
+            break;
+
+        case FCFT_SUBPIXEL_HORIZONTAL_RGB:
+        case FCFT_SUBPIXEL_HORIZONTAL_BGR:
+            render_flags = FT_RENDER_MODE_LCD;
+            bgr = subpixel == FCFT_SUBPIXEL_HORIZONTAL_BGR;
+            break;
+
+        case FCFT_SUBPIXEL_VERTICAL_RGB:
+        case FCFT_SUBPIXEL_VERTICAL_BGR:
+            render_flags = FT_RENDER_MODE_LCD_V;
+            bgr = subpixel == FCFT_SUBPIXEL_VERTICAL_BGR;
+            break;
+
+        case FCFT_SUBPIXEL_DEFAULT:
+        default:
+            render_flags = font->render_flags_subpixel;
+            bgr = font->bgr;
+            break;
+        }
+    } else {
+        render_flags = font->render_flags_normal;
+        bgr = false;
+    }
 
     err = FT_Render_Glyph(font->face->glyph, render_flags);
     if (err != 0) {
@@ -903,9 +952,9 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
     case FT_PIXEL_MODE_LCD:
         for (size_t r = 0; r < bitmap->rows; r++) {
             for (size_t c = 0; c < bitmap->width; c += 3) {
-                unsigned char _r = bitmap->buffer[r * bitmap->pitch + c + (font->bgr ? 0 : 2)];
+                unsigned char _r = bitmap->buffer[r * bitmap->pitch + c + (bgr ? 0 : 2)];
                 unsigned char _g = bitmap->buffer[r * bitmap->pitch + c + 1];
-                unsigned char _b = bitmap->buffer[r * bitmap->pitch + c + (font->bgr ? 2 : 0)];
+                unsigned char _b = bitmap->buffer[r * bitmap->pitch + c + (bgr ? 2 : 0)];
 
                 uint32_t *p = (uint32_t *)&data[r * stride + 4 * (c / 3)];
                 *p = _r << 16 | _g << 8 | _b;
@@ -914,12 +963,11 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
         break;
 
     case FT_PIXEL_MODE_LCD_V:
-        /* Unverified */
         for (size_t r = 0; r < bitmap->rows; r += 3) {
             for (size_t c = 0; c < bitmap->width; c++) {
-                unsigned char _r = bitmap->buffer[(r + (font->bgr ? 0 : 2)) * bitmap->pitch + c];
+                unsigned char _r = bitmap->buffer[(r + (bgr ? 0 : 2)) * bitmap->pitch + c];
                 unsigned char _g = bitmap->buffer[(r + 1) * bitmap->pitch + c];
-                unsigned char _b = bitmap->buffer[(r + (font->bgr ? 2 : 0)) * bitmap->pitch + c];
+                unsigned char _b = bitmap->buffer[(r + (bgr ? 2 : 0)) * bitmap->pitch + c];
 
                 uint32_t *p = (uint32_t *)&data[r / 3 * stride + 4 * c];
                 *p =  _r << 16 | _g << 8 | _b;
@@ -963,16 +1011,21 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
     if (cols < 0)
         cols = 0;
 
-    *glyph = (struct glyph){
-        .wc = wc,
-        .cols = cols,
-        .pix = pix,
-        .x = font->face->glyph->bitmap_left * font->pixel_size_fixup,
-        .y = font->face->glyph->bitmap_top * font->pixel_size_fixup,
-        .x_advance = ceil(font->face->glyph->advance.x / 64. * font->pixel_size_fixup),
-        .width = width / (1. / font->pixel_size_fixup),
-        .height = rows / (1. / font->pixel_size_fixup),
-        .subpixel_antialias = subpixel_antialias,
+    *glyph = (struct glyph_priv){
+        .public = {
+            .wc = wc,
+            .cols = cols,
+            .pix = pix,
+            .x = font->face->glyph->bitmap_left * font->pixel_size_fixup,
+            .y = font->face->glyph->bitmap_top * font->pixel_size_fixup,
+            .advance = {
+                .x = ceil(font->face->glyph->advance.x / 64. * font->pixel_size_fixup),
+                .y = ceil(font->face->glyph->advance.y / 64. * font->pixel_size_fixup),
+            },
+            .width = width / (1. / font->pixel_size_fixup),
+            .height = rows / (1. / font->pixel_size_fixup),
+        },
+        .subpixel = subpixel,
         .valid = true,
     };
 
@@ -983,8 +1036,9 @@ err:
     return false;
 }
 
-const struct glyph *
-font_glyph_for_wc(struct font *_font, wchar_t wc, bool subpixel_antialias)
+const struct fcft_glyph *
+fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
+                     enum fcft_subpixel subpixel)
 {
     struct font_priv *font = (struct font_priv *)_font;
     mtx_lock(&font->lock);
@@ -995,17 +1049,17 @@ font_glyph_for_wc(struct font *_font, wchar_t wc, bool subpixel_antialias)
 
     if (hash_entry != NULL) {
         tll_foreach(*hash_entry, it) {
-            if (it->item.wc == wc &&
-                it->item.subpixel_antialias == subpixel_antialias)
+            if (it->item.public.wc == wc &&
+                it->item.subpixel == subpixel)
             {
                 mtx_unlock(&font->lock);
-                return it->item.valid ? &it->item : NULL;
+                return it->item.valid ? &it->item.public : NULL;
             }
         }
     }
 
-    struct glyph glyph;
-    bool got_glyph = glyph_for_wchar(font, wc, subpixel_antialias, &glyph);
+    struct glyph_priv glyph;
+    bool got_glyph = glyph_for_wchar(font, wc, subpixel, &glyph);
 
     if (hash_entry == NULL) {
         hash_entry = calloc(1, sizeof(*hash_entry));
@@ -1018,11 +1072,11 @@ font_glyph_for_wc(struct font *_font, wchar_t wc, bool subpixel_antialias)
     tll_push_back(*hash_entry, glyph);
 
     mtx_unlock(&font->lock);
-    return got_glyph ? &tll_back(*hash_entry) : NULL;
+    return got_glyph ? &tll_back(*hash_entry).public : NULL;
 }
 
 void
-font_destroy(struct font *_font)
+fcft_destroy(struct fcft_font *_font)
 {
     if (_font == NULL)
         return;
@@ -1044,7 +1098,7 @@ font_destroy(struct font *_font)
 
     tll_foreach(font->fallbacks, it) {
         if (it->item.font != NULL)
-            font_destroy(&it->item.font->public);
+            fcft_destroy(&it->item.font->public);
         free(it->item.pattern);
     }
     tll_free(font->fallbacks);
@@ -1062,7 +1116,7 @@ font_destroy(struct font *_font)
 
         for (size_t i = 0; i < font->fc_fonts->nfont; i++)
             if (font->fc_loaded_fallbacks[i] != NULL)
-                font_destroy(&font->fc_loaded_fallbacks[i]->public);
+                fcft_destroy(&font->fc_loaded_fallbacks[i]->public);
 
         free(font->fc_loaded_fallbacks);
     }
@@ -1081,8 +1135,8 @@ font_destroy(struct font *_font)
             if (!it->item.valid)
                 continue;
 
-            void *image = pixman_image_get_data(it->item.pix);
-            pixman_image_unref(it->item.pix);
+            void *image = pixman_image_get_data(it->item.public.pix);
+            pixman_image_unref(it->item.public.pix);
             free(image);
         }
 
@@ -1094,7 +1148,7 @@ font_destroy(struct font *_font)
 }
 
 bool
-font_kerning(struct font *_font, wchar_t left, wchar_t right,
+fcft_kerning(struct fcft_font *_font, wchar_t left, wchar_t right,
              long *restrict x, long *restrict y)
 {
     struct font_priv *font = (struct font_priv *)_font;
@@ -1126,9 +1180,9 @@ font_kerning(struct font *_font, wchar_t left, wchar_t right,
     }
 
     if (x != NULL)
-        *x = kerning.x / 64;
+        *x = kerning.x / 64. * font->pixel_size_fixup;
     if (y != NULL)
-        *y = kerning.y / 64;
+        *y = kerning.y / 64. * font->pixel_size_fixup;
 
     LOG_DBG("%s: kerning: %C -> %C: x=%ld 26.6, y=%ld 26.6",
             font->name, left, right, kerning.x, kerning.y);
