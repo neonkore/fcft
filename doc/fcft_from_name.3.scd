@@ -144,7 +144,7 @@ main(void)
     /*
      * Pen position in canvas. The numers chosen here are more or less
      * random. Note however, that the composite calls below assume 'y'
-     * is the fonts baseline (and thus the glyphs will be rendered
+     * is the font's baseline (and thus the glyphs will be rendered
      * above 'y')
      */
     struct {
