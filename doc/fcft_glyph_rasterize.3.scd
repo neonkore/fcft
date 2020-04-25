@@ -124,6 +124,9 @@ _advance_ is the glyph's 'advance', in pixels. Add this to the pen
 position after blending; _x_ for a horizontal layout and _y_ for a
 vertical layout.
 
+# EXAMPLE
+
+See *fcft_from_name*(3)
 
 # SEE ALSO
 
