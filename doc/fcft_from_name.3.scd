@@ -109,9 +109,15 @@ generic fonts like this).
 
 Furthermore, both fonts will be _Italic_, and will be using DPI=140.
 
+We then proceed to render the string _hello world_. You are assumed to
+know how to create and use a pixman image. This example only shows how
+one can use fcft to instantiate a font, rasterize glyphs and then
+blend them onto a target pixman image.
+
 
 ```
 #include <stdlib.h>
+#include <wchar.h>
 #include <fcft/fcft.h>
 
 int
@@ -127,6 +133,69 @@ main(void)
 
     if (font == NULL)
         return EXIT_FAILURE;
+
+    /* Here you need to instantiate a 'target' pixman image, to blend
+       with */
+    pixman_image_t *canvas = ...;
+
+    /* String to print */
+    static const wchar_t *const hello = L"hello world";
+
+    /*
+     * Pen position in canvas. The numers chosen here are more or less
+     * random. Note however, that the composite calls below assume 'y'
+     * is the fonts baseline (and thus the glyphs will be rendered
+     * above 'y')
+     */
+    struct {
+        int x;
+        int y;
+    } pen = {.x = 25, .y = 50};
+
+    /* Glyphs will be rendered in white */
+    pixman_image_t *color = pixman_image_create_solid_fill(
+        &(struct pixman_color_t){
+            .red = 0xffff,
+            .green = 0xffff,
+            .blue = 0xffff,
+            .alpha = 0xffff,
+        });
+
+    for (size_t i = 0; i < wcslen(hello); i++) {
+        const struct fcft_glyph *glyph = fcft_glyph_rasterize(
+            font, hello[i], FCFT_SUBPIXEL_DEFAULT);
+
+        if (glyph == NULL)
+            continue;
+
+        /* Kerning */
+        long x_kern = 0;
+        if (i > 0) {
+            fcft_kerning(font, hello[i - 1], hello[i], &x_kern, NULL);
+
+        pen.x += x_kern;
+
+        if (pixman_image_get_format(glyph->pix) == PIXMAN_a8r8g8b8) {
+            /* Glyph is a pre-rendered image; typically a color emoji */
+            pixman_image_composite32(
+                PIXMAP_OP_OVER, glyph->pix, NULL, canvas, 0, 0, 0, 0,
+                pen.x + glyph->x, pen.y + font->ascent - glyph->y,
+                glyph->width, glyph->height);
+        }
+
+        else {
+            /* Glyph is an alpha mask */
+            pixman_image_composite32(
+                PIXMAN_OP_OVER, color, glyph->pix, canvas, 0, 0, 0, 0,
+                pen.x + glyph->x, pen.y + font->ascent - glyph->y,
+                glyph->width, glyph->height);
+        }
+
+        /* Advance pen position */
+        pen.x += glyph->advance.x;
+    }
+
+    pixman_image_unref(src);
 
     fcft_destroy(font);
     return EXIT_SUCCESS;
