@@ -142,7 +142,7 @@ main(void)
     static const wchar_t *const hello = L"hello world";
 
     /*
-     * Pen position in canvas. The numers chosen here are more or less
+     * Pen position in canvas. The numbers chosen here are more or less
      * random. Note however, that the composite calls below assume 'y'
      * is the font's baseline (and thus the glyphs will be rendered
      * above 'y')
