@@ -36,3 +36,7 @@ On error, false is returned. This may happen for several reasons:
 - One, or both, of the two characters have no corresponding glyph in
   the primary font.
 - There is no kerning information for this character combination.
+
+# EXAMPLE
+
+See *fcft_from_name*(3)
