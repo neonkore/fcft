@@ -756,19 +756,6 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
         .valid = false,
     };
 
-    /*
-     * LCD filter is per library instance. Thus we need to re-set it
-     * every time...
-     *
-     * Also note that many freetype builds lack this feature
-     * (FT_CONFIG_OPTION_SUBPIXEL_RENDERING must be defined, and isn't
-     * by default) */
-    FT_Error err = FT_Library_SetLcdFilter(ft_lib, font->lcd_filter);
-    if (err != 0 && err != FT_Err_Unimplemented_Feature) {
-        LOG_ERR("failed to set LCD filter: %s", ft_error_string(err));
-        goto err;
-    }
-
     FT_UInt idx = FT_Get_Char_Index(font->face, wc);
     if (idx == 0) {
         /* No glyph in this font, try fallback fonts */
@@ -825,6 +812,19 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
 
         LOG_DBG("%C: no glyph found (in neither the main font, "
                 "nor any fallback fonts)", wc);
+    }
+
+    /*
+     * LCD filter is per library instance. Thus we need to re-set it
+     * every time...
+     *
+     * Also note that many freetype builds lack this feature
+     * (FT_CONFIG_OPTION_SUBPIXEL_RENDERING must be defined, and isn't
+     * by default) */
+    FT_Error err = FT_Library_SetLcdFilter(ft_lib, font->lcd_filter);
+    if (err != 0 && err != FT_Err_Unimplemented_Feature) {
+        LOG_ERR("failed to set LCD filter: %s", ft_error_string(err));
+        goto err;
     }
 
     err = FT_Load_Glyph(font->face, idx, font->load_flags);
