@@ -6,6 +6,13 @@
 
 ## Unreleased
 ### Added
+
+* When looking for a glyph in the fallback fonts, don't discard
+  (destroy/unload) the fonts that did not contain the glyph. This
+  improves performance massively when loading lots of glyphs that does
+  not exist in the primary font, or in the first fallback font(s).
+
+
 ### Changed
 ### Deprecated
 ### Removed

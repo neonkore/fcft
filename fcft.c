@@ -71,6 +71,7 @@ struct font_priv {
     /* Fields below are only valid for non-fallback fonts */
     FcPattern *fc_pattern;
     FcFontSet *fc_fonts;
+    FcCharSet *charset;
     int fc_idx;
     struct font_priv **fc_loaded_fallbacks; /* fc_fonts->nfont array */
 
@@ -201,7 +202,7 @@ underline_strikeout_metrics(struct font_priv *font)
 
 static bool
 from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
-              struct font_priv *font, bool is_fallback, wchar_t must_have_char)
+              struct font_priv *font, bool is_fallback)
 {
     memset(font, 0, sizeof(*font));
 
@@ -218,13 +219,9 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
         return false;
     }
 
-    FcCharSet *charset;
-    if (must_have_char != -1 &&
-        FcPatternGetCharSet(final_pattern, FC_CHARSET, 0, &charset) == FcResultMatch &&
-        !FcCharSetHasChar(charset, must_have_char))
-    {
-        LOG_DBG("%s: does not have %C (0x%04x)",
-                face_file, must_have_char, must_have_char);
+    FcCharSet *charset = NULL;
+    if (FcPatternGetCharSet(final_pattern, FC_CHARSET, 0, &charset) != FcResultMatch) {
+        LOG_ERR("%s: failed to get charset", face_file);
         FcPatternDestroy(final_pattern);
         return false;
     }
@@ -411,6 +408,7 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
     font->bgr = fc_rgba == FC_RGBA_BGR || fc_rgba == FC_RGBA_VBGR;
     font->ref_counter = 1;
     font->fc_idx = font_idx;
+    font->charset = charset;
 
     if (is_fallback) {
         font->fc_pattern = NULL;
@@ -474,7 +472,7 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
 }
 
 static struct font_priv *
-from_name(const char *name, bool is_fallback, wchar_t must_have_char)
+from_name(const char *name, bool is_fallback)
 {
     LOG_DBG("instantiating %s%s", name, is_fallback ? " (fallback)" : "");
 
@@ -509,7 +507,7 @@ from_name(const char *name, bool is_fallback, wchar_t must_have_char)
 
     struct font_priv *font = malloc(sizeof(*font));
 
-    if (!from_font_set(pattern, fonts, 0, font, is_fallback, must_have_char)) {
+    if (!from_font_set(pattern, fonts, 0, font, is_fallback)) {
         free(font);
         FcFontSetDestroy(fonts);
         FcPatternDestroy(pattern);
@@ -585,7 +583,7 @@ fcft_from_name(size_t count, const char *names[static count],
         if (first) {
             first = false;
 
-            font = from_name(name, false, -1);
+            font = from_name(name, false);
             if (font == NULL)
                 return NULL;
 
@@ -688,7 +686,7 @@ fcft_size_adjust(const struct fcft_font *_font, double amount)
 
     size_t i = 0;
     tll_foreach(font->fallbacks, it) {
-        struct font_priv *f = from_name(it->item.pattern, false, -1);
+        struct font_priv *f = from_name(it->item.pattern, false);
         if (f == NULL) {
             fallback_patterns[i++] = NULL;
             continue;
@@ -716,7 +714,7 @@ fcft_size_adjust(const struct fcft_font *_font, double amount)
         }
     }
     /* Instantiate new font */
-    struct font_priv *new_font = from_name(pattern, false, -1);
+    struct font_priv *new_font = from_name(pattern, false);
     free(pattern);
 
     if (new_font == NULL)
@@ -756,13 +754,12 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
         .valid = false,
     };
 
-    FT_UInt idx = FT_Get_Char_Index(font->face, wc);
-    if (idx == 0) {
+    if (!FcCharSetHasChar(font->charset, wc)) {
         /* No glyph in this font, try fallback fonts */
 
         tll_foreach(font->fallbacks, it) {
             if (it->item.font == NULL) {
-                it->item.font = from_name(it->item.pattern, true, wc);
+                it->item.font = from_name(it->item.pattern, true);
                 if (it->item.font == NULL)
                     continue;
             }
@@ -788,7 +785,7 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
                 /* Load font */
                 struct font_priv *fallback = malloc(sizeof(*fallback));
                 if (!from_font_set(font->fc_pattern, font->fc_fonts, i,
-                                   fallback, true, wc))
+                                   fallback, true))
                 {
                     free(fallback);
                     continue;
@@ -827,6 +824,7 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
         goto err;
     }
 
+    FT_UInt idx = FT_Get_Char_Index(font->face, wc);
     err = FT_Load_Glyph(font->face, idx, font->load_flags);
     if (err != 0) {
         LOG_ERR("%s: failed to load glyph #%d: %s",
