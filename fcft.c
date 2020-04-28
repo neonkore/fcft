@@ -608,8 +608,14 @@ fcft_clone(const struct fcft_font *_font)
         return NULL;
 
     struct font_priv *font = (struct font_priv *)_font;
-    assert(font->ref_counter >= 1);
-    font->ref_counter++;
+
+    mtx_lock(&font->lock);
+    {
+        assert(font->ref_counter >= 1);
+        font->ref_counter++;
+    }
+    mtx_unlock(&font->lock);
+
     return &font->public;
 }
 
@@ -677,12 +683,13 @@ fcft_size_adjust(const struct fcft_font *_font, double amount)
     const struct font_priv *font = (const struct font_priv *)_font;
     assert(!font->is_fallback);
 
-    char *pattern = pattern_from_font_with_adjusted_size(font, amount);
-    if (pattern == NULL)
-        return NULL;
-
+    mtx_lock(&((struct font_priv *)font)->lock);
 
     char *fallback_patterns[tll_length(font->fallbacks)];
+
+    char *pattern = pattern_from_font_with_adjusted_size(font, amount);
+    if (pattern == NULL)
+        goto err;
 
     size_t i = 0;
     tll_foreach(font->fallbacks, it) {
@@ -710,6 +717,7 @@ fcft_size_adjust(const struct fcft_font *_font, double amount)
                 free(fallback_patterns[i]);
 
             it->item.font->ref_counter++;
+            mtx_unlock(&((struct font_priv *)font)->lock);
             return &it->item.font->public;
         }
     }
@@ -718,7 +726,7 @@ fcft_size_adjust(const struct fcft_font *_font, double amount)
     free(pattern);
 
     if (new_font == NULL)
-        return NULL;
+        goto err;
 
     /* Fallback patterns */
     for (size_t i = 0; i < tll_length(font->fallbacks); i++) {
@@ -733,8 +741,12 @@ fcft_size_adjust(const struct fcft_font *_font, double amount)
         font_cache,
         ((struct fcft_font_cache_entry){.hash = hash, .font = new_font}));
 
+    mtx_unlock(&((struct font_priv *)font)->lock);
     return &new_font->public;
 
+err:
+    mtx_unlock(&((struct font_priv *)font)->lock);
+    return NULL;
 }
 
 static size_t
@@ -1081,8 +1093,14 @@ fcft_destroy(struct fcft_font *_font)
 
     struct font_priv *font = (struct font_priv *)_font;
 
-    if (--font->ref_counter > 0)
-        return;
+    mtx_lock(&font->lock);
+    {
+        if (--font->ref_counter > 0) {
+            mtx_unlock(&font->lock);
+            return;
+        }
+    }
+    mtx_unlock(&font->lock);
 
     tll_foreach(font_cache, it) {
         if (it->item.font == font) {

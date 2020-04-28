@@ -1,3 +1,4 @@
+
 # Changelog
 
 * [Unreleased](#unreleased)
@@ -17,6 +18,12 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* `fcft_clone()` was not thread safe
+* `fcft_size_adjust()` was not thread safe
+* `fcft_destroy` was not thread safe
+
+
 ### Security
 
 
