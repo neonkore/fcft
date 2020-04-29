@@ -15,6 +15,13 @@
 
 
 ### Changed
+
+* `fcft_from_name()` no longers calls `setlocale()` to set a suitable
+  locale for `FcParseName()`, as this was not thread safe. The caller
+  is responsible for ensuring `LC_NUMERICAL` is set to a locale that
+  correctly recognizes _x.y_ decimal values.
+
+
 ### Deprecated
 ### Removed
 ### Fixed

@@ -479,13 +479,10 @@ from_name(const char *name, bool is_fallback)
 {
     LOG_DBG("instantiating %s%s", name, is_fallback ? " (fallback)" : "");
 
-    /* Fontconfig fails to parse floating point values unless locale is C */
-    char *cur_locale = strdup(setlocale(LC_ALL, NULL));
-    setlocale(LC_ALL, "C");
-
+    /* Fontconfig fails to parse floating point values unless locale
+     * is e.g C, or en_US.UTF-8 */
+    assert(strcmp(setlocale(LC_NUMERIC, NULL), "C") == 0);
     FcPattern *pattern = FcNameParse((const unsigned char *)name);
-    setlocale(LC_ALL, cur_locale);
-    free(cur_locale);
 
     if (pattern == NULL) {
         LOG_ERR("%s: failed to lookup font", name);
@@ -676,18 +673,12 @@ pattern_from_font_with_adjusted_size(const struct font_priv *font, double amount
     if (pattern[len - 1] == ':')
         pattern[--len] = '\0';
 
-    /* fontconfig *requires* floating points to use '.' as decimal point */
-    char *cur_locale = strdup(setlocale(LC_ALL, NULL));
-    setlocale(LC_ALL, "C");
-
     /* Append ":size=" */
     char new_size[32];
     snprintf(new_size, sizeof(new_size), ":size=%.2f", size);
     pattern = realloc(pattern, strlen(pattern) + strlen(new_size) + 1);
     strcat(pattern, new_size);
 
-    setlocale(LC_ALL, cur_locale);
-    free(cur_locale);
     LOG_DBG("adjust: amount=%f, pattern \"%s\" -> \"%s\"",
             amount, font->pattern, pattern);
     return pattern;
