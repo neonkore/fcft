@@ -84,6 +84,7 @@ struct fcft_font_cache_entry {
     struct font_priv *font;
 };
 static tll(struct fcft_font_cache_entry) font_cache = tll_init();
+static mtx_t font_cache_lock;
 
 static void __attribute__((constructor))
 init(void)
@@ -91,6 +92,7 @@ init(void)
     FcInit();
     FT_Init_FreeType(&ft_lib);
     mtx_init(&ft_lock, mtx_plain);
+    mtx_init(&font_cache_lock, mtx_plain);
 
 #if defined(LOG_ENABLE_DBG) && LOG_ENABLE_DBG
     {
@@ -119,6 +121,7 @@ fini(void)
     while (tll_length(font_cache) > 0)
         fcft_destroy(&tll_pop_front(font_cache).font->public);
 
+    mtx_destroy(&font_cache_lock);
     mtx_destroy(&ft_lock);
     FT_Done_FreeType(ft_lib);
     FcFini();
@@ -557,12 +560,21 @@ fcft_from_name(size_t count, const char *names[static count],
         return false;
 
     uint64_t hash = font_hash(count, names, attributes);
-    tll_foreach(font_cache, it) {
-        if (it->item.hash == hash) {
-            it->item.font->ref_counter++;
-            return &it->item.font->public;
+
+    mtx_lock(&font_cache_lock);
+    {
+        tll_foreach(font_cache, it) {
+            mtx_lock(&it->item.font->lock);
+            if (it->item.hash == hash) {
+                it->item.font->ref_counter++;
+                mtx_unlock(&it->item.font->lock);
+                mtx_unlock(&font_cache_lock);
+                return &it->item.font->public;
+            }
+            mtx_unlock(&it->item.font->lock);
         }
     }
+    mtx_unlock(&font_cache_lock);
 
     struct font_priv *font = NULL;
 
@@ -595,7 +607,11 @@ fcft_from_name(size_t count, const char *names[static count],
             font->fallbacks, ((struct font_fallback){.pattern = strdup(name)}));
     }
 
-    tll_push_back(font_cache, ((struct fcft_font_cache_entry){.hash = hash, .font = font}));
+    mtx_lock(&font_cache_lock);
+    {
+        tll_push_back(font_cache, ((struct fcft_font_cache_entry){.hash = hash, .font = font}));
+    }
+    mtx_unlock(&font_cache_lock);
 
     assert((void *)&font->public == (void *)font);
     return &font->public;
@@ -710,17 +726,23 @@ fcft_size_adjust(const struct fcft_font *_font, double amount)
             hash ^= sdbm_hash(fallback_patterns[i]);
     }
 
-    tll_foreach(font_cache, it) {
-        if (it->item.hash == hash) {
-            free(pattern);
-            for (size_t i = 0; i < tll_length(font->fallbacks); i++)
-                free(fallback_patterns[i]);
+    mtx_lock(&font_cache_lock);
+    {
+        tll_foreach(font_cache, it) {
+            if (it->item.hash == hash) {
+                free(pattern);
+                for (size_t i = 0; i < tll_length(font->fallbacks); i++)
+                    free(fallback_patterns[i]);
 
-            it->item.font->ref_counter++;
-            mtx_unlock(&((struct font_priv *)font)->lock);
-            return &it->item.font->public;
+                it->item.font->ref_counter++;
+                mtx_unlock(&((struct font_priv *)font)->lock);
+                mtx_unlock(&font_cache_lock);
+                return &it->item.font->public;
+            }
         }
     }
+    mtx_unlock(&font_cache_lock);
+
     /* Instantiate new font */
     struct font_priv *new_font = from_name(pattern, false);
     free(pattern);
@@ -737,9 +759,13 @@ fcft_size_adjust(const struct fcft_font *_font, double amount)
         }
     }
 
-    tll_push_back(
-        font_cache,
-        ((struct fcft_font_cache_entry){.hash = hash, .font = new_font}));
+    mtx_lock(&font_cache_lock);
+    {
+        tll_push_back(
+            font_cache,
+            ((struct fcft_font_cache_entry){.hash = hash, .font = new_font}));
+    }
+    mtx_unlock(&font_cache_lock);
 
     mtx_unlock(&((struct font_priv *)font)->lock);
     return &new_font->public;
