@@ -24,6 +24,8 @@
 * `fcft_size_adjust()` now uses a thread pool to instantiate the
   original font's user configured fallback fonts, since this can be a
   very slow operation, depending on how many fallback fonts there are.
+* First time calling `fcft_from_name()` now logs FontConfig and
+  Freetype version information.
 
 
 ### Deprecated

@@ -97,25 +97,6 @@ init(void)
     mtx_init(&ft_lock, mtx_plain);
     mtx_init(&font_cache_lock, mtx_plain);
 
-#if defined(LOG_ENABLE_DBG) && LOG_ENABLE_DBG
-    {
-        int raw_version = FcGetVersion();
-
-        /* See FC_VERSION in <fontconfig/fontconfig.h> */
-        const int major = raw_version / 10000; raw_version %= 10000;
-        const int minor = raw_version / 100; raw_version %= 100;
-        const int patch = raw_version;
-
-        LOG_DBG("fontconfig: %d.%d.%d", major, minor, patch);
-    }
-
-    {
-        int major, minor, patch;
-        FT_Library_Version(ft_lib, &major, &minor, &patch);
-        LOG_DBG("freetype: %d.%d.%d", major, minor, patch);
-    }
-#endif
-
 }
 
 static void __attribute__((destructor))
@@ -128,6 +109,38 @@ fini(void)
     mtx_destroy(&ft_lock);
     FT_Done_FreeType(ft_lib);
     FcFini();
+}
+
+static void
+log_version_information(void)
+{
+    static bool has_already_logged = false;
+
+    mtx_lock(&font_cache_lock);
+    if (has_already_logged) {
+        mtx_unlock(&font_cache_lock);
+        return;
+    }
+    has_already_logged = true;
+    mtx_unlock(&font_cache_lock);
+
+    {
+        int raw_version = FcGetVersion();
+
+        /* See FC_VERSION in <fontconfig/fontconfig.h> */
+        const int major = raw_version / 10000; raw_version %= 10000;
+        const int minor = raw_version / 100; raw_version %= 100;
+        const int patch = raw_version;
+
+        LOG_INFO("fontconfig: %d.%d.%d", major, minor, patch);
+    }
+
+    {
+        int major, minor, patch;
+        FT_Library_Version(ft_lib, &major, &minor, &patch);
+        LOG_INFO("freetype: %d.%d.%d", major, minor, patch);
+    }
+
 }
 
 static const char *
@@ -556,6 +569,7 @@ struct fcft_font *
 fcft_from_name(size_t count, const char *names[static count],
                const char *attributes)
 {
+    log_version_information();
     if (count == 0)
         return false;
 
