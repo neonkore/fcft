@@ -1119,12 +1119,16 @@ fcft_destroy(struct fcft_font *_font)
     }
     mtx_unlock(&font->lock);
 
-    tll_foreach(font_cache, it) {
-        if (it->item.font == font) {
-            tll_remove(font_cache, it);
-            break;
+    mtx_lock(&font_cache_lock);
+    {
+        tll_foreach(font_cache, it) {
+            if (it->item.font == font) {
+                tll_remove(font_cache, it);
+                break;
+            }
         }
     }
+    mtx_unlock(&font_cache_lock);
 
     free(font->name);
     free(font->pattern);
