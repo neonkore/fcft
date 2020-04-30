@@ -916,28 +916,14 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
                 "nor any fallback fonts)", wc);
     }
 
-    /*
-     * LCD filter is per library instance. Thus we need to re-set it
-     * every time...
-     *
-     * Also note that many freetype builds lack this feature
-     * (FT_CONFIG_OPTION_SUBPIXEL_RENDERING must be defined, and isn't
-     * by default) */
-    mtx_lock(&ft_lock);
-    FT_Error err = FT_Library_SetLcdFilter(ft_lib, font->lcd_filter);
-    if (err != 0 && err != FT_Err_Unimplemented_Feature) {
-        LOG_ERR("failed to set LCD filter: %s", ft_error_string(err));
-        goto err;
-    }
+    FT_Error err;
 
     FT_UInt idx = FT_Get_Char_Index(font->face, wc);
-    err = FT_Load_Glyph(font->face, idx, font->load_flags);
-    if (err != 0) {
+    if ((err = FT_Load_Glyph(font->face, idx, font->load_flags)) != 0) {
         LOG_ERR("%s: failed to load glyph #%d: %s",
                 font->name, idx, ft_error_string(err));
         goto err;
     }
-    mtx_unlock(&ft_lock);
 
     int render_flags;
     bool bgr;
@@ -972,8 +958,33 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
         bgr = false;
     }
 
-    err = FT_Render_Glyph(font->face->glyph, render_flags);
-    if (err != 0) {
+    /* This is disabled in default Freetype libs, and the locking
+     * required to handle isn't worth the effort... */
+#if 0
+    /*
+     * LCD filter is per library instance. Thus we need to re-set it
+     * every time...
+     *
+     * Also note that many freetype builds lack this feature
+     * (FT_CONFIG_OPTION_SUBPIXEL_RENDERING must be defined, and isn't
+     * by default) */
+    if ((render_flags & FT_RENDER_MODE_LCD) ||
+        (render_flags & FT_RENDER_MODE_LCD_V))
+    {
+        mtx_lock(&ft_lock);
+
+        FT_Error err = FT_Library_SetLcdFilter(ft_lib, font->lcd_filter);
+        if (err != 0 && err != FT_Err_Unimplemented_Feature) {
+            LOG_ERR("failed to set LCD filter: %s", ft_error_string(err));
+            mtx_unlock(&ft_lock);
+            goto err;
+        }
+
+        mtx_unlock(&ft_lock);
+    }
+#endif
+
+    if ((err = FT_Render_Glyph(font->face->glyph, render_flags)) != 0) {
         LOG_ERR("%s: failed to render glyph: %s", font->name, ft_error_string(err));
         goto err;
     }
