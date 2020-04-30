@@ -83,7 +83,7 @@ struct fcft_font_cache_entry {
     uint64_t hash;
     struct font_priv *font;
 
-    mtx_t lock;
+    int waiters;
     cnd_t cond;
 };
 static tll(struct fcft_font_cache_entry) font_cache = tll_init();
@@ -578,34 +578,37 @@ fcft_from_name(size_t count, const char *names[static count],
 
     mtx_lock(&font_cache_lock);
     tll_foreach(font_cache, it) {
-        if (it->item.hash == hash) {
-            struct fcft_font_cache_entry *e = &it->item;
+        if (it->item.hash != hash)
+            continue;
 
-            /* Note that we *must* keep the cache locked while
-             * waiting here. If not, there's a race with
-             * fcft_destroy() */
+        struct fcft_font_cache_entry *e = &it->item;
 
-            /* Is another thread currently instantiating the font? */
-            mtx_lock(&e->lock);
-            while (e->font == (void *)(uintptr_t)-1)
-                cnd_wait(&e->cond, &e->lock);
+        if (e->font != (void *)(uintptr_t)-1) {
+            /* Font has already been fully initialized */
 
-            if (e->font == NULL) {
-                mtx_unlock(&e->lock);
-                mtx_unlock(&font_cache_lock);
-                return NULL;
+            if (e->font != NULL) {
+                mtx_lock(&e->font->lock);
+                e->font->ref_counter++;
+                mtx_unlock(&e->font->lock);
             }
 
-            /* clone */
-            mtx_lock(&e->font->lock);
-            e->font->ref_counter++;
-            mtx_unlock(&e->font->lock);
-
-            /* Done */
-            mtx_unlock(&e->lock);
             mtx_unlock(&font_cache_lock);
-            return &e->font->public;
+            return e->font != NULL ? &e->font->public : NULL;
         }
+
+        /*
+         * Cache entry is only a reservation - font hasn't yet
+         * been initialized.
+         */
+
+        /* Let instantiating thread know (yet) another thread
+         * wants a reference to it */
+        e->waiters++;
+
+        while (e->font == (void *)(uintptr_t)-1)
+            cnd_wait(&e->cond, &font_cache_lock);
+        mtx_unlock(&font_cache_lock);
+        return e->font == NULL ? NULL : &e->font->public;
     }
 
     /* Pre-allocate entry */
@@ -614,7 +617,6 @@ fcft_from_name(size_t count, const char *names[static count],
         ((struct fcft_font_cache_entry){.hash = hash, .font = (void *)(uintptr_t)-1}));
 
     cache_entry = &tll_back(font_cache);
-    mtx_init(&cache_entry->lock, mtx_plain);
     cnd_init(&cache_entry->cond);
     mtx_unlock(&font_cache_lock);
 
@@ -649,10 +651,11 @@ fcft_from_name(size_t count, const char *names[static count],
             font->fallbacks, ((struct font_fallback){.pattern = strdup(name)}));
     }
 
-    mtx_lock(&cache_entry->lock);
+    mtx_lock(&font_cache_lock);
     cache_entry->font = font;
-    cnd_signal(&cache_entry->cond);
-    mtx_unlock(&cache_entry->lock);
+    cache_entry->font->ref_counter += cache_entry->waiters;
+    cnd_broadcast(&cache_entry->cond);
+    mtx_unlock(&font_cache_lock);
 
     assert(font == NULL || (void *)&font->public == (void *)font);
     return font != NULL ? &font->public : NULL;
@@ -761,6 +764,9 @@ fcft_size_adjust(const struct fcft_font *_font, double amount)
             tll_push_back(fallback_patterns, pat);
     }
 
+    /* Done with the old font */
+    mtx_unlock(&mfont->lock);
+
     uint64_t hash = 0;
     hash ^= sdbm_hash(pattern);
     tll_foreach(fallback_patterns, it)
@@ -770,40 +776,37 @@ fcft_size_adjust(const struct fcft_font *_font, double amount)
 
     mtx_lock(&font_cache_lock);
     tll_foreach(font_cache, it) {
-        if (it->item.hash == hash) {
+        if (it->item.hash != hash)
+            continue;
 
-            struct fcft_font_cache_entry *e = &it->item;
+        struct fcft_font_cache_entry *e = &it->item;
 
-            /* Note that we *must* keep the cache locked while
-             * waiting here. If not, there's a race with
-             * fcft_destroy() */
+        if (e->font != (void *)(uintptr_t)-1) {
+            /* Font has already been fully initialized */
 
-            /* Is another thread currently instantiating the font? */
-            mtx_lock(&e->lock);
-            while (e->font == (void *)(uintptr_t)-1)
-                cnd_wait(&e->cond, &e->lock);
-
-            if (e->font == NULL) {
-                mtx_unlock(&e->lock);
-                mtx_unlock(&font_cache_lock);
-                return NULL;
+            if (e->font != NULL) {
+                mtx_lock(&e->font->lock);
+                e->font->ref_counter++;
+                mtx_unlock(&e->font->lock);
             }
 
-            /* clone */
-            mtx_lock(&e->font->lock);
-            e->font->ref_counter++;
-            mtx_unlock(&e->font->lock);
-
-            /* Done */
-            mtx_unlock(&e->lock);
             mtx_unlock(&font_cache_lock);
-            mtx_unlock(&mfont->lock);
-
-            /* Release private, temporary resources *after* releasing locks */
-            free(pattern);
-            tll_free_and_free(fallback_patterns, free);
-            return &e->font->public;
+            return e->font != NULL ? &e->font->public : NULL;
         }
+
+        /*
+         * Cache entry is only a reservation - font hasn't yet
+         * been initialized.
+         */
+
+        /* Let instantiating thread know (yet) another thread
+         * wants a reference to it */
+        e->waiters++;
+
+        while (e->font == (void *)(uintptr_t)-1)
+            cnd_wait(&e->cond, &font_cache_lock);
+        mtx_unlock(&font_cache_lock);
+        return e->font == NULL ? NULL : &e->font->public;
     }
 
     /* Pre-allocate entry */
@@ -812,7 +815,6 @@ fcft_size_adjust(const struct fcft_font *_font, double amount)
         ((struct fcft_font_cache_entry){.hash = hash, .font = (void *)(uintptr_t)-1}));
 
     cache_entry = &tll_back(font_cache);
-    mtx_init(&cache_entry->lock, mtx_plain);
     cnd_init(&cache_entry->cond);
     mtx_unlock(&font_cache_lock);
 
@@ -831,12 +833,12 @@ fcft_size_adjust(const struct fcft_font *_font, double amount)
 
     tll_free(fallback_patterns);
 
-    mtx_lock(&cache_entry->lock);
+    mtx_lock(&font_cache_lock);
     cache_entry->font = new_font;
-    cnd_signal(&cache_entry->cond);
-    mtx_unlock(&cache_entry->lock);
+    cache_entry->font->ref_counter += cache_entry->waiters;
+    cnd_broadcast(&cache_entry->cond);
+    mtx_unlock(&font_cache_lock);
 
-    mtx_unlock(&mfont->lock);
     return new_font != NULL ? &new_font->public : NULL;
 }
 
@@ -1201,10 +1203,8 @@ fcft_destroy(struct fcft_font *_font)
             }
             mtx_unlock(&font->lock);
 
-            mtx_destroy(&it->item.lock);
             cnd_destroy(&it->item.cond);
             tll_remove(font_cache, it);
-
             break;
         }
     };
