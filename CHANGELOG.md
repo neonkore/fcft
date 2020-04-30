@@ -16,16 +16,21 @@
 
 ### Changed
 
-* `fcft_from_name()` no longers calls `setlocale()` to set a suitable
-  locale for `FcParseName()`, as this was not thread safe. The caller
-  is responsible for ensuring `LC_NUMERICAL` is set to a locale that
-  correctly recognizes _x.y_ decimal values.
+* `fcft_from_name()` and `fcft_size_adjust()` no longer calls
+  `setlocale()` to set a suitable locale for `FcParseName()`, as this
+  was not thread safe. The caller is responsible for ensuring
+  `LC_NUMERICAL` is set to a locale that correctly recognizes _x.y_
+  decimal values.
+* `fcft_size_adjust()` now uses a thread pool to instantiate the
+  original font's user configured fallback fonts, since this can be a
+  very slow operation, depending on how many fallback fonts there are.
 
 
 ### Deprecated
 ### Removed
 ### Fixed
 
+* `fcft_from_name()` was not thread safe
 * `fcft_clone()` was not thread safe
 * `fcft_size_adjust()` was not thread safe
 * `fcft_destroy` was not thread safe
