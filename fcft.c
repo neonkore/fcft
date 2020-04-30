@@ -728,52 +728,6 @@ pattern_from_font_with_adjusted_size(const struct font_priv *font, double amount
     return pattern;
 }
 
-struct adjust_info {
-    double amount;
-    const char *pattern;
-};
-
-typedef tll(struct adjust_info) adjust_info_list_t;
-typedef tll(char *) pattern_list_t;
-struct adjust_thread_data {
-    mtx_t *lock;
-    cnd_t *cond;
-    adjust_info_list_t *info_list;
-    pattern_list_t *output_list;
-};
-
-static int
-adjust_fallback_thread(void *_data)
-{
-    struct adjust_thread_data *data = _data;
-
-    while (true) {
-        mtx_lock(data->lock);
-        while (tll_length(*data->info_list) == 0)
-            cnd_wait(data->cond, data->lock);
-
-        struct adjust_info info = tll_pop_front(*data->info_list);
-        mtx_unlock(data->lock);
-
-        if (info.pattern == NULL)
-            return 0;
-
-        struct font_priv *f = from_name(info.pattern, false);
-        char *pattern = NULL;
-
-        if (f != NULL) {
-            pattern = pattern_from_font_with_adjusted_size(f, info.amount);
-            fcft_destroy(&f->public);
-
-            mtx_lock(data->lock);
-            tll_push_back(*data->output_list, pattern);
-            mtx_unlock(data->lock);
-        }
-    }
-
-    return 0;
-}
-
 struct fcft_font *
 fcft_size_adjust(const struct fcft_font *_font, double amount)
 {
@@ -783,23 +737,7 @@ fcft_size_adjust(const struct fcft_font *_font, double amount)
 
     mtx_lock(&mfont->lock);
 
-    /*
-     * Ugh - I'd really like to do this in some other way.
-     *
-     * What we here is get the FC_SIZE attribute from the FontConfig
-     * compiled pattern, adjust it by the specified amount and then
-     * re-write the string pattern.
-     *
-     * This in itself isn't super ugly. The problem is the user
-     * configured fallback fonts. If they haven't been loaded we don't
-     * *have* a compiled pattern. Thus we need to instantiate
-     * them. This is slow. For this reason, that is done by a pool of
-     * worker threads.
-     *
-     * Note that if a fallback font *has* already been loaded, then we
-     * have the pattern and don't need to instantiate the fallback
-     * font again. This we do here, in the main thread.
-     */
+    char *fallback_patterns[tll_length(font->fallbacks)];
 
     char *pattern = pattern_from_font_with_adjusted_size(font, amount);
     if (pattern == NULL) {
@@ -807,76 +745,24 @@ fcft_size_adjust(const struct fcft_font *_font, double amount)
         return NULL;
     }
 
-    /* Set things up for the worker threads */
-    const size_t tid_count = 4;
-    thrd_t tids[tid_count];
-    mtx_t lock;
-    cnd_t cond;
-    adjust_info_list_t info_list = tll_init();
-    pattern_list_t fallback_patterns = tll_init();
-
-    mtx_init(&lock, mtx_plain);
-    cnd_init(&cond);
-
-    struct adjust_thread_data data = {
-        .lock = &lock,
-        .cond = &cond,
-        .info_list = &info_list,
-        .output_list = &fallback_patterns,
-    };
-
-    /* Start workers */
-    for (size_t i = 0; i < tid_count; i++)
-        thrd_create(&tids[i], &adjust_fallback_thread, &data);
-
-    /* Work through the fallback patterns */
-    mtx_lock(&lock);
+    size_t i = 0;
     tll_foreach(font->fallbacks, it) {
-        if (it->item.font != NULL) {
-            char *pattern = pattern_from_font_with_adjusted_size(
-                it->item.font, amount);
-
-            if (pattern != NULL)
-                tll_push_back(fallback_patterns, pattern);
+        struct font_priv *f = from_name(it->item.pattern, false);
+        if (f == NULL) {
+            fallback_patterns[i++] = NULL;
+            continue;
         }
 
-        else {
-            /* We need to instantiate the font. This is slow, so let a
-             * worker thread do it */
-            tll_push_back(info_list, ((struct adjust_info){
-                        .amount = amount, .pattern = it->item.pattern}));
-        }
+        fallback_patterns[i++] = pattern_from_font_with_adjusted_size(f, amount);
+        fcft_destroy(&f->public);
     }
-
-    /* Signal worker threads to quit */
-    for (size_t i = 0; i < tid_count; i++)
-        tll_push_back(info_list, ((struct adjust_info){}));
-    cnd_broadcast(&cond);
-    mtx_unlock(&lock);
-
-    /* Wait for worker threads to die */
-    for (size_t i = 0; i < tid_count; i++)
-        thrd_join(tids[i], NULL);
-
-    mtx_destroy(&lock);
-    cnd_destroy(&cond);
-    tll_free(info_list);
-
-    /*
-     * Now we have everything we need to instantiate the new font,
-     * with adjust size, and all its fallback fonts.
-     *
-     * It is cached in the global font cache, just like any other font
-     * instance.
-     *
-     * Thus, if it's already in the cache, we simply return that
-     * instead of instantiating a new font.
-     */
 
     uint64_t hash = 0;
     hash ^= sdbm_hash(pattern);
-    tll_foreach(fallback_patterns, it)
-        hash ^= sdbm_hash(it->item);
+    for (size_t i = 0; i < tll_length(font->fallbacks); i++) {
+        if (fallback_patterns[i] != NULL)
+            hash ^= sdbm_hash(fallback_patterns[i]);
+    }
 
     struct fcft_font_cache_entry *cache_entry = NULL;
 
@@ -913,7 +799,9 @@ fcft_size_adjust(const struct fcft_font *_font, double amount)
 
             /* Release private, temporary resources *after* releasing locks */
             free(pattern);
-            tll_free_and_free(fallback_patterns, free);
+            for (size_t i = 0; i < tll_length(font->fallbacks); i++)
+                free(fallback_patterns[i]);
+
             return &e->font->public;
         }
     }
@@ -934,14 +822,14 @@ fcft_size_adjust(const struct fcft_font *_font, double amount)
 
     if (new_font != NULL) {
         /* Fallback patterns */
-        tll_foreach(fallback_patterns, it) {
-            tll_push_back(
-                new_font->fallbacks,
-                ((struct font_fallback){.pattern = it->item}));
+        for (size_t i = 0; i < tll_length(font->fallbacks); i++) {
+            if (fallback_patterns[i] != NULL) {
+                tll_push_back(
+                    new_font->fallbacks,
+                    ((struct font_fallback){.pattern = fallback_patterns[i]}));
+            }
         }
     }
-
-    tll_free(fallback_patterns);
 
     mtx_lock(&cache_entry->lock);
     cache_entry->font = new_font;
