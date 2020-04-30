@@ -737,32 +737,34 @@ fcft_size_adjust(const struct fcft_font *_font, double amount)
 
     mtx_lock(&mfont->lock);
 
-    char *fallback_patterns[tll_length(font->fallbacks)];
-
     char *pattern = pattern_from_font_with_adjusted_size(font, amount);
     if (pattern == NULL) {
         mtx_unlock(&mfont->lock);
         return NULL;
     }
 
-    size_t i = 0;
-    tll_foreach(font->fallbacks, it) {
-        struct font_priv *f = from_name(it->item.pattern, false);
-        if (f == NULL) {
-            fallback_patterns[i++] = NULL;
-            continue;
-        }
+    tll(char *) fallback_patterns = tll_init();
 
-        fallback_patterns[i++] = pattern_from_font_with_adjusted_size(f, amount);
-        fcft_destroy(&f->public);
+    tll_foreach(font->fallbacks, it) {
+        char *pat = NULL;
+
+        if (it->item.font == NULL) {
+            struct font_priv *f = from_name(it->item.pattern, false);
+            if (f != NULL) {
+                pat = pattern_from_font_with_adjusted_size(f, amount);
+                fcft_destroy(&f->public);
+            }
+        } else
+            pat = pattern_from_font_with_adjusted_size(it->item.font, amount);
+
+        if (pat != NULL)
+            tll_push_back(fallback_patterns, pat);
     }
 
     uint64_t hash = 0;
     hash ^= sdbm_hash(pattern);
-    for (size_t i = 0; i < tll_length(font->fallbacks); i++) {
-        if (fallback_patterns[i] != NULL)
-            hash ^= sdbm_hash(fallback_patterns[i]);
-    }
+    tll_foreach(fallback_patterns, it)
+        hash ^= sdbm_hash(it->item);
 
     struct fcft_font_cache_entry *cache_entry = NULL;
 
@@ -799,9 +801,7 @@ fcft_size_adjust(const struct fcft_font *_font, double amount)
 
             /* Release private, temporary resources *after* releasing locks */
             free(pattern);
-            for (size_t i = 0; i < tll_length(font->fallbacks); i++)
-                free(fallback_patterns[i]);
-
+            tll_free_and_free(fallback_patterns, free);
             return &e->font->public;
         }
     }
@@ -822,14 +822,14 @@ fcft_size_adjust(const struct fcft_font *_font, double amount)
 
     if (new_font != NULL) {
         /* Fallback patterns */
-        for (size_t i = 0; i < tll_length(font->fallbacks); i++) {
-            if (fallback_patterns[i] != NULL) {
-                tll_push_back(
-                    new_font->fallbacks,
-                    ((struct font_fallback){.pattern = fallback_patterns[i]}));
-            }
+        tll_foreach(fallback_patterns, it) {
+            tll_push_back(
+                new_font->fallbacks,
+                ((struct font_fallback){.pattern = it->item}));
         }
     }
+
+    tll_free(fallback_patterns);
 
     mtx_lock(&cache_entry->lock);
     cache_entry->font = new_font;
