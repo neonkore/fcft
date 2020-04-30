@@ -27,6 +27,7 @@
 ### Removed
 ### Fixed
 
+* `fcft_from_name()` was not thread safe
 * `fcft_clone()` was not thread safe
 * `fcft_size_adjust()` was not thread safe
 * `fcft_destroy` was not thread safe
