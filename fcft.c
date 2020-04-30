@@ -921,6 +921,7 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
      * Also note that many freetype builds lack this feature
      * (FT_CONFIG_OPTION_SUBPIXEL_RENDERING must be defined, and isn't
      * by default) */
+    mtx_lock(&ft_lock);
     FT_Error err = FT_Library_SetLcdFilter(ft_lib, font->lcd_filter);
     if (err != 0 && err != FT_Err_Unimplemented_Feature) {
         LOG_ERR("failed to set LCD filter: %s", ft_error_string(err));
@@ -934,6 +935,7 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
                 font->name, idx, ft_error_string(err));
         goto err;
     }
+    mtx_unlock(&ft_lock);
 
     int render_flags;
     bool bgr;
