@@ -234,15 +234,13 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
         FcPatternGetString(final_pattern, FC_FILE, 0, &face_file) != FcResultMatch)
     {
         LOG_ERR("no face file path in pattern");
-        FcPatternDestroy(final_pattern);
-        return false;
+        goto err_pattern_destroy;
     }
 
     FcCharSet *charset = NULL;
     if (FcPatternGetCharSet(final_pattern, FC_CHARSET, 0, &charset) != FcResultMatch) {
         LOG_ERR("%s: failed to get charset", face_file);
-        FcPatternDestroy(final_pattern);
-        return false;
+        goto err_pattern_destroy;
     }
 
     double dpi;
@@ -256,8 +254,7 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
     double pixel_size;
     if (FcPatternGetDouble(final_pattern, FC_PIXEL_SIZE, 0, &pixel_size) != FcResultMatch) {
         LOG_ERR("%s: failed to get pixel size", face_file);
-        FcPatternDestroy(final_pattern);
-        return false;
+        goto err_pattern_destroy;
     }
 
     int face_index;
@@ -271,18 +268,15 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
     FT_Error ft_err = FT_New_Face(ft_lib, (const char *)face_file, face_index, &ft_face);
     mtx_unlock(&ft_lock);
     if (ft_err != 0) {
-        LOG_ERR("%s: failed to create FreeType face", face_file);
-        FcPatternDestroy(final_pattern);
-        return false;
+        LOG_ERR("%s: failed to create FreeType face; %s",
+                face_file, ft_error_string(ft_err));
+        goto err_pattern_destroy;
     }
 
     if ((ft_err = FT_Set_Pixel_Sizes(ft_face, 0, pixel_size)) != 0) {
-        LOG_WARN("%s: failed to set character size", face_file);
-        mtx_lock(&ft_lock);
-        FT_Done_Face(ft_face);
-        mtx_unlock(&ft_lock);
-        FcPatternDestroy(final_pattern);
-        return false;
+        LOG_ERR("%s: failed to set character size: %s",
+                face_file, ft_error_string(ft_err));
+        goto err_ft_face_done;
     }
 
     FcBool scalable;
@@ -488,6 +482,15 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
 
     underline_strikeout_metrics(font);
     return true;
+
+err_ft_face_done:
+    mtx_lock(&ft_lock);
+    FT_Done_Face(ft_face);
+    mtx_unlock(&ft_lock);
+
+err_pattern_destroy:
+    FcPatternDestroy(final_pattern);
+    return false;
 }
 
 static struct font_priv *
