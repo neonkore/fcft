@@ -829,7 +829,13 @@ fcft_size_adjust(const struct fcft_font *_font, double amount)
         ((struct fcft_font_cache_entry){.hash = hash, .font = (void *)(uintptr_t)-1}));
 
     cache_entry = &tll_back(font_cache);
-    cnd_init(&cache_entry->cond);
+
+    if (cnd_init(&cache_entry->cond) != thrd_success) {
+        LOG_ERR("%s: failed to instantiate font cache condition variable", font->name);
+        tll_pop_back(font_cache);
+        mtx_unlock(&font_cache_lock);
+        return false;
+    }
     mtx_unlock(&font_cache_lock);
 
     /* Instantiate new font */
