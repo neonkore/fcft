@@ -411,9 +411,8 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
         goto err_ft_face_done;
     }
 
-    FcPatternDestroy(final_pattern);
-
     font->name = strdup((char *)face_file);
+    FcPatternDestroy(final_pattern);
 
     font->pattern = NULL;
     font->face = ft_face;
