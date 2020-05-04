@@ -406,11 +406,16 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
     case FC_LCD_LEGACY:  font->lcd_filter = FT_LCD_FILTER_LEGACY; break;
     }
 
-    font->name = strdup((char *)face_file);
+    if (mtx_init(&font->lock, mtx_plain) != thrd_success) {
+        LOG_WARN("%s: failed to instantiate mutex", face_file);
+        goto err_ft_face_done;
+    }
+
     FcPatternDestroy(final_pattern);
 
+    font->name = strdup((char *)face_file);
+
     font->pattern = NULL;
-    mtx_init(&font->lock, mtx_plain);
     font->face = ft_face;
     font->load_flags = load_target | load_flags | FT_LOAD_COLOR;
     font->antialias = fc_antialias;
