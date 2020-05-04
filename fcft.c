@@ -625,7 +625,13 @@ fcft_from_name(size_t count, const char *names[static count],
         ((struct fcft_font_cache_entry){.hash = hash, .font = (void *)(uintptr_t)-1}));
 
     cache_entry = &tll_back(font_cache);
-    cnd_init(&cache_entry->cond);
+
+    if (cnd_init(&cache_entry->cond) != thrd_success) {
+        LOG_ERR("%s: failed to instantiate font cache condition variable", names[0]);
+        tll_pop_back(font_cache);
+        mtx_unlock(&font_cache_lock);
+        return false;
+    }
     mtx_unlock(&font_cache_lock);
 
     struct font_priv *font = NULL;
