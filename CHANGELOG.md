@@ -12,6 +12,7 @@
   (destroy/unload) the fonts that did not contain the glyph. This
   improves performance massively when loading lots of glyphs that does
   not exist in the primary font, or in the first fallback font(s).
+* _Embolden_ support.
 
 
 ### Changed

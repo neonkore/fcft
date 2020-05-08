@@ -13,6 +13,7 @@
 #include FT_FREETYPE_H
 #include FT_LCD_FILTER_H
 #include FT_TRUETYPE_TABLES_H
+#include FT_SYNTHESIS_H
 #include <fontconfig/fontconfig.h>
 
 #include <tllist.h>
@@ -55,6 +56,7 @@ struct font_priv {
     int load_flags;
 
     bool antialias;
+    bool embolden;
     int render_flags_normal;
     int render_flags_subpixel;
 
@@ -411,6 +413,10 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
         goto err_ft_face_done;
     }
 
+    FcBool fc_embolden;
+    if (FcPatternGetBool(final_pattern, FC_EMBOLDEN, 0, &fc_embolden) != FcResultMatch)
+        fc_embolden = FcFalse;
+
     font->name = strdup((char *)face_file);
     FcPatternDestroy(final_pattern);
 
@@ -418,6 +424,7 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
     font->face = ft_face;
     font->load_flags = load_target | load_flags | FT_LOAD_COLOR;
     font->antialias = fc_antialias;
+    font->embolden = fc_embolden;
     font->render_flags_normal = render_flags_normal;
     font->render_flags_subpixel = render_flags_subpixel;
     font->is_fallback = is_fallback;
@@ -464,6 +471,9 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
     if (idx != 0 &&
         (ft_err = FT_Load_Glyph(font->face, idx, font->load_flags)) == 0)
     {
+        if (fc_embolden && font->face->glyph->format == FT_GLYPH_FORMAT_OUTLINE)
+            FT_GlyphSlot_Embolden(font->face->glyph);
+
         font->public.space_advance.x = ceil(
             font->face->glyph->advance.x / 64. * font->pixel_size_fixup);
         font->public.space_advance.y = ceil(
@@ -943,6 +953,9 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
                 font->name, idx, ft_error_string(err));
         goto err;
     }
+
+    if (font->embolden && font->face->glyph->format == FT_GLYPH_FORMAT_OUTLINE)
+        FT_GlyphSlot_Embolden(font->face->glyph);
 
     int render_flags;
     bool bgr;
