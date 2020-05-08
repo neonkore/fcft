@@ -83,3 +83,9 @@ const struct fcft_glyph *fcft_glyph_rasterize(
 bool fcft_kerning(
     struct fcft_font *font, wchar_t left, wchar_t right,
     long *restrict x, long *restrict y);
+
+wchar_t fcft_precompose(const struct fcft_font *font,
+                        wchar_t base, wchar_t comb,
+                        bool *base_is_from_primary,
+                        bool *comb_is_from_primary,
+                        bool *composed_is_from_primary);
