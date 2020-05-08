@@ -69,8 +69,16 @@ stdthreads = cc.find_library('stdthreads', required: host_machine.system() == 'f
 
 tllist = dependency('tllist', version: '>=1.0.1', fallback: 'tllist')
 
+generate_unicode_precompose_sh = files('generate-unicode-precompose.sh')
+unicode_data = custom_target(
+  'unicode-data',
+  input: 'UnicodeData.txt',
+  output: 'unicode-compose-table.h',
+  command: [generate_unicode_precompose_sh, '@INPUT@', '@OUTPUT@'])
+
 fcft_lib = build_target(
   'fcft', 'fcft.c', 'fcft/fcft.h', 'fcft/stride.h', 'log.c', 'log.h',
+  unicode_data,
   target_type: meson.is_subproject() ? 'static_library' : 'library',
   version: '.'.join(so_version),
   dependencies: [math, threads, fontconfig, freetype, pixman, tllist, stdthreads],
