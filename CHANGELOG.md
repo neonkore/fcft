@@ -13,6 +13,8 @@
   improves performance massively when loading lots of glyphs that does
   not exist in the primary font, or in the first fallback font(s).
 * _Embolden_ support.
+* `fcft_precompose()` - combines a base- and a combining wide
+  character into a single pre-composed character.
 
 
 ### Changed
