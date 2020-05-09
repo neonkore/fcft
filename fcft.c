@@ -354,7 +354,7 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
         if (!fc_hinting || fc_hintstyle == FC_HINT_NONE)
             load_flags |= FT_LOAD_NO_HINTING;
 
-        else if (fc_hinting && fc_hintstyle == FC_HINT_SLIGHT)
+        else if (fc_hintstyle == FC_HINT_SLIGHT)
             load_target = FT_LOAD_TARGET_LIGHT;
 
         else if (fc_rgba == FC_RGBA_RGB || fc_rgba == FC_RGBA_BGR)
