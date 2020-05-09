@@ -1024,7 +1024,10 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
         goto err;
     }
 
-    assert(font->face->glyph->format == FT_GLYPH_FORMAT_BITMAP);
+    if (font->face->glyph->format != FT_GLYPH_FORMAT_BITMAP) {
+        LOG_ERR("%s: rasterized glyph is not a bitmap", font->name);
+        goto err;
+    }
 
     FT_Bitmap *bitmap = &font->face->glyph->bitmap;
     pixman_format_code_t pix_format;
