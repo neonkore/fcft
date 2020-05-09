@@ -357,6 +357,9 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
         else if (fc_hintstyle == FC_HINT_SLIGHT)
             load_target = FT_LOAD_TARGET_LIGHT;
 
+        else if (fc_hintstyle == FC_HINT_MEDIUM)
+            ;
+
         else if (fc_rgba == FC_RGBA_RGB || fc_rgba == FC_RGBA_BGR)
             load_target = FT_LOAD_TARGET_LCD;
 
