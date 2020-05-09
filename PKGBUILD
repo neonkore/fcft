@@ -19,6 +19,10 @@ build() {
   ninja
 }
 
+check() {
+  ninja test
+}
+
 package() {
   DESTDIR="${pkgdir}/" ninja install
 }

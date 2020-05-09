@@ -80,6 +80,12 @@ fcft = declare_dependency(
   include_directories: '.', link_with: fcft_lib, dependencies: [pixman])
 meson.override_dependency('fcft', fcft)
 
+check = dependency('check', required: false)
+if check.found()
+  fcft_test = executable('test-fcft', 'test.c', dependencies: [check, fcft])
+  test('fcft', fcft_test)
+endif
+
 if not meson.is_subproject()
   install_headers('fcft/fcft.h', 'fcft/stride.h', subdir: 'fcft')
 
