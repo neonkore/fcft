@@ -8,6 +8,8 @@ packages:
   - freetype2
   - fontconfig
   - pixman
+  - check
+  - dejavu
 
 sources:
   - https://codeberg.org/dnkl/tllist

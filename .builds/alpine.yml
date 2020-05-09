@@ -8,6 +8,8 @@ packages:
   - freetype-dev
   - fontconfig-dev
   - pixman-dev
+  - check-dev
+  - ttf-dejavu
 
 sources:
   - https://codeberg.org/dnkl/tllist
