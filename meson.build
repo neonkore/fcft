@@ -28,7 +28,8 @@ is_debug_build = get_option('buildtype').startswith('debug')
 cc = meson.get_compiler('c')
 
 add_project_arguments(
-  ['-D_GNU_SOURCE=200809L'] + (is_debug_build ? ['-D_DEBUG'] : []),
+  ['-D_POSIX_C_SOURCE=200809L', '-D_XOPEN_SOURCE'] +
+  (is_debug_build ? ['-D_DEBUG'] : []),
   language: 'c')
 
 # Compute the relative path used by compiler invocations.
