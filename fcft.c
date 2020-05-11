@@ -420,6 +420,17 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
     if (FcPatternGetBool(final_pattern, FC_EMBOLDEN, 0, &fc_embolden) != FcResultMatch)
         fc_embolden = FcFalse;
 
+    FcMatrix *fc_matrix;
+    if (FcPatternGetMatrix(final_pattern, FC_MATRIX, 0, &fc_matrix) == FcResultMatch) {
+        FT_Matrix m = {
+            .xx = fc_matrix->xx * 0x10000,
+            .xy = fc_matrix->xy * 0x10000,
+            .yx = fc_matrix->yx * 0x10000,
+            .yy = fc_matrix->yy * 0x10000,
+        };
+        FT_Set_Transform(ft_face, &m, NULL);
+    }
+
     font->name = strdup((char *)face_file);
     FcPatternDestroy(final_pattern);
 

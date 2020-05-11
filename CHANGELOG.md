@@ -1,4 +1,3 @@
-
 # Changelog
 
 * [Unreleased](#unreleased)
@@ -12,7 +11,8 @@
   (destroy/unload) the fonts that did not contain the glyph. This
   improves performance massively when loading lots of glyphs that does
   not exist in the primary font, or in the first fallback font(s).
-* _Embolden_ support.
+* Synthetic bold and italics (FontConfig's _embolden_ and _matrix_
+  properties).
 
 
 ### Changed
