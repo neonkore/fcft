@@ -23,6 +23,8 @@
 #include "log.h"
 #include "fcft/stride.h"
 
+#include "unicode-compose-table.h"
+
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
@@ -1374,4 +1376,52 @@ fcft_kerning(struct fcft_font *_font, wchar_t left, wchar_t right,
     LOG_DBG("%s: kerning: %C -> %C: x=%ld 26.6, y=%ld 26.6",
             font->name, left, right, kerning.x, kerning.y);
     return true;
+}
+
+wchar_t
+fcft_precompose(const struct fcft_font *_font, wchar_t base, wchar_t comb,
+                bool *base_is_from_primary,
+                bool *comb_is_from_primary,
+                bool *composed_is_from_primary)
+{
+    static_assert(2 * sizeof(wchar_t) <= sizeof(uint64_t),
+                  "two wchars does not fit in an uint64_t");
+
+    const struct font_priv *font = (const struct font_priv *)_font;
+
+    if (font != NULL) {
+        if (base_is_from_primary != NULL)
+            *base_is_from_primary = FcCharSetHasChar(font->charset, base);
+        if (comb_is_from_primary != NULL)
+            *comb_is_from_primary = FcCharSetHasChar(font->charset, comb);
+    }
+
+    const uint64_t match = (uint64_t)base << 32 | comb;
+
+    ssize_t start = 0;
+    ssize_t end = (sizeof(precompose_table) / sizeof(precompose_table[0])) - 1;
+
+    while (start <= end) {
+        size_t middle = (start + end) / 2;
+
+        const uint64_t maybe =
+            (uint64_t)precompose_table[middle].base << 32 | precompose_table[middle].comb;
+
+        if (maybe < match)
+            start = middle + 1;
+        else if (maybe > match)
+            end = middle - 1;
+        else {
+            wchar_t composed = precompose_table[middle].replacement;
+            if (font != NULL && composed_is_from_primary != NULL) {
+                *composed_is_from_primary = FcCharSetHasChar(
+                    font->charset, composed);
+            }
+            return composed;
+        }
+    }
+
+    if (composed_is_from_primary != NULL)
+        *composed_is_from_primary = false;
+    return (wchar_t)-1;
 }

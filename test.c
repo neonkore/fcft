@@ -50,6 +50,21 @@ START_TEST(test_size_adjust)
 }
 END_TEST
 
+START_TEST(test_precompose)
+{
+    wchar_t ret = fcft_precompose(font, L'a', L'\U00000301', NULL, NULL, NULL);
+
+    /* All western fonts _should_ have this pre-composed character */
+    ck_assert_int_eq(ret, L'á');
+
+    /* Can't verify *_is_from_primary since we don't know which font
+     * we're using */
+
+    ret = fcft_precompose(font, L'X', L'Y', NULL, NULL, NULL);
+    ck_assert_int_eq(ret, (wchar_t)-1);
+}
+END_TEST
+
 Suite *
 fcft_suite(void)
 {
@@ -60,6 +75,7 @@ fcft_suite(void)
     tcase_add_test(core, test_from_name);
     tcase_add_test(core, test_glyph_rasterize);
     tcase_add_test(core, test_size_adjust);
+    tcase_add_test(core, test_precompose);
     suite_add_tcase(suite, core);
     return suite;
 }

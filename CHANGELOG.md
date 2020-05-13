@@ -13,6 +13,8 @@
   not exist in the primary font, or in the first fallback font(s).
 * Synthetic bold and italics (FontConfig's _embolden_ and _matrix_
   properties).
+* `fcft_precompose()` - combines a base- and a combining wide
+  character into a single pre-composed character.
 
 
 ### Changed

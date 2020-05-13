@@ -1,5 +1,5 @@
 project('fcft', 'c',
-        version: '2.0.0',  # Don't forget to update version in man pages
+        version: '2.1.0',  # Don't forget to update version in man pages
         license: 'MIT',
         meson_version: '>=0.54.0',
         default_options: [
@@ -19,7 +19,7 @@ project('fcft', 'c',
 # SONAME, and thus actual linking.
 so_version = [
   '3',      # MAJOR: increment on non-backward compatible ABI changes
-  '0',      # MINOR: increment with backward compatible ABI changes
+  '1',      # MINOR: increment with backward compatible ABI changes
   '0',      # PATCH: increment with non-ABI affecting changes
 ]
 
@@ -28,7 +28,8 @@ is_debug_build = get_option('buildtype').startswith('debug')
 cc = meson.get_compiler('c')
 
 add_project_arguments(
-  ['-D_GNU_SOURCE=200809L'] + (is_debug_build ? ['-D_DEBUG'] : []),
+  ['-D_POSIX_C_SOURCE=200809L', '-D_XOPEN_SOURCE'] +
+  (is_debug_build ? ['-D_DEBUG'] : []),
   language: 'c')
 
 # Compute the relative path used by compiler invocations.
@@ -69,8 +70,16 @@ stdthreads = cc.find_library('stdthreads', required: host_machine.system() == 'f
 
 tllist = dependency('tllist', version: '>=1.0.1', fallback: 'tllist')
 
+generate_unicode_precompose_sh = files('generate-unicode-precompose.sh')
+unicode_data = custom_target(
+  'unicode-data',
+  input: 'UnicodeData.txt',
+  output: 'unicode-compose-table.h',
+  command: [generate_unicode_precompose_sh, '@INPUT@', '@OUTPUT@'])
+
 fcft_lib = build_target(
   'fcft', 'fcft.c', 'fcft/fcft.h', 'fcft/stride.h', 'log.c', 'log.h',
+  unicode_data,
   target_type: meson.is_subproject() ? 'static_library' : 'library',
   version: '.'.join(so_version),
   dependencies: [math, threads, fontconfig, freetype, pixman, tllist, stdthreads],
