@@ -1,10 +1,11 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [2.1.0](#2-1-0)
 * [2.0.0](#2-0-0)
 * [1.1.7](#1-1-7)
 
-## Unreleased
+## 2.1.0
+
 ### Added
 
 * When looking for a glyph in the fallback fonts, don't discard
@@ -26,17 +27,12 @@
   decimal values.
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * `fcft_from_name()` was not thread safe
 * `fcft_clone()` was not thread safe
 * `fcft_size_adjust()` was not thread safe
 * `fcft_destroy` was not thread safe
-
-
-### Security
 
 
 ## 2.0.0
