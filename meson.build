@@ -28,7 +28,7 @@ is_debug_build = get_option('buildtype').startswith('debug')
 cc = meson.get_compiler('c')
 
 add_project_arguments(
-  ['-D_POSIX_C_SOURCE=200809L', '-D_XOPEN_SOURCE'] +
+  ['-D_POSIX_C_SOURCE=200809L', '-D_XOPEN_SOURCE=700'] +
   (is_debug_build ? ['-D_DEBUG'] : []),
   language: 'c')
 
