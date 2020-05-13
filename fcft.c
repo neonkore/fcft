@@ -1384,7 +1384,7 @@ fcft_precompose(const struct fcft_font *_font, wchar_t base, wchar_t comb,
                 bool *comb_is_from_primary,
                 bool *composed_is_from_primary)
 {
-    static_assert(2 * sizeof(wchar_t) <= sizeof(uint64_t),
+    _Static_assert(2 * sizeof(wchar_t) <= sizeof(uint64_t),
                   "two wchars does not fit in an uint64_t");
 
     const struct font_priv *font = (const struct font_priv *)_font;
