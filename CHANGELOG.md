@@ -9,6 +9,11 @@
 
 ### Added
 ### Changed
+
+* Prefer user-provided `charset`. This can be used to e.g. limit a
+  fallback font's usage to a custom Unicode point range.
+
+
 ### Deprecated
 ### Removed
 ### Fixed

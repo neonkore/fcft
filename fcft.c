@@ -242,10 +242,15 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
     }
 
     FcCharSet *charset = NULL;
-    if (FcPatternGetCharSet(final_pattern, FC_CHARSET, 0, &charset) != FcResultMatch) {
+    if (FcPatternGetCharSet(pattern, FC_CHARSET, 0, &charset) != FcResultMatch &&
+        FcPatternGetCharSet(final_pattern, FC_CHARSET, 0, &charset) != FcResultMatch)
+    {
         LOG_ERR("%s: failed to get charset", face_file);
         goto err_pattern_destroy;
     }
+
+    assert(charset != NULL);
+    charset = FcCharSetCopy(charset);
 
     double dpi;
     if (FcPatternGetDouble(final_pattern, FC_DPI, 0, &dpi) != FcResultMatch)
@@ -433,6 +438,13 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
         FT_Set_Transform(ft_face, &m, NULL);
     }
 
+#if 0
+    {
+        char *foo = (char *)FcNameUnparse(final_pattern);
+        LOG_INFO("pattern = \"%s\"", foo);
+        free(foo);
+    }
+#endif
     font->name = strdup((char *)face_file);
     FcPatternDestroy(final_pattern);
 
@@ -1310,6 +1322,8 @@ fcft_destroy(struct fcft_font *_font)
         free(font->fc_loaded_fallbacks);
     }
 
+    if (font->charset != NULL)
+        FcCharSetDestroy(font->charset);
     if (font->fc_pattern != NULL)
         FcPatternDestroy(font->fc_pattern);
     if (font->fc_fonts != NULL)
