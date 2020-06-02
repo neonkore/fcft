@@ -17,6 +17,10 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* LCD RGB/BGR modes were reversed.
+
+
 ### Security
 
 
