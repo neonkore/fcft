@@ -497,7 +497,7 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
      */
     FT_UInt idx = FT_Get_Char_Index(font->face, L' ');
     if (idx != 0 &&
-        (ft_err = FT_Load_Glyph(font->face, idx, font->load_flags)) == 0)
+        (ft_err = FT_Load_Glyph(font->face, idx, font->load_flags | FT_LOAD_BITMAP_METRICS_ONLY)) == 0)
     {
         if (fc_embolden && font->face->glyph->format == FT_GLYPH_FORMAT_OUTLINE)
             FT_GlyphSlot_Embolden(font->face->glyph);
