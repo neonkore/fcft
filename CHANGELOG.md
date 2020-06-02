@@ -1,27 +1,21 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [2.1.1](#2-1-1)
 * [2.1.0](#2-1-0)
 * [2.0.0](#2-0-0)
 * [1.1.7](#1-1-7)
 
-## Unreleased
+## 2.1.1
 
-### Added
 ### Changed
 
 * Prefer user-provided `charset`. This can be used to e.g. limit a
   fallback font's usage to a custom Unicode point range.
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * LCD RGB/BGR modes were reversed.
-
-
-### Security
 
 
 ## 2.1.0
