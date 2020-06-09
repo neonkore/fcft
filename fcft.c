@@ -38,10 +38,6 @@ struct glyph_priv {
     bool valid;
 };
 
-/* Per-font glyph cache size */
-static const size_t glyph_cache_size = 512;
-typedef tll(struct glyph_priv) hash_entry_t;
-
 struct font_fallback {
     char *pattern;
     struct font_priv *font;
@@ -79,7 +75,11 @@ struct font_priv {
     int fc_idx;
     struct font_priv **fc_loaded_fallbacks; /* fc_fonts->nfont array */
 
-    hash_entry_t **glyph_cache;
+    struct {
+        struct glyph_priv **table;
+        size_t size;
+        size_t count;
+    } cache;
 };
 
 /* Global font cache */
@@ -466,13 +466,17 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
         font->fc_pattern = NULL;
         font->fc_fonts = NULL;
         font->fc_loaded_fallbacks = NULL;
-        font->glyph_cache = NULL;
+        font->cache.table = NULL;
+        font->cache.size = 0;
+        font->cache.count = 0;
     } else {
         font->fc_pattern = !is_fallback ? pattern : NULL;
         font->fc_fonts = !is_fallback ? fonts : NULL;
         font->fc_loaded_fallbacks = calloc(
             fonts->nfont, sizeof(font->fc_loaded_fallbacks[0]));
-        font->glyph_cache = calloc(glyph_cache_size, sizeof(font->glyph_cache[0]));
+        font->cache.size = 256;
+        font->cache.count = 0;
+        font->cache.table = calloc(font->cache.size, sizeof(font->cache.table[0]));
     }
 
     double max_x_advance = ft_face->size->metrics.max_advance / 64.;
@@ -899,12 +903,6 @@ fcft_size_adjust(const struct fcft_font *_font, double amount)
     return new_font != NULL ? &new_font->public : NULL;
 }
 
-static size_t
-hash_index(wchar_t wc)
-{
-    return wc % glyph_cache_size;
-}
-
 static bool
 glyph_for_wchar(const struct font_priv *font, wchar_t wc,
                 enum fcft_subpixel subpixel, struct glyph_priv *glyph)
@@ -918,7 +916,6 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
 
     if (!FcCharSetHasChar(font->charset, wc)) {
         /* No glyph in this font, try fallback fonts */
-
         tll_foreach(font->fallbacks, it) {
             if (it->item.font == NULL) {
                 it->item.font = from_name(it->item.pattern, true);
@@ -926,7 +923,9 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
                     continue;
             }
 
-            if (glyph_for_wchar(it->item.font, wc, subpixel, glyph)) {
+            if (FcCharSetHasChar(it->item.font->charset, wc) &&
+                glyph_for_wchar(it->item.font, wc, subpixel, glyph))
+            {
                 LOG_DBG("%C: used fallback: %s", wc, it->item.font->name);
                 return true;
             }
@@ -960,8 +959,8 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
 
             assert(font->fc_loaded_fallbacks[i] != NULL);
 
-            if (glyph_for_wchar(font->fc_loaded_fallbacks[i], wc,
-                                subpixel, glyph))
+            if (FcCharSetHasChar(font->fc_loaded_fallbacks[i]->charset, wc) &&
+                glyph_for_wchar(font->fc_loaded_fallbacks[i], wc, subpixel, glyph))
             {
                 LOG_DBG("%C: used fontconfig fallback: %s",
                         wc, font->fc_loaded_fallbacks[i]->name);
@@ -1054,7 +1053,7 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
         goto err;
     }
 
-    FT_Bitmap *bitmap = &font->face->glyph->bitmap;
+    const FT_Bitmap *bitmap = &font->face->glyph->bitmap;
     pixman_format_code_t pix_format;
     int width;
     int rows;
@@ -1117,9 +1116,13 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
         break;
 
     case FT_PIXEL_MODE_GRAY:
-        for (size_t r = 0; r < bitmap->rows; r++) {
-            for (size_t c = 0; c < bitmap->width; c++)
-                data[r * stride + c] = bitmap->buffer[r * bitmap->pitch + c];
+        if (stride == bitmap->pitch) {
+            memcpy(data, bitmap->buffer, rows * stride);
+        } else {
+            for (size_t r = 0; r < bitmap->rows; r++) {
+                for (size_t c = 0; c < bitmap->width; c++)
+                    data[r * stride + c] = bitmap->buffer[r * bitmap->pitch + c];
+            }
         }
         break;
 
@@ -1215,6 +1218,52 @@ err:
     return false;
 }
 
+static size_t
+hash_index_for_size(size_t size, wchar_t wc, enum fcft_subpixel subpixel)
+{
+    uint32_t v = (uint32_t)subpixel << 29 | wc;
+    return v & (size - 1);
+}
+
+static size_t
+hash_index(const struct font_priv *font, wchar_t wc, enum fcft_subpixel subpixel)
+{
+    return hash_index_for_size(font->cache.size, wc, subpixel);
+}
+
+static void
+cache_resize(struct font_priv *font)
+{
+    if (font->cache.count * 100 / font->cache.size < 75)
+        return;
+
+    size_t size = 2 * font->cache.size;
+    assert(__builtin_popcount(size) == 1);
+
+    struct glyph_priv **table = calloc(size, sizeof(table[0]));
+
+    for (size_t i = 0; i < font->cache.size; i++) {
+        struct glyph_priv *entry = font->cache.table[i];
+
+        if (entry == NULL)
+            continue;
+
+        size_t idx = hash_index_for_size(size, entry->public.wc, entry->subpixel);
+        while (table[idx] != NULL)
+            idx = hash_index_for_size(size, idx + 1, entry->subpixel);
+
+        assert(table[idx] == NULL);
+        table[idx] = entry;
+        font->cache.table[i] = NULL;
+    }
+
+    free(font->cache.table);
+
+    LOG_INFO("resized glyph cache from %zu to %zu", font->cache.size, size);
+    font->cache.table = table;
+    font->cache.size = size;
+}
+
 const struct fcft_glyph *
 fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
                      enum fcft_subpixel subpixel)
@@ -1222,36 +1271,43 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
     struct font_priv *font = (struct font_priv *)_font;
     mtx_lock(&font->lock);
 
-    assert(font->glyph_cache != NULL);
-    size_t hash_idx = hash_index(wc);
-    hash_entry_t *hash_entry = font->glyph_cache[hash_idx];
+    assert(font->cache.table != NULL);
 
-    if (hash_entry != NULL) {
-        tll_foreach(*hash_entry, it) {
-            if (it->item.public.wc == wc &&
-                it->item.subpixel == subpixel)
-            {
-                mtx_unlock(&font->lock);
-                return it->item.valid ? &it->item.public : NULL;
-            }
-        }
+    size_t hash_idx = hash_index(font, wc, subpixel);
+    struct glyph_priv *entry = font->cache.table[hash_idx];
+
+    while (entry != NULL && !(entry->public.wc == wc && entry->subpixel == subpixel)) {
+        hash_idx = hash_index(font, hash_idx + 1, subpixel);
+        entry = font->cache.table[hash_idx];
     }
 
-    struct glyph_priv glyph;
-    bool got_glyph = glyph_for_wchar(font, wc, subpixel, &glyph);
-
-    if (hash_entry == NULL) {
-        hash_entry = calloc(1, sizeof(*hash_entry));
-
-        assert(font->glyph_cache[hash_idx] == NULL);
-        font->glyph_cache[hash_idx] = hash_entry;
+    if (entry != NULL) {
+        assert(entry->public.wc == wc);
+        assert(entry->subpixel == subpixel);
+        mtx_unlock(&font->lock);
+        return entry->valid ? &entry->public : NULL;
     }
 
-    assert(hash_entry != NULL);
-    tll_push_back(*hash_entry, glyph);
+    cache_resize(font);
+    hash_idx = hash_index(font, wc, subpixel);
+    entry = font->cache.table[hash_idx];
+    while (entry != NULL) {
+        assert(!(entry->public.wc == wc && entry->subpixel == subpixel));
+        hash_idx = hash_index(font, hash_idx + 1, subpixel);
+        entry = font->cache.table[hash_idx];
+    }
+
+    struct glyph_priv *glyph = malloc(sizeof(*glyph));
+    bool got_glyph = glyph_for_wchar(font, wc, subpixel, glyph);
+
+    assert(entry == NULL);
+
+    assert(font->cache.table[hash_idx] == NULL);
+    font->cache.table[hash_idx] = glyph;
+    font->cache.count++;
 
     mtx_unlock(&font->lock);
-    return got_glyph ? &tll_back(*hash_entry).public : NULL;
+    return got_glyph ? &glyph->public : NULL;
 }
 
 void
@@ -1330,23 +1386,19 @@ fcft_destroy(struct fcft_font *_font)
         FcFontSetDestroy(font->fc_fonts);
 
 
-    for (size_t i = 0; i < glyph_cache_size && font->glyph_cache != NULL; i++) {
-        if (font->glyph_cache[i] == NULL)
+    for (size_t i = 0; i < font->cache.size && font->cache.table != NULL; i++) {
+        struct glyph_priv *entry = font->cache.table[i];
+
+        if (entry == NULL)
             continue;
 
-        tll_foreach(*font->glyph_cache[i], it) {
-            if (!it->item.valid)
-                continue;
-
-            void *image = pixman_image_get_data(it->item.public.pix);
-            pixman_image_unref(it->item.public.pix);
-            free(image);
-        }
-
-        tll_free(*font->glyph_cache[i]);
-        free(font->glyph_cache[i]);
+        void *image = pixman_image_get_data(entry->public.pix);
+        pixman_image_unref(entry->public.pix);
+        free(image);
+        free(entry);
     }
-    free(font->glyph_cache);
+
+    free(font->cache.table);
     free(font);
 }
 
