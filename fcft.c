@@ -923,7 +923,9 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
                     continue;
             }
 
-            if (glyph_for_wchar(it->item.font, wc, subpixel, glyph)) {
+            if (FcCharSetHasChar(it->item.font->charset, wc) &&
+                glyph_for_wchar(it->item.font, wc, subpixel, glyph))
+            {
                 LOG_DBG("%C: used fallback: %s", wc, it->item.font->name);
                 return true;
             }
@@ -957,8 +959,8 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
 
             assert(font->fc_loaded_fallbacks[i] != NULL);
 
-            if (glyph_for_wchar(font->fc_loaded_fallbacks[i], wc,
-                                subpixel, glyph))
+            if (FcCharSetHasChar(font->fc_loaded_fallbacks[i]->charset, wc) &&
+                glyph_for_wchar(font->fc_loaded_fallbacks[i], wc, subpixel, glyph))
             {
                 LOG_DBG("%C: used fontconfig fallback: %s",
                         wc, font->fc_loaded_fallbacks[i]->name);
