@@ -1051,7 +1051,7 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
         goto err;
     }
 
-    FT_Bitmap *bitmap = &font->face->glyph->bitmap;
+    const FT_Bitmap *bitmap = &font->face->glyph->bitmap;
     pixman_format_code_t pix_format;
     int width;
     int rows;
