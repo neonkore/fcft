@@ -1114,9 +1114,13 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
         break;
 
     case FT_PIXEL_MODE_GRAY:
-        for (size_t r = 0; r < bitmap->rows; r++) {
-            for (size_t c = 0; c < bitmap->width; c++)
-                data[r * stride + c] = bitmap->buffer[r * bitmap->pitch + c];
+        if (stride == bitmap->pitch) {
+            memcpy(data, bitmap->buffer, rows * stride);
+        } else {
+            for (size_t r = 0; r < bitmap->rows; r++) {
+                for (size_t c = 0; c < bitmap->width; c++)
+                    data[r * stride + c] = bitmap->buffer[r * bitmap->pitch + c];
+            }
         }
         break;
 
