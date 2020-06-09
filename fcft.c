@@ -474,7 +474,7 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int font_idx,
         font->fc_fonts = !is_fallback ? fonts : NULL;
         font->fc_loaded_fallbacks = calloc(
             fonts->nfont, sizeof(font->fc_loaded_fallbacks[0]));
-        font->cache.size = 256 - 1;
+        font->cache.size = 256;
         font->cache.count = 0;
         font->cache.table = calloc(font->cache.size, sizeof(font->cache.table[0]));
     }
@@ -916,7 +916,6 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
 
     if (!FcCharSetHasChar(font->charset, wc)) {
         /* No glyph in this font, try fallback fonts */
-
         tll_foreach(font->fallbacks, it) {
             if (it->item.font == NULL) {
                 it->item.font = from_name(it->item.pattern, true);
@@ -1216,7 +1215,7 @@ err:
 static size_t
 hash_index_for_size(size_t size, wchar_t wc)
 {
-    return wc % size;
+    return wc & (size - 1);
 }
 
 static size_t
