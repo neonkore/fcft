@@ -1219,15 +1219,16 @@ err:
 }
 
 static size_t
-hash_index_for_size(size_t size, wchar_t wc)
+hash_index_for_size(size_t size, wchar_t wc, enum fcft_subpixel subpixel)
 {
-    return wc & (size - 1);
+    uint32_t v = (uint32_t)subpixel << 29 | wc;
+    return v & (size - 1);
 }
 
 static size_t
-hash_index(const struct font_priv *font, wchar_t wc)
+hash_index(const struct font_priv *font, wchar_t wc, enum fcft_subpixel subpixel)
 {
-    return hash_index_for_size(font->cache.size, wc);
+    return hash_index_for_size(font->cache.size, wc, subpixel);
 }
 
 static void
@@ -1247,9 +1248,9 @@ cache_resize(struct font_priv *font)
         if (entry == NULL)
             continue;
 
-        size_t idx = hash_index_for_size(size, entry->public.wc);
+        size_t idx = hash_index_for_size(size, entry->public.wc, entry->subpixel);
         while (table[idx] != NULL)
-            idx = hash_index_for_size(size, idx + 1);
+            idx = hash_index_for_size(size, idx + 1, entry->subpixel);
 
         assert(table[idx] == NULL);
         table[idx] = entry;
@@ -1272,11 +1273,11 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
 
     assert(font->cache.table != NULL);
 
-    size_t hash_idx = hash_index(font, wc);
+    size_t hash_idx = hash_index(font, wc, subpixel);
     struct glyph_priv *entry = font->cache.table[hash_idx];
 
     while (entry != NULL && !(entry->public.wc == wc && entry->subpixel == subpixel)) {
-        hash_idx = hash_index(font, hash_idx + 1);
+        hash_idx = hash_index(font, hash_idx + 1, subpixel);
         entry = font->cache.table[hash_idx];
     }
 
@@ -1288,11 +1289,11 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
     }
 
     cache_resize(font);
-    hash_idx = hash_index(font, wc);
+    hash_idx = hash_index(font, wc, subpixel);
     entry = font->cache.table[hash_idx];
     while (entry != NULL) {
         assert(!(entry->public.wc == wc && entry->subpixel == subpixel));
-        hash_idx = hash_index(font, hash_idx + 1);
+        hash_idx = hash_index(font, hash_idx + 1, subpixel);
         entry = font->cache.table[hash_idx];
     }
 
