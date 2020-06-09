@@ -22,6 +22,9 @@
 
 * Prefer user-provided `charset`. This can be used to e.g. limit a
   fallback font's usage to a custom Unicode point range.
+* Glyph cache now resizes dynamically. This fixes a performance
+  problem when loading **a lot** of glyphs, as we ended up scanning
+  very long lists when looking up a glyph in the cache.
 
 
 ### Fixed
