@@ -1219,23 +1219,45 @@ err:
 }
 
 static size_t
-hash_index_for_size(size_t size, wchar_t wc, enum fcft_subpixel subpixel)
+hash_index_for_size(size_t size, size_t v)
 {
-    uint32_t v = (uint32_t)subpixel << 29 | wc;
-    return v & (size - 1);
+    return (v * 2654435761) & (size - 1);
 }
 
 static size_t
-hash_index(const struct font_priv *font, wchar_t wc, enum fcft_subpixel subpixel)
+hash_index(const struct font_priv *font, size_t v)
 {
-    return hash_index_for_size(font->cache.size, wc, subpixel);
+    return hash_index_for_size(font->cache.size, v);
 }
 
-static void
+static size_t
+hash_value_for_wc(wchar_t wc, enum fcft_subpixel subpixel)
+{
+    return subpixel << 29 | wc;
+}
+
+static struct glyph_priv **
+glyph_hash_lookup(struct font_priv *font, wchar_t wc,
+                  enum fcft_subpixel subpixel)
+{
+    size_t idx = hash_index(font, hash_value_for_wc(wc, subpixel));
+    struct glyph_priv **glyph = &font->cache.table[idx];
+
+    while (*glyph != NULL && !((*glyph)->public.wc == wc &&
+                               (*glyph)->subpixel == subpixel))
+    {
+        idx = (idx + 1) & (font->cache.size - 1);
+        glyph = &font->cache.table[idx];
+    }
+
+    return glyph;
+}
+
+static bool
 cache_resize(struct font_priv *font)
 {
     if (font->cache.count * 100 / font->cache.size < 75)
-        return;
+        return false;
 
     size_t size = 2 * font->cache.size;
     assert(__builtin_popcount(size) == 1);
@@ -1248,9 +1270,14 @@ cache_resize(struct font_priv *font)
         if (entry == NULL)
             continue;
 
-        size_t idx = hash_index_for_size(size, entry->public.wc, entry->subpixel);
-        while (table[idx] != NULL)
-            idx = hash_index_for_size(size, idx + 1, entry->subpixel);
+        size_t idx = hash_index_for_size(
+            size, hash_value_for_wc(entry->public.wc, entry->subpixel));
+
+        while (table[idx] != NULL) {
+            assert(table[idx]->public.wc != entry->public.wc);
+            assert(table[idx]->subpixel != entry->subpixel);
+            idx = (idx + 1) & (size - 1);
+        }
 
         assert(table[idx] == NULL);
         table[idx] = entry;
@@ -1259,9 +1286,10 @@ cache_resize(struct font_priv *font)
 
     free(font->cache.table);
 
-    LOG_INFO("resized glyph cache from %zu to %zu", font->cache.size, size);
+    LOG_DBG("resized glyph cache from %zu to %zu", font->cache.size, size);
     font->cache.table = table;
     font->cache.size = size;
+    return true;
 }
 
 const struct fcft_glyph *
@@ -1273,37 +1301,23 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
 
     assert(font->cache.table != NULL);
 
-    size_t hash_idx = hash_index(font, wc, subpixel);
-    struct glyph_priv *entry = font->cache.table[hash_idx];
+    struct glyph_priv **entry = glyph_hash_lookup(font, wc, subpixel);
 
-    while (entry != NULL && !(entry->public.wc == wc && entry->subpixel == subpixel)) {
-        hash_idx = hash_index(font, hash_idx + 1, subpixel);
-        entry = font->cache.table[hash_idx];
-    }
-
-    if (entry != NULL) {
-        assert(entry->public.wc == wc);
-        assert(entry->subpixel == subpixel);
+    if (*entry != NULL) {
+        assert((*entry)->public.wc == wc);
+        assert((*entry)->subpixel == subpixel);
         mtx_unlock(&font->lock);
-        return entry->valid ? &entry->public : NULL;
+        return (*entry)->valid ? &(*entry)->public : NULL;
     }
 
-    cache_resize(font);
-    hash_idx = hash_index(font, wc, subpixel);
-    entry = font->cache.table[hash_idx];
-    while (entry != NULL) {
-        assert(!(entry->public.wc == wc && entry->subpixel == subpixel));
-        hash_idx = hash_index(font, hash_idx + 1, subpixel);
-        entry = font->cache.table[hash_idx];
-    }
+    if (cache_resize(font))
+        entry = glyph_hash_lookup(font, wc, subpixel);
 
     struct glyph_priv *glyph = malloc(sizeof(*glyph));
     bool got_glyph = glyph_for_wchar(font, wc, subpixel, glyph);
 
-    assert(entry == NULL);
-
-    assert(font->cache.table[hash_idx] == NULL);
-    font->cache.table[hash_idx] = glyph;
+    assert(*entry == NULL);
+    *entry = glyph;
     font->cache.count++;
 
     mtx_unlock(&font->lock);
