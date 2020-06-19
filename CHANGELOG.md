@@ -1,8 +1,38 @@
 # Changelog
 
+* [Unreleased](#unreleased)
+* [2.1.1](#2-1-1)
 * [2.1.0](#2-1-0)
 * [2.0.0](#2-0-0)
 * [1.1.7](#1-1-7)
+
+## Unreleased
+
+### Added
+### Changed
+* Glyph cache now resizes dynamically. This fixes a performance
+  problem when loading **a lot** of glyphs, as we ended up scanning
+  very long lists when looking up a glyph in the cache.
+
+
+### Deprecated
+### Removed
+### Fixed
+### Security
+
+
+## 2.1.1
+
+### Changed
+
+* Prefer user-provided `charset`. This can be used to e.g. limit a
+  fallback font's usage to a custom Unicode point range.
+
+
+### Fixed
+
+* LCD RGB/BGR modes were reversed.
+
 
 ## 2.1.0
 

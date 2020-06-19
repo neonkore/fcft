@@ -1,8 +1,8 @@
 pkgname=fcft
-pkgver=2.1.0
+pkgver=2.1.1
 pkgrel=1
 pkgdesc="Simple font loading and glyph rasterization library"
-arch=('x86_64')
+arch=('x86_64' 'aarch64')
 url=https://codeberg.org/dnkl/fcft
 license=(mit)
 makedepends=('meson' 'ninja' 'tllist>=1.0.1' 'scdoc')
