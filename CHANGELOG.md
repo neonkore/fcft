@@ -14,6 +14,10 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Advance width and height of scaled bitmap fonts.
+
+
 ### Security
 
 
