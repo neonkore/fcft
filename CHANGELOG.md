@@ -1,10 +1,24 @@
 # Changelog
 
+* [Unreleased](#unreleased)
 * [2.1.2](#2-1-2)
 * [2.1.1](#2-1-1)
 * [2.1.0](#2-1-0)
 * [2.0.0](#2-0-0)
 * [1.1.7](#1-1-7)
+
+
+## Unreleased
+### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+
+* Advance width and height of scaled bitmap fonts.
+
+
+### Security
 
 
 ## 2.1.2

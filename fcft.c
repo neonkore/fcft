@@ -1201,8 +1201,8 @@ glyph_for_wchar(const struct font_priv *font, wchar_t wc,
             .x = font->face->glyph->bitmap_left * font->pixel_size_fixup,
             .y = font->face->glyph->bitmap_top * font->pixel_size_fixup,
             .advance = {
-                .x = ceil(font->face->glyph->advance.x / 64. * font->pixel_size_fixup),
-                .y = ceil(font->face->glyph->advance.y / 64. * font->pixel_size_fixup),
+                .x = font->face->glyph->advance.x / 64.,
+                .y = font->face->glyph->advance.y / 64.,
             },
             .width = width / (1. / font->pixel_size_fixup),
             .height = rows / (1. / font->pixel_size_fixup),
@@ -1274,8 +1274,8 @@ cache_resize(struct font_priv *font)
             size, hash_value_for_wc(entry->public.wc, entry->subpixel));
 
         while (table[idx] != NULL) {
-            assert(table[idx]->public.wc != entry->public.wc);
-            assert(table[idx]->subpixel != entry->subpixel);
+            assert(!(table[idx]->public.wc == entry->public.wc &&
+                     table[idx]->subpixel != entry->subpixel));
             idx = (idx + 1) & (size - 1);
         }
 
