@@ -45,6 +45,25 @@ struct font_fallback {
     struct font_priv *font;
 };
 
+struct font_instance {
+    FcCharSet *charset;
+
+    FT_Face face;
+    int load_flags;
+
+    bool antialias;
+    bool embolden;
+    int render_flags_normal;
+    int render_flags_subpixel;
+
+    FT_LcdFilter lcd_filter;
+
+    double pixel_size_fixup; /* Scale factor - should only be used with ARGB32 glyphs */
+    bool bgr;  /* True for FC_RGBA_BGR and FC_RGBA_VBGR */
+
+    bool is_fallback;
+};
+
 struct font_priv {
     struct fcft_font public;
 
@@ -53,24 +72,7 @@ struct font_priv {
 
     mtx_t lock;
 
-    struct {
-        FcCharSet *charset;
-
-        FT_Face face;
-        int load_flags;
-
-        bool antialias;
-        bool embolden;
-        int render_flags_normal;
-        int render_flags_subpixel;
-
-        FT_LcdFilter lcd_filter;
-
-        double pixel_size_fixup; /* Scale factor - should only be used with ARGB32 glyphs */
-        bool bgr;  /* True for FC_RGBA_BGR and FC_RGBA_VBGR */
-
-        bool is_fallback;
-    } f;
+    struct font_instance f;
 
     tll(struct font_fallback) fallbacks;
 
