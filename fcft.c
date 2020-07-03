@@ -11,6 +11,7 @@
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#include FT_MODULE_H
 #include FT_LCD_FILTER_H
 #include FT_TRUETYPE_TABLES_H
 #include FT_SYNTHESIS_H
@@ -28,6 +29,7 @@
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
+static FT_Error ft_lib_err;
 static FT_Library ft_lib;
 static mtx_t ft_lock;
 
@@ -93,11 +95,54 @@ struct fcft_font_cache_entry {
 static tll(struct fcft_font_cache_entry) font_cache = tll_init();
 static mtx_t font_cache_lock;
 
+static const char *
+ft_error_string(FT_Error err)
+{
+    #undef FTERRORS_H_
+    #undef __FTERRORS_H__
+    #define FT_ERRORDEF( e, v, s )  case e: return s;
+    #define FT_ERROR_START_LIST     switch (err) {
+    #define FT_ERROR_END_LIST       }
+    #include FT_ERRORS_H
+    return "unknown error";
+}
+
+static void *
+ft_alloc(FT_Memory ft_mem, long size)
+{
+    return malloc(size);
+}
+
+static void
+ft_free(FT_Memory ft_mem, void *block)
+{
+    free(block);
+}
+
+static void *
+ft_realloc(FT_Memory ft_mem, long cur_size, long new_size, void *block)
+{
+    return realloc(block, new_size);
+}
+
 static void __attribute__((constructor))
 init(void)
 {
     FcInit();
-    FT_Init_FreeType(&ft_lib);
+
+    static struct FT_MemoryRec_ ft_mem = {
+        .user = NULL,
+        .alloc = &ft_alloc,
+        .free = &ft_free,
+        .realloc = &ft_realloc,
+    };
+
+    ft_lib_err = FT_New_Library(&ft_mem, &ft_lib);
+    if (ft_lib_err == FT_Err_Ok) {
+        FT_Add_Default_Modules(ft_lib);
+        FT_Set_Default_Properties(ft_lib);
+    }
+
     mtx_init(&ft_lock, mtx_plain);
     mtx_init(&font_cache_lock, mtx_plain);
 
@@ -111,7 +156,10 @@ fini(void)
 
     mtx_destroy(&font_cache_lock);
     mtx_destroy(&ft_lock);
-    FT_Done_FreeType(ft_lib);
+
+    if (ft_lib_err == FT_Err_Ok)
+        FT_Done_Library(ft_lib);
+
     FcFini();
 }
 
@@ -145,18 +193,6 @@ log_version_information(void)
         LOG_INFO("freetype: %d.%d.%d", major, minor, patch);
     }
 
-}
-
-static const char *
-ft_error_string(FT_Error err)
-{
-    #undef FTERRORS_H_
-    #undef __FTERRORS_H__
-    #define FT_ERRORDEF( e, v, s )  case e: return s;
-    #define FT_ERROR_START_LIST     switch (err) {
-    #define FT_ERROR_END_LIST       }
-    #include FT_ERRORS_H
-    return "unknown error";
 }
 
 static void
@@ -619,8 +655,13 @@ fcft_from_name(size_t count, const char *names[static count],
                const char *attributes)
 {
     log_version_information();
+    if (ft_lib_err != FT_Err_Ok) {
+        LOG_ERR("failed to initialize FreeType: %s", ft_error_string(ft_lib_err));
+        return NULL;
+    }
+
     if (count == 0)
-        return false;
+        return NULL;
 
     uint64_t hash = font_hash(count, names, attributes);
     struct fcft_font_cache_entry *cache_entry = NULL;

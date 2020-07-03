@@ -11,6 +11,10 @@
 ## Unreleased
 ### Added
 ### Changed
+
+* Use `FT_New_Library()` instead of `FT_Init_Freetype()`
+
+
 ### Deprecated
 ### Removed
 ### Fixed
