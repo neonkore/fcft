@@ -11,6 +11,11 @@
 ## Unreleased
 ### Added
 ### Changed
+
+* Internal representation of the primary and fallback fonts.
+* Do not load a fallback font if it does not contain the requested glyph.
+
+
 ### Deprecated
 
 * `fcft_size_adjust()`
