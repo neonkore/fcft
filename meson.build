@@ -77,9 +77,16 @@ unicode_data = custom_target(
   output: 'unicode-compose-table.h',
   command: [generate_unicode_precompose_sh, '@INPUT@', '@OUTPUT@'])
 
+generate_version_sh = files('generate-version.sh')
+version = custom_target(
+  'generate_version',
+  build_always_stale: true,
+  output: 'version.h',
+  command: [generate_version_sh, meson.project_version(), '@CURRENT_SOURCE_DIR@', '@OUTPUT@'])
+
 fcft_lib = build_target(
   'fcft', 'fcft.c', 'fcft/fcft.h', 'fcft/stride.h', 'log.c', 'log.h',
-  unicode_data,
+  unicode_data, version,
   target_type: meson.is_subproject() ? 'static_library' : 'library',
   version: '.'.join(so_version),
   dependencies: [math, threads, fontconfig, freetype, pixman, tllist, stdthreads],

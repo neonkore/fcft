@@ -25,6 +25,7 @@
 #include "fcft/stride.h"
 
 #include "unicode-compose-table.h"
+#include "version.h"
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
@@ -143,6 +144,8 @@ log_version_information(void)
     }
     has_already_logged = true;
     mtx_unlock(&font_cache_lock);
+
+    LOG_INFO("fcft: %s", FCFT_VERSION);
 
     {
         int raw_version = FcGetVersion();
