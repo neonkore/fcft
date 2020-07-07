@@ -40,7 +40,7 @@ struct glyph_priv {
     bool valid;
 };
 
-struct font_instance {
+struct instance {
     char *path;
     FT_Face face;
     int load_flags;
@@ -61,7 +61,7 @@ struct font_instance {
 struct fallback {
     FcPattern *pattern;
     FcCharSet *charset;
-    struct font_instance *font;
+    struct instance *font;
 
     /* User-requested size(s) - i.e. sizes from *base* pattern */
     double req_pt_size;
@@ -164,7 +164,7 @@ log_version_information(void)
 }
 
 static void
-instance_destroy(struct font_instance *inst)
+instance_destroy(struct instance *inst)
 {
     if (inst == NULL)
         return;
@@ -292,7 +292,7 @@ pattern_from_font_set(FcPattern *base_pattern, FcFontSet *set, size_t idx)
 
 static bool
 instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
-                    struct font_instance *font)
+                    struct instance *font)
 {
     FcChar8 *face_file = NULL;
     if (FcPatternGetString(pattern, FC_FT_FACE, 0, &face_file) != FcResultMatch &&
@@ -688,7 +688,7 @@ fcft_from_name(size_t count, const char *names[static count],
                 break;
             }
 
-            struct font_instance *primary = malloc(sizeof(*primary));
+            struct instance *primary = malloc(sizeof(*primary));
             if (!instantiate_pattern(pattern, req_pt_size, req_px_size, primary)) {
                 free(primary);
                 mtx_destroy(&lock);
@@ -846,7 +846,7 @@ fcft_size_adjust(const struct fcft_font *_font, double amount)
     assert(tll_length(new->fallbacks) > 0);
     struct fallback *primary = &tll_front(new->fallbacks);
 
-    struct font_instance *inst = malloc(sizeof(*inst));
+    struct instance *inst = malloc(sizeof(*inst));
     if (!instantiate_pattern(
             primary->pattern, primary->req_pt_size, primary->req_px_size, inst))
     {
@@ -865,7 +865,7 @@ err:
 }
 
 static bool
-glyph_for_wchar(const struct font_instance *inst, wchar_t wc,
+glyph_for_wchar(const struct instance *inst, wchar_t wc,
                 enum fcft_subpixel subpixel, struct glyph_priv *glyph)
 {
     glyph->public.wc = wc;
@@ -1225,7 +1225,7 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
             continue;
 
         if (it->item.font == NULL) {
-            struct font_instance *inst = malloc(sizeof(*inst));
+            struct instance *inst = malloc(sizeof(*inst));
             if (!instantiate_pattern(
                     it->item.pattern,
                     it->item.req_pt_size, it->item.req_px_size,
@@ -1253,7 +1253,7 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
          * No font claimed this glyph - use the primary font anyway.
          */
         assert(tll_length(font->fallbacks) > 0);
-        struct font_instance *inst = tll_front(font->fallbacks).font;
+        struct instance *inst = tll_front(font->fallbacks).font;
 
         assert(inst != NULL);
         got_glyph = glyph_for_wchar(inst, wc, subpixel, glyph);
@@ -1344,7 +1344,7 @@ fcft_kerning(struct fcft_font *_font, wchar_t left, wchar_t right,
         *y = 0;
 
     assert(tll_length(font->fallbacks) > 0);
-    const struct font_instance *primary = tll_front(font->fallbacks).font;
+    const struct instance *primary = tll_front(font->fallbacks).font;
 
     if (!FT_HAS_KERNING(primary->face))
         return false;
