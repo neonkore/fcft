@@ -40,6 +40,8 @@ START_TEST(test_glyph_rasterize)
 }
 END_TEST
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 START_TEST(test_size_adjust)
 {
     struct fcft_font *larger = fcft_size_adjust(font, 50.0);
@@ -49,6 +51,7 @@ START_TEST(test_size_adjust)
     fcft_destroy(larger);
 }
 END_TEST
+#pragma GCC diagnostic pop
 
 START_TEST(test_precompose)
 {
