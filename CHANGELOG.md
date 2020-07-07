@@ -12,6 +12,10 @@
 ### Added
 ### Changed
 ### Deprecated
+
+* `fcft_size_adjust()`
+
+
 ### Removed
 ### Fixed
 ### Security

@@ -73,7 +73,7 @@ struct fcft_font *fcft_clone(const struct fcft_font *font);
 void fcft_destroy(struct fcft_font *font);
 
 /* Returns a *new* font instance */
-struct fcft_font *fcft_size_adjust(const struct fcft_font *font, double amount);
+struct fcft_font *fcft_size_adjust(const struct fcft_font *font, double amount) __attribute__((deprecated));
 
 /* Rasterize 'wc' using 'font'. Use the defined subpixel mode *if*
  * antialiasing is enabled for this font */
