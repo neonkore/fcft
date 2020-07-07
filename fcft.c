@@ -114,42 +114,11 @@ ft_error_string(FT_Error err)
     return "unknown error";
 }
 
-static void *
-ft_alloc(FT_Memory ft_mem, long size)
-{
-    return malloc(size);
-}
-
-static void
-ft_free(FT_Memory ft_mem, void *block)
-{
-    free(block);
-}
-
-static void *
-ft_realloc(FT_Memory ft_mem, long cur_size, long new_size, void *block)
-{
-    return realloc(block, new_size);
-}
-
 static void __attribute__((constructor))
 init(void)
 {
     FcInit();
-
-    static struct FT_MemoryRec_ ft_mem = {
-        .user = NULL,
-        .alloc = &ft_alloc,
-        .free = &ft_free,
-        .realloc = &ft_realloc,
-    };
-
-    ft_lib_err = FT_New_Library(&ft_mem, &ft_lib);
-    if (ft_lib_err == FT_Err_Ok) {
-        FT_Add_Default_Modules(ft_lib);
-        FT_Set_Default_Properties(ft_lib);
-    }
-
+    ft_lib_err = FT_Init_FreeType(&ft_lib);
     mtx_init(&ft_lock, mtx_plain);
     mtx_init(&font_cache_lock, mtx_plain);
 
@@ -165,7 +134,7 @@ fini(void)
     mtx_destroy(&ft_lock);
 
     if (ft_lib_err == FT_Err_Ok)
-        FT_Done_Library(ft_lib);
+        FT_Done_FreeType(ft_lib);
 
     FcFini();
 }
