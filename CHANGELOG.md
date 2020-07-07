@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [2.2.0](#2-2-0)
 * [2.1.3](#2-1-3)
 * [2.1.2](#2-1-2)
 * [2.1.1](#2-1-1)
@@ -8,8 +8,8 @@
 * [2.0.0](#2-0-0)
 * [1.1.7](#1-1-7)
 
-## Unreleased
-### Added
+## 2.2.0
+
 ### Changed
 
 * Internal representation of the primary and fallback fonts.
@@ -19,11 +19,6 @@
 ### Deprecated
 
 * `fcft_size_adjust()`
-
-
-### Removed
-### Fixed
-### Security
 
 
 ## 2.1.3
