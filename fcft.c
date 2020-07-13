@@ -1077,6 +1077,9 @@ glyph_for_wchar(const struct instance *inst, wchar_t wc,
         bitmap->pixel_mode == FT_PIXEL_MODE_LCD ||
         bitmap->pixel_mode == FT_PIXEL_MODE_LCD_V);
 
+    int x = inst->face->glyph->bitmap_left;
+    int y = inst->face->glyph->bitmap_top;
+
     if (inst->pixel_size_fixup != 1.) {
         struct pixman_f_transform scale;
         pixman_f_transform_init_scale(
@@ -1089,6 +1092,42 @@ glyph_for_wchar(const struct instance *inst, wchar_t wc,
         pixman_image_set_transform(pix, &_scale);
 
         pixman_image_set_filter(pix, PIXMAN_FILTER_BEST, NULL, 0);
+
+        int scaled_width = width / (1. / inst->pixel_size_fixup);
+        int scaled_rows = rows / (1. / inst->pixel_size_fixup);
+        int scaled_stride = stride_for_format_and_width(pix_format, scaled_width);
+
+        if (pix_format == PIXMAN_a8r8g8b8) {
+            uint8_t *scaled_data = malloc(scaled_rows * scaled_stride);
+
+            pixman_image_t *scaled_pix = pixman_image_create_bits_no_clear(
+                pix_format, scaled_width, scaled_rows,
+                (uint32_t *)scaled_data, scaled_stride);
+
+            if (scaled_pix == NULL) {
+                pixman_image_unref(pix);
+                free(data);
+                free(scaled_data);
+                goto err;
+            }
+
+            pixman_image_composite32(
+                PIXMAN_OP_SRC, pix, NULL, scaled_pix, 0, 0, 0, 0,
+                0, 0, scaled_width, scaled_rows);
+
+            pixman_image_unref(pix);
+            free(data);
+
+            data = scaled_data;
+            pix = scaled_pix;
+        }
+
+        rows = scaled_rows;
+        width = scaled_width;
+        stride = scaled_stride;
+
+        x *= inst->pixel_size_fixup;
+        y *= inst->pixel_size_fixup;
     }
 
     int cols = wcwidth(wc);
@@ -1100,14 +1139,14 @@ glyph_for_wchar(const struct instance *inst, wchar_t wc,
             .wc = wc,
             .cols = cols,
             .pix = pix,
-            .x = inst->face->glyph->bitmap_left * inst->pixel_size_fixup,
-            .y = inst->face->glyph->bitmap_top * inst->pixel_size_fixup,
+            .x = x,
+            .y = y,
             .advance = {
                 .x = inst->face->glyph->advance.x / 64.,
                 .y = inst->face->glyph->advance.y / 64.,
             },
-            .width = width / (1. / inst->pixel_size_fixup),
-            .height = rows / (1. / inst->pixel_size_fixup),
+            .width = width,
+            .height = rows,
         },
         .subpixel = subpixel,
         .valid = true,

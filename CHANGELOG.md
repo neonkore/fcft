@@ -1,5 +1,6 @@
 # Changelog
 
+* [2.2.1](#2-2-1)
 * [2.2.0](#2-2-0)
 * [2.1.3](#2-1-3)
 * [2.1.2](#2-1-2)
@@ -7,6 +8,17 @@
 * [2.1.0](#2-1-0)
 * [2.0.0](#2-0-0)
 * [1.1.7](#1-1-7)
+
+## 2.2.1
+
+### Changed
+
+* Color bitmap glyphs with a pixel-size fixup factor other than 1.0
+  are now pre-scaled. Previously, fcft would only set a pixman scale
+  transform on the glyph, causing actual scaling to occur **every**
+  time the glyph was blended. This improves the performance when
+  rendering color emojis.
+
 
 ## 2.2.0
 
