@@ -13,6 +13,14 @@
 ## Unreleased
 ### Added
 ### Changed
+
+* Color bitmap glyphs with a pixel-size fixup factor other than 1.0
+  are now pre-scaled. Previously, fcft would only set a pixman scale
+  transform on the glyph, causing actual scaling to occur **every**
+  time the glyph was blended. This improves the performance when
+  rendering color emojis.
+
+
 ### Deprecated
 ### Removed
 ### Fixed
