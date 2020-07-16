@@ -632,7 +632,7 @@ fcft_from_name(size_t count, const char *names[static count],
         LOG_ERR("%s: failed to instantiate font cache condition variable", names[0]);
         tll_pop_back(font_cache);
         mtx_unlock(&font_cache_lock);
-        return false;
+        return NULL;
     }
     mtx_unlock(&font_cache_lock);
 
