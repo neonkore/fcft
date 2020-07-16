@@ -1388,19 +1388,21 @@ fcft_kerning(struct fcft_font *_font, wchar_t left, wchar_t right,
     if (y != NULL)
         *y = 0;
 
+    mtx_lock(&font->lock);
+
     assert(tll_length(font->fallbacks) > 0);
     const struct instance *primary = tll_front(font->fallbacks).font;
 
     if (!FT_HAS_KERNING(primary->face))
-        return false;
+        goto err;
 
     FT_UInt left_idx = FT_Get_Char_Index(primary->face, left);
     if (left_idx == 0)
-        return false;
+        goto err;
 
     FT_UInt right_idx = FT_Get_Char_Index(primary->face, right);
     if (right_idx == 0)
-        return false;
+        goto err;
 
     FT_Vector kerning;
     FT_Error err = FT_Get_Kerning(
@@ -1409,7 +1411,7 @@ fcft_kerning(struct fcft_font *_font, wchar_t left, wchar_t right,
     if (err != 0) {
         LOG_WARN("%s: failed to get kerning for %C -> %C: %s",
                  primary->path, left, right, ft_error_string(err));
-        return false;
+        goto err;
     }
 
     if (x != NULL)
@@ -1419,7 +1421,13 @@ fcft_kerning(struct fcft_font *_font, wchar_t left, wchar_t right,
 
     LOG_DBG("%s: kerning: %C -> %C: x=%ld 26.6, y=%ld 26.6",
             primary->path, left, right, kerning.x, kerning.y);
+
+    mtx_unlock(&font->lock);
     return true;
+
+err:
+    mtx_unlock(&font->lock);
+    return false;
 }
 
 wchar_t

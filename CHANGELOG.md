@@ -17,6 +17,10 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* `fcft_kerning()` was not threadsafe
+
+
 ### Security
 
 
