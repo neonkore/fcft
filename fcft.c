@@ -1248,10 +1248,12 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
     struct glyph_priv **entry = glyph_hash_lookup(font, wc, subpixel);
 
     if (*entry != NULL) {
-        assert((*entry)->public.wc == wc);
-        assert((*entry)->subpixel == subpixel);
+        const struct glyph_priv *glyph = *entry;
         mtx_unlock(&font->lock);
-        return (*entry)->valid ? &(*entry)->public : NULL;
+
+        assert(glyph->public.wc == wc);
+        assert(glyph->subpixel == subpixel);
+        return glyph->valid ? &glyph->public : NULL;
     }
 
     if (cache_resize(font))

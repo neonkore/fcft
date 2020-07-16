@@ -19,6 +19,8 @@
 ### Fixed
 
 * `fcft_kerning()` was not threadsafe
+* Rare crash in `fcft_glyph_rasterize()` caused by a race between a
+  successful glyph cache lookup and a glyph cache resize.
 
 
 ### Security
