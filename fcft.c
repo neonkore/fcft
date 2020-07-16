@@ -1000,6 +1000,7 @@ glyph_for_wchar(const struct instance *inst, wchar_t wc,
     int stride = stride_for_format_and_width(pix_format, width);
     assert(stride >= bitmap->pitch);
 
+    assert(bitmap->buffer != NULL || rows * stride == 0);
     uint8_t *data = malloc(rows * stride);
 
     /* Convert FT bitmap to pixman image */
@@ -1019,7 +1020,8 @@ glyph_for_wchar(const struct instance *inst, wchar_t wc,
 
     case FT_PIXEL_MODE_GRAY:
         if (stride == bitmap->pitch) {
-            memcpy(data, bitmap->buffer, rows * stride);
+            if (bitmap->buffer != NULL)
+                memcpy(data, bitmap->buffer, rows * stride);
         } else {
             for (size_t r = 0; r < bitmap->rows; r++) {
                 for (size_t c = 0; c < bitmap->width; c++)
@@ -1030,7 +1032,8 @@ glyph_for_wchar(const struct instance *inst, wchar_t wc,
 
     case FT_PIXEL_MODE_BGRA:
         assert(stride == bitmap->pitch);
-        memcpy(data, bitmap->buffer, bitmap->rows * bitmap->pitch);
+        if (bitmap->buffer != NULL)
+            memcpy(data, bitmap->buffer, bitmap->rows * bitmap->pitch);
         break;
 
     case FT_PIXEL_MODE_LCD:
