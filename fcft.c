@@ -632,7 +632,7 @@ fcft_from_name(size_t count, const char *names[static count],
         LOG_ERR("%s: failed to instantiate font cache condition variable", names[0]);
         tll_pop_back(font_cache);
         mtx_unlock(&font_cache_lock);
-        return false;
+        return NULL;
     }
     mtx_unlock(&font_cache_lock);
 
@@ -1000,6 +1000,7 @@ glyph_for_wchar(const struct instance *inst, wchar_t wc,
     int stride = stride_for_format_and_width(pix_format, width);
     assert(stride >= bitmap->pitch);
 
+    assert(bitmap->buffer != NULL || rows * stride == 0);
     uint8_t *data = malloc(rows * stride);
 
     /* Convert FT bitmap to pixman image */
@@ -1019,7 +1020,8 @@ glyph_for_wchar(const struct instance *inst, wchar_t wc,
 
     case FT_PIXEL_MODE_GRAY:
         if (stride == bitmap->pitch) {
-            memcpy(data, bitmap->buffer, rows * stride);
+            if (bitmap->buffer != NULL)
+                memcpy(data, bitmap->buffer, rows * stride);
         } else {
             for (size_t r = 0; r < bitmap->rows; r++) {
                 for (size_t c = 0; c < bitmap->width; c++)
@@ -1030,7 +1032,8 @@ glyph_for_wchar(const struct instance *inst, wchar_t wc,
 
     case FT_PIXEL_MODE_BGRA:
         assert(stride == bitmap->pitch);
-        memcpy(data, bitmap->buffer, bitmap->rows * bitmap->pitch);
+        if (bitmap->buffer != NULL)
+            memcpy(data, bitmap->buffer, bitmap->rows * bitmap->pitch);
         break;
 
     case FT_PIXEL_MODE_LCD:
@@ -1245,10 +1248,12 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
     struct glyph_priv **entry = glyph_hash_lookup(font, wc, subpixel);
 
     if (*entry != NULL) {
-        assert((*entry)->public.wc == wc);
-        assert((*entry)->subpixel == subpixel);
+        const struct glyph_priv *glyph = *entry;
         mtx_unlock(&font->lock);
-        return (*entry)->valid ? &(*entry)->public : NULL;
+
+        assert(glyph->public.wc == wc);
+        assert(glyph->subpixel == subpixel);
+        return glyph->valid ? &glyph->public : NULL;
     }
 
     if (cache_resize(font))
@@ -1385,19 +1390,21 @@ fcft_kerning(struct fcft_font *_font, wchar_t left, wchar_t right,
     if (y != NULL)
         *y = 0;
 
+    mtx_lock(&font->lock);
+
     assert(tll_length(font->fallbacks) > 0);
     const struct instance *primary = tll_front(font->fallbacks).font;
 
     if (!FT_HAS_KERNING(primary->face))
-        return false;
+        goto err;
 
     FT_UInt left_idx = FT_Get_Char_Index(primary->face, left);
     if (left_idx == 0)
-        return false;
+        goto err;
 
     FT_UInt right_idx = FT_Get_Char_Index(primary->face, right);
     if (right_idx == 0)
-        return false;
+        goto err;
 
     FT_Vector kerning;
     FT_Error err = FT_Get_Kerning(
@@ -1406,7 +1413,7 @@ fcft_kerning(struct fcft_font *_font, wchar_t left, wchar_t right,
     if (err != 0) {
         LOG_WARN("%s: failed to get kerning for %C -> %C: %s",
                  primary->path, left, right, ft_error_string(err));
-        return false;
+        goto err;
     }
 
     if (x != NULL)
@@ -1416,7 +1423,13 @@ fcft_kerning(struct fcft_font *_font, wchar_t left, wchar_t right,
 
     LOG_DBG("%s: kerning: %C -> %C: x=%ld 26.6, y=%ld 26.6",
             primary->path, left, right, kerning.x, kerning.y);
+
+    mtx_unlock(&font->lock);
     return true;
+
+err:
+    mtx_unlock(&font->lock);
+    return false;
 }
 
 wchar_t
