@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [2.2.2](#2-2-2)
 * [2.2.1](#2-2-1)
 * [2.2.0](#2-2-0)
 * [2.1.3](#2-1-3)
@@ -11,19 +11,13 @@
 * [1.1.7](#1-1-7)
 
 
-## Unreleased
-### Added
-### Changed
-### Deprecated
-### Removed
+## 2.2.2
+
 ### Fixed
 
 * `fcft_kerning()` was not threadsafe
 * Rare crash in `fcft_glyph_rasterize()` caused by a race between a
   successful glyph cache lookup and a glyph cache resize.
-
-
-### Security
 
 
 ## 2.2.1
