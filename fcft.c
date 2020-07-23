@@ -1219,7 +1219,7 @@ cache_resize(struct font_priv *font)
 
         while (table[idx] != NULL) {
             assert(!(table[idx]->public.wc == entry->public.wc &&
-                     table[idx]->subpixel != entry->subpixel));
+                     table[idx]->subpixel == entry->subpixel));
             idx = (idx + 1) & (size - 1);
         }
 
