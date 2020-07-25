@@ -2,6 +2,7 @@ pkgname=fcft
 pkgver=2.2.2
 pkgrel=1
 pkgdesc="Simple font loading and glyph rasterization library"
+changelog=CHANGELOG.md
 arch=('x86_64' 'aarch64')
 url=https://codeberg.org/dnkl/fcft
 license=(mit)
