@@ -110,5 +110,9 @@ if not meson.is_subproject()
     fcft_lib,
     description : 'Simple font loading and glyph rasterization library')
 
+  install_data(
+    'LICENSE', 'README.md', 'CHANGELOG.md',
+    install_dir: join_paths(get_option('datadir'), 'doc', 'fcft'))
+
   subdir('doc')
 endif
