@@ -14,6 +14,10 @@
 
 ## Unreleased
 ### Added
+
+* Missing [LICENSE](LICENSE) file
+
+
 ### Changed
 ### Deprecated
 ### Removed
