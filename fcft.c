@@ -532,7 +532,7 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
             font->metrics.height, font->metrics.ascent, font->metrics.descent,
             font->metrics.max_advance.x, font->metrics.space_advance.x);
 #else
-    LOG_INFO("%s: size=%.2fpt/%dpx, dpi=%d", font->path, size, (int)pixel_size, (int)dpi);
+    LOG_INFO("%s: size=%.2fpt/%dpx, dpi=%.2f", font->path, size, (int)pixel_size, dpi);
 #endif
 
     return true;
