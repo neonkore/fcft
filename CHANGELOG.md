@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [2.2.3](#2-2-3)
 * [2.2.2](#2-2-2)
 * [2.2.1](#2-2-1)
 * [2.2.0](#2-2-0)
@@ -12,7 +12,7 @@
 * [1.1.7](#1-1-7)
 
 
-## Unreleased
+## 2.3.2
 ### Added
 
 * Missing [LICENSE](LICENSE) file
@@ -21,11 +21,9 @@
   `${datadir}/doc/fcft`.
 
 
-### Changed
-### Deprecated
-### Removed
 ### Fixed
-### Security
+
+* Assertion in debug builds when resizing the glyph cache
 
 
 ## 2.2.2
