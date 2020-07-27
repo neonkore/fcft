@@ -1,5 +1,7 @@
 # Changelog
 
+* [Unreleased](#unreleased)
+* [2.2.2](#2-2-2)
 * [2.2.1](#2-2-1)
 * [2.2.0](#2-2-0)
 * [2.1.3](#2-1-3)
@@ -8,6 +10,32 @@
 * [2.1.0](#2-1-0)
 * [2.0.0](#2-0-0)
 * [1.1.7](#1-1-7)
+
+
+## Unreleased
+### Added
+
+* Missing [LICENSE](LICENSE) file
+* [LICENSE](LICENSE), [README.md](README.md) and
+  [CHANGELOG.md](CHANGELOG.md) are now installed to
+  `${datadir}/doc/fcft`.
+
+
+### Changed
+### Deprecated
+### Removed
+### Fixed
+### Security
+
+
+## 2.2.2
+
+### Fixed
+
+* `fcft_kerning()` was not threadsafe
+* Rare crash in `fcft_glyph_rasterize()` caused by a race between a
+  successful glyph cache lookup and a glyph cache resize.
+
 
 ## 2.2.1
 
