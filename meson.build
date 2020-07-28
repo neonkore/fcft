@@ -73,7 +73,7 @@ tllist = dependency('tllist', version: '>=1.0.1', fallback: 'tllist')
 generate_unicode_precompose_sh = files('generate-unicode-precompose.sh')
 unicode_data = custom_target(
   'unicode-data',
-  input: 'UnicodeData.txt',
+  input: 'unicode/UnicodeData.txt',
   output: 'unicode-compose-table.h',
   command: [generate_unicode_precompose_sh, '@INPUT@', '@OUTPUT@'])
 
