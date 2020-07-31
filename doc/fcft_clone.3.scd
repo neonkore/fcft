@@ -1,4 +1,4 @@
-fcft_clone(3) "2.2.3" "fcft"
+fcft_clone(3) "2.2.4" "fcft"
 
 # NAME
 
