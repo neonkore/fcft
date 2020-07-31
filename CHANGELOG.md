@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [2.2.4](#2-2-4)
 * [2.2.3](#2-2-3)
 * [2.2.2](#2-2-2)
 * [2.2.1](#2-2-1)
@@ -13,20 +13,14 @@
 * [1.1.7](#1-1-7)
 
 
-## Unreleased
+## 2.2.4
+
 ### Added
 
 * Unicode license file, for `UnicodeData.txt`
 
 
-### Changed
-### Deprecated
-### Removed
-### Fixed
-### Security
-
-
-## 2.3.2
+## 2.2.3
 ### Added
 
 * Missing [LICENSE](LICENSE) file
