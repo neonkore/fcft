@@ -89,3 +89,11 @@ library first, and fallback to a subproject:
 ```meson
 fcft = dependency('fcft', version: '>=0.4.0', fallback: 'fcft')
 ```
+
+
+## License
+
+fcft is released under the [MIT license](LICENSE).
+
+fcft uses Unicode data files released under the [Unicode, INC. License
+Agreement](https://www.unicode.org/license.html).
