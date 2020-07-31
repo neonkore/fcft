@@ -1,4 +1,4 @@
-fcft_glyph_rasterize(3) "2.2.3" "fcft"
+fcft_glyph_rasterize(3) "2.2.4" "fcft"
 
 # NAME
 
