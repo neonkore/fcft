@@ -15,6 +15,10 @@
 
 ## Unreleased
 ### Added
+
+* Unicode license file, for `UnicodeData.txt`
+
+
 ### Changed
 ### Deprecated
 ### Removed
