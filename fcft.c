@@ -9,6 +9,8 @@
 #include <threads.h>
 #include <locale.h>
 
+#include <pthread.h>
+
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include FT_MODULE_H
@@ -74,6 +76,7 @@ struct font_priv {
     struct fcft_font public;
 
     mtx_t lock;
+    pthread_rwlock_t cache_lock;
     struct {
         struct glyph_priv **table;
         size_t size;
@@ -681,20 +684,36 @@ fcft_from_name(size_t count, const char *names[static count],
         if (first) {
             first = false;
 
+            bool lock_failed = true;
+            bool cache_lock_failed = true;
+            bool pattern_failed = true;
+
             mtx_t lock;
-            if (mtx_init(&lock, mtx_plain) != thrd_success) {
+            if (mtx_init(&lock, mtx_plain) != thrd_success)
                 LOG_WARN("%s: failed to instantiate mutex", name);
-                FcCharSetDestroy(charset);
-                FcPatternDestroy(pattern);
-                FcPatternDestroy(base_pattern);
-                FcFontSetDestroy(set);
-                break;
-            }
+            else
+                lock_failed = false;
+
+            pthread_rwlock_t cache_lock;
+            if (pthread_rwlock_init(&cache_lock, NULL) != 0)
+                LOG_WARN("%s: failed to instantiate rwlock", name);
+            else
+                cache_lock_failed = false;
 
             struct instance *primary = malloc(sizeof(*primary));
-            if (!instantiate_pattern(pattern, req_pt_size, req_px_size, primary)) {
-                free(primary);
-                mtx_destroy(&lock);
+            if (!instantiate_pattern(pattern, req_pt_size, req_px_size, primary))
+                ;
+            else
+                pattern_failed = false;
+
+            /* Handle failure(s) */
+            if (lock_failed || cache_lock_failed || pattern_failed) {
+                if (!lock_failed)
+                    mtx_destroy(&lock);
+                if (!cache_lock_failed)
+                    pthread_rwlock_destroy(&cache_lock);
+                if (!pattern_failed)
+                    free(primary);
                 FcCharSetDestroy(charset);
                 FcPatternDestroy(pattern);
                 FcPatternDestroy(base_pattern);
@@ -702,11 +721,10 @@ fcft_from_name(size_t count, const char *names[static count],
                 break;
             }
 
-
             font = calloc(1, sizeof(*font));
-
             font->ref_counter = 1;
             font->lock = lock;
+            font->cache_lock = cache_lock;
             font->cache.size = 256;
             font->cache.count = 0;
             font->cache.table = calloc(font->cache.size, sizeof(font->cache.table[0]));
@@ -796,6 +814,7 @@ fcft_size_adjust(const struct fcft_font *_font, double amount)
 {
     struct font_priv *new = calloc(1, sizeof(*new));
     mtx_init(&new->lock, mtx_plain);
+    pthread_rwlock_init(&new->cache_lock, NULL);
 
     new->ref_counter = 1;
     new->cache.size = 256;
@@ -1181,8 +1200,8 @@ hash_value_for_wc(wchar_t wc, enum fcft_subpixel subpixel)
 }
 
 static struct glyph_priv **
-glyph_hash_lookup(struct font_priv *font, wchar_t wc,
-                  enum fcft_subpixel subpixel)
+glyph_cache_lookup(struct font_priv *font, wchar_t wc,
+                   enum fcft_subpixel subpixel)
 {
     size_t idx = hash_index(font, hash_value_for_wc(wc, subpixel));
     struct glyph_priv **glyph = &font->cache.table[idx];
@@ -1228,11 +1247,15 @@ cache_resize(struct font_priv *font)
         font->cache.table[i] = NULL;
     }
 
-    free(font->cache.table);
+    pthread_rwlock_wrlock(&font->cache_lock);
+    {
+        free(font->cache.table);
 
-    LOG_DBG("resized glyph cache from %zu to %zu", font->cache.size, size);
-    font->cache.table = table;
-    font->cache.size = size;
+        LOG_DBG("resized glyph cache from %zu to %zu", font->cache.size, size);
+        font->cache.table = table;
+        font->cache.size = size;
+    }
+    pthread_rwlock_unlock(&font->cache_lock);
     return true;
 }
 
@@ -1241,23 +1264,34 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
                      enum fcft_subpixel subpixel)
 {
     struct font_priv *font = (struct font_priv *)_font;
-    mtx_lock(&font->lock);
 
-    assert(font->cache.table != NULL);
-
-    struct glyph_priv **entry = glyph_hash_lookup(font, wc, subpixel);
+    pthread_rwlock_rdlock(&font->cache_lock);
+    struct glyph_priv **entry = glyph_cache_lookup(font, wc, subpixel);
 
     if (*entry != NULL) {
         const struct glyph_priv *glyph = *entry;
-        mtx_unlock(&font->lock);
-
-        assert(glyph->public.wc == wc);
-        assert(glyph->subpixel == subpixel);
+        pthread_rwlock_unlock(&font->cache_lock);
         return glyph->valid ? &glyph->public : NULL;
     }
 
-    if (cache_resize(font))
-        entry = glyph_hash_lookup(font, wc, subpixel);
+    mtx_lock(&font->lock);
+    pthread_rwlock_unlock(&font->cache_lock);
+
+    /* Check again - another thread may have resized the cache, or
+     * populated the entry while we acquired the write-lock */
+    entry = glyph_cache_lookup(font, wc, subpixel);
+    if (*entry != NULL) {
+        const struct glyph_priv *glyph = *entry;
+        pthread_rwlock_unlock(&font->cache_lock);
+        return glyph->valid ? &glyph->public : NULL;
+    }
+
+    if (cache_resize(font)) {
+        /* Entry pointer is invalid if the cache was resized */
+        pthread_rwlock_rdlock(&font->cache_lock);
+        entry = glyph_cache_lookup(font, wc, subpixel);
+        pthread_rwlock_unlock(&font->cache_lock);
+    }
 
     struct glyph_priv *glyph = malloc(sizeof(*glyph));
     glyph->public.wc = wc;
@@ -1353,12 +1387,12 @@ fcft_destroy(struct fcft_font *_font)
         mtx_unlock(&font->lock);
     }
 
-
     tll_foreach(font->fallbacks, it)
         fallback_destroy(&it->item);
 
     tll_free(font->fallbacks);
     mtx_destroy(&font->lock);
+    pthread_rwlock_destroy(&font->cache_lock);
 
     for (size_t i = 0; i < font->cache.size && font->cache.table != NULL; i++) {
         struct glyph_priv *entry = font->cache.table[i];

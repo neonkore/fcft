@@ -17,6 +17,12 @@
 ## Unreleased
 ### Added
 ### Changed
+
+* `fcft_glyph_rasterize()`: improved performance in threaded
+  applications by guarding the glyph cache with an _rwlock_ instead of
+  a _mutex_.
+
+
 ### Deprecated
 ### Removed
 ### Fixed
