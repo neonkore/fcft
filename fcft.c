@@ -1282,7 +1282,7 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
     entry = glyph_cache_lookup(font, wc, subpixel);
     if (*entry != NULL) {
         const struct glyph_priv *glyph = *entry;
-        pthread_rwlock_unlock(&font->cache_lock);
+        mtx_unlock(&font->lock);
         return glyph->valid ? &glyph->public : NULL;
     }
 
