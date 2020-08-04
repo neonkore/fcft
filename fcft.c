@@ -1274,8 +1274,8 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
         return glyph->valid ? &glyph->public : NULL;
     }
 
-    mtx_lock(&font->lock);
     pthread_rwlock_unlock(&font->cache_lock);
+    mtx_lock(&font->lock);
 
     /* Check again - another thread may have resized the cache, or
      * populated the entry while we acquired the write-lock */
