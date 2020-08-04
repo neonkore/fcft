@@ -1288,9 +1288,7 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
 
     if (cache_resize(font)) {
         /* Entry pointer is invalid if the cache was resized */
-        pthread_rwlock_rdlock(&font->cache_lock);
         entry = glyph_cache_lookup(font, wc, subpixel);
-        pthread_rwlock_unlock(&font->cache_lock);
     }
 
     struct glyph_priv *glyph = malloc(sizeof(*glyph));
