@@ -917,6 +917,9 @@ glyph_for_wchar(const struct instance *inst, wchar_t wc,
     glyph->public.wc = wc;
     glyph->valid = false;
 
+    pixman_image_t *pix = NULL;
+    uint8_t *data = NULL;
+
     FT_Error err;
 
     FT_UInt idx = FT_Get_Char_Index(inst->face, wc);
@@ -1002,9 +1005,6 @@ glyph_for_wchar(const struct instance *inst, wchar_t wc,
     pixman_format_code_t pix_format;
     int width;
     int rows;
-    
-    pixman_image_t *pix = NULL;
-    uint8_t *data = NULL;
 
     switch (bitmap->pixel_mode) {
     case FT_PIXEL_MODE_MONO:
