@@ -27,6 +27,8 @@
 ### Removed
 ### Fixed
 
+* fcft now checks for memory allocation failures.
+
 
 ## 2.2.4
 
