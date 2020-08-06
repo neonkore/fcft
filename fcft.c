@@ -1481,8 +1481,9 @@ fcft_kerning(struct fcft_font *_font, wchar_t left, wchar_t right,
         primary->face, left_idx, right_idx, FT_KERNING_DEFAULT, &kerning);
 
     if (err != 0) {
-        LOG_WARN("%s: failed to get kerning for %C -> %C: %s",
-                 primary->path, left, right, ft_error_string(err));
+        LOG_WARN("%s: failed to get kerning for %lc -> %lc: %s",
+                 primary->path, (wint_t)left, (wint_t)right,
+                 ft_error_string(err));
         goto err;
     }
 
@@ -1491,8 +1492,9 @@ fcft_kerning(struct fcft_font *_font, wchar_t left, wchar_t right,
     if (y != NULL)
         *y = kerning.y / 64. * primary->pixel_size_fixup;
 
-    LOG_DBG("%s: kerning: %C -> %C: x=%ld 26.6, y=%ld 26.6",
-            primary->path, left, right, kerning.x, kerning.y);
+    LOG_DBG("%s: kerning: %lc -> %lc: x=%ld 26.6, y=%ld 26.6",
+            primary->path, (wint_t)left, (wint_t)right,
+            kerning.x, kerning.y);
 
     mtx_unlock(&font->lock);
     return true;

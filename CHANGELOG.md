@@ -28,6 +28,7 @@
 ### Fixed
 
 * fcft now checks for memory allocation failures.
+* Compilation errors in 32-bit builds.
 
 
 ## 2.2.4
