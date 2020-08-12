@@ -1,4 +1,4 @@
-fcft_destroy(3) "2.2.4" "fcft"
+fcft_destroy(3) "2.2.5" "fcft"
 
 # NAME
 
