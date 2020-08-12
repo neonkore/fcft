@@ -1,5 +1,6 @@
 # Changelog
 
+* [Unreleased](#unreleased)
 * [2.2.4](#2-2-4)
 * [2.2.3](#2-2-3)
 * [2.2.2](#2-2-2)
@@ -11,6 +12,23 @@
 * [2.1.0](#2-1-0)
 * [2.0.0](#2-0-0)
 * [1.1.7](#1-1-7)
+
+
+## Unreleased
+### Added
+### Changed
+
+* `fcft_glyph_rasterize()`: improved performance in threaded
+  applications by guarding the glyph cache with an _rwlock_ instead of
+  a _mutex_.
+
+
+### Deprecated
+### Removed
+### Fixed
+
+* fcft now checks for memory allocation failures.
+* Compilation errors in 32-bit builds.
 
 
 ## 2.2.4
