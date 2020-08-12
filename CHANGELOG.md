@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [2.2.5](#2-2-5)
 * [2.2.4](#2-2-4)
 * [2.2.3](#2-2-3)
 * [2.2.2](#2-2-2)
@@ -14,8 +14,8 @@
 * [1.1.7](#1-1-7)
 
 
-## Unreleased
-### Added
+## 2.2.5
+
 ### Changed
 
 * `fcft_glyph_rasterize()`: improved performance in threaded
@@ -23,8 +23,6 @@
   a _mutex_.
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * fcft now checks for memory allocation failures.
