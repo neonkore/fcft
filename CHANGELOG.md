@@ -21,6 +21,13 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Set LCD filter. This fixes **severe** color fringes when FreeType
+  has been built with `FT_CONFIG_OPTION_SUBPIXEL_RENDERING` (i.e. the
+  old ClearType-style subpixel rendering, instead of the newer Harmony
+  LCD rendering).
+
+
 ### Security
 
 
