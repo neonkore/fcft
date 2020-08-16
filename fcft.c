@@ -35,6 +35,7 @@
 static FT_Error ft_lib_err;
 static FT_Library ft_lib;
 static mtx_t ft_lock;
+static bool can_set_lcd_filter = false;
 
 static const size_t glyph_cache_initial_size = 256;
 
@@ -117,6 +118,48 @@ init(void)
 {
     FcInit();
     ft_lib_err = FT_Init_FreeType(&ft_lib);
+
+    /*
+     * Some FreeType builds use the older ClearType-style subpixel
+     * rendering. This mode requires an LCD filter to be set, or it
+     * will produce *severe* color fringes.
+     *
+     * Which subpixel rendering mode to use depends on a FreeType
+     * build-time #define, FT_CONFIG_OPTION_SUBPIXEL_RENDERING. By
+     * default, it is *unset*, meaning FreeType will use the newer
+     * 'Harmony' subpixel rendering mode (i.e. disabling
+     * FT_CONFIG_OPTION_SUBPIXEL_RENDERING does *not* disable subpixel
+     * rendering).
+     *
+     * If defined, ClearType-style subpixel rendering is instead enabled.
+     *
+     * The FT_Library_SetLcdFilter() configures a library instance
+     * global LCD filter. This call will *fail* if
+     * FT_CONFIG_OPTION_SUBPIXEL_RENDERING has not been set.
+     *
+     * In theory, different fonts can have different LCD filters, and
+     * for this reason we need to set the filter *each* time we need
+     * to render a glyph. Since FT_Library_SetLcdFilter() is per
+     * library instance, this means taking the library global lock.
+     *
+     * For performance reasons, we want to skip this altogether if we
+     * know that the call will fail (i.e. when FreeType is using
+     * Harmony). So, detect here in init(), whether we can set an LCD
+     * filter or not.
+     *
+     * When rendering a glyph, we will only configure the LCD filter
+     * (and thus take the library global lock) if we know we *can* set
+     * the filter, and if we need to (the rendering mode includes
+     * FT_RENDER_MODE_LCD{,_V}).
+     */
+
+    FT_Error err = FT_Library_SetLcdFilter(ft_lib, FT_LCD_FILTER_DEFAULT);
+    can_set_lcd_filter = err == 0;
+    LOG_DBG("can set LCD filter: %s (%d)", ft_error_string(err), err);
+
+    if (can_set_lcd_filter)
+        FT_Library_SetLcdFilter(ft_lib, FT_LCD_FILTER_NONE);
+
     mtx_init(&ft_lock, mtx_plain);
     mtx_init(&font_cache_lock, mtx_plain);
 
@@ -965,36 +1008,37 @@ glyph_for_wchar(const struct instance *inst, wchar_t wc,
         bgr = false;
     }
 
-    /* This is disabled in default Freetype libs, and the locking
-     * required to handle isn't worth the effort... */
-#if 0
     /*
-     * LCD filter is per library instance. Thus we need to re-set it
-     * every time...
-     *
-     * Also note that many freetype builds lack this feature
-     * (FT_CONFIG_OPTION_SUBPIXEL_RENDERING must be defined, and isn't
-     * by default) */
-    if ((render_flags & FT_RENDER_MODE_LCD) ||
-        (render_flags & FT_RENDER_MODE_LCD_V))
+     * LCD filter is per library instance, hence we need to re-set it
+     * every time. But only if we need it, and only if we _can_, to
+     * avoid locking a global mutex. See init().
+     */
+    bool unlock_ft_lock = false;
+    if (can_set_lcd_filter &&
+        ((render_flags & FT_RENDER_MODE_LCD) ||
+         (render_flags & FT_RENDER_MODE_LCD_V)))
     {
         mtx_lock(&ft_lock);
+        unlock_ft_lock = true;
 
-        FT_Error err = FT_Library_SetLcdFilter(ft_lib, font->primary.lcd_filter);
-        if (err != 0 && err != FT_Err_Unimplemented_Feature) {
+        FT_Error err = FT_Library_SetLcdFilter(ft_lib, inst->lcd_filter);
+
+        if (err != 0) {
             LOG_ERR("failed to set LCD filter: %s", ft_error_string(err));
             mtx_unlock(&ft_lock);
             goto err;
         }
-
-        mtx_unlock(&ft_lock);
     }
-#endif
 
     if ((err = FT_Render_Glyph(inst->face->glyph, render_flags)) != 0) {
         LOG_ERR("%s: failed to render glyph: %s", inst->path, ft_error_string(err));
+        if (unlock_ft_lock)
+            mtx_unlock(&ft_lock);
         goto err;
     }
+
+    if (unlock_ft_lock)
+        mtx_unlock(&ft_lock);
 
     if (inst->face->glyph->format != FT_GLYPH_FORMAT_BITMAP) {
         LOG_ERR("%s: rasterized glyph is not a bitmap", inst->path);
