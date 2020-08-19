@@ -100,5 +100,7 @@ wchar_t fcft_precompose(const struct fcft_font *font,
                         bool *comb_is_from_primary,
                         bool *composed_is_from_primary);
 
-const struct fcft_glyph *fcft_glyph_rasterize_grapheme(
-    struct fcft_font *font, const wchar_t *grapheme, size_t len);
+const struct fcft_glyph **fcft_glyph_rasterize_grapheme(
+    struct fcft_font *font, const wchar_t *grapheme, size_t len,
+    enum fcft_subpixel subpixel,
+    unsigned *count);

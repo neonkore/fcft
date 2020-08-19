@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <check.h>
 #include <fcft/fcft.h>
 
@@ -84,8 +85,11 @@ END_TEST
 START_TEST(test_emoji_zwj)
 {
     const wchar_t *const emoji = L"🤚🏿";
-    const struct fcft_glyph *glyph = fcft_glyph_rasterize_grapheme(font, emoji, wcslen(emoji));
-    ck_assert_ptr_nonnull(glyph);
+    unsigned count;
+    const struct fcft_glyph **glyphs = fcft_glyph_rasterize_grapheme(font, emoji, wcslen(emoji), FCFT_SUBPIXEL_DEFAULT, &count);
+    ck_assert_int_eq(count, 1);
+    ck_assert_ptr_nonnull(glyphs);
+    free(glyphs);
 }
 END_TEST
 #endif

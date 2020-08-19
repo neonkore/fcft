@@ -1503,12 +1503,16 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
 }
 
 #if defined(FCFT_HAVE_HARFBUZZ)
-const struct fcft_glyph *
+const struct fcft_glyph **
 fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
-                              const wchar_t *grapheme, size_t len)
+                              const wchar_t *grapheme, size_t len,
+                              enum fcft_subpixel subpixel,
+                              unsigned *count)
 {
     struct font_priv *font = (struct font_priv *)_font;
     struct instance *inst = NULL;
+
+    *count = 0;
 
     tll_foreach(font->fallbacks, it) {
         bool has_all_code_points = true;
@@ -1546,15 +1550,12 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
         }
     }
 
-    if (inst == NULL) {
-        abort();
+    if (inst == NULL)
         return NULL;
-    }
 
     assert(inst->hb_font != NULL);
 
     hb_buffer_t *hb_buf = hb_buffer_create();
-    //hb_buffer_set_content_type(hb_buf, HB_BUFFER_CONTENT_TYPE_UNICODE);
     hb_buffer_add_utf32(hb_buf, (const uint32_t *)grapheme, len, 0, len);
     hb_buffer_set_direction(hb_buf, HB_DIRECTION_LTR);
     hb_buffer_set_script(hb_buf, HB_SCRIPT_LATIN);
@@ -1562,15 +1563,18 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
 
     hb_shape(inst->hb_font, hb_buf, NULL, 0);
 
-    unsigned count;
-    hb_glyph_info_t *info __attribute__((unused)) = hb_buffer_get_glyph_infos(hb_buf, &count);
-    LOG_INFO("length: %u", hb_buffer_get_length(hb_buf));
-    LOG_INFO("infos: %u", count);
-    for (unsigned i = 0; i < count; i++) {
-        LOG_INFO("code point: %04x", info[i].codepoint);
+    hb_glyph_info_t *info __attribute__((unused)) = hb_buffer_get_glyph_infos(hb_buf, count);
+
+    LOG_DBG("length: %u", hb_buffer_get_length(hb_buf));
+    LOG_DBG("infos: %u", *count);
+
+    const struct fcft_glyph **glyphs = calloc(*count, sizeof(glyphs[0]));
+    for (unsigned i = 0; i < *count; i++) {
+        LOG_DBG("code point: %04x, cluster: %u", info[i].codepoint, info[i].cluster);
+        glyphs[i] = fcft_glyph_rasterize(_font, info[i].codepoint, subpixel);
     }
     hb_buffer_destroy(hb_buf);
-    return NULL;
+    return glyphs;
 }
 
 #else
