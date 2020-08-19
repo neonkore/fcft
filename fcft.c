@@ -19,6 +19,11 @@
 #include FT_SYNTHESIS_H
 #include <fontconfig/fontconfig.h>
 
+#if defined(FCFT_HAVE_HARFBUZZ)
+ #include <harfbuzz/hb.h>
+ #include <harfbuzz/hb-ft.h>
+#endif
+
 #include <tllist.h>
 
 #define LOG_MODULE "fcft"
@@ -51,6 +56,10 @@ struct instance {
     char *path;
     FT_Face face;
     int load_flags;
+
+#if defined(FCFT_HAVE_HARFBUZZ)
+    hb_font_t *hb_font;
+#endif
 
     bool antialias;
     bool embolden;
@@ -236,6 +245,10 @@ instance_destroy(struct instance *inst)
 {
     if (inst == NULL)
         return;
+
+#if defined(FCFT_HAVE_HARFBUZZ)
+    hb_font_destroy(inst->hb_font);
+#endif
 
     mtx_lock(&ft_lock);
     FT_Done_Face(inst->face);
@@ -554,6 +567,14 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
     font->render_flags_subpixel = render_flags_subpixel;
     font->pixel_size_fixup = pixel_fixup;
     font->bgr = fc_rgba == FC_RGBA_BGR || fc_rgba == FC_RGBA_VBGR;
+
+#if defined(FCFT_HAVE_HARFBUZZ)
+    font->hb_font = hb_ft_font_create_referenced(ft_face);
+    if (font->hb_font == NULL) {
+        LOG_ERR("%s: failed to instantiate harfbuzz font", face_file);
+        goto err_done_face;
+    }
+#endif
 
     double max_x_advance = ft_face->size->metrics.max_advance / 64.;
     double max_y_advance = ft_face->size->metrics.height / 64.;
@@ -1480,6 +1501,87 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
     mtx_unlock(&font->lock);
     return got_glyph ? &glyph->public : NULL;
 }
+
+#if defined(FCFT_HAVE_HARFBUZZ)
+const struct fcft_glyph *
+fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
+                              const wchar_t *grapheme, size_t len)
+{
+    struct font_priv *font = (struct font_priv *)_font;
+    struct instance *inst = NULL;
+
+    tll_foreach(font->fallbacks, it) {
+        bool has_all_code_points = true;
+        for (size_t i = 0; i < len; i++) {
+            if (!FcCharSetHasChar(it->item.charset, grapheme[i])) {
+                has_all_code_points = false;
+                break;
+            }
+        }
+
+        if (has_all_code_points) {
+            if (it->item.font == NULL) {
+                inst = malloc(sizeof(*inst));
+                if (inst == NULL)
+                    return NULL;
+
+                if (!instantiate_pattern(
+                        it->item.pattern,
+                        it->item.req_pt_size, it->item.req_px_size,
+                        inst))
+                {
+                    /* Remove, so that we don't have to keep trying to
+                     * instantiate it */
+                    free(inst);
+                    fallback_destroy(&it->item);
+                    tll_remove(font->fallbacks, it);
+                    continue;
+                }
+
+                it->item.font = inst;
+            } else
+                inst = it->item.font;
+
+            break;
+        }
+    }
+
+    if (inst == NULL) {
+        abort();
+        return NULL;
+    }
+
+    assert(inst->hb_font != NULL);
+
+    hb_buffer_t *hb_buf = hb_buffer_create();
+    //hb_buffer_set_content_type(hb_buf, HB_BUFFER_CONTENT_TYPE_UNICODE);
+    hb_buffer_add_utf32(hb_buf, (const uint32_t *)grapheme, len, 0, len);
+    hb_buffer_set_direction(hb_buf, HB_DIRECTION_LTR);
+    hb_buffer_set_script(hb_buf, HB_SCRIPT_LATIN);
+    hb_buffer_set_language(hb_buf, hb_language_from_string("en", -1));
+
+    hb_shape(inst->hb_font, hb_buf, NULL, 0);
+
+    unsigned count;
+    hb_glyph_info_t *info __attribute__((unused)) = hb_buffer_get_glyph_infos(hb_buf, &count);
+    LOG_INFO("length: %u", hb_buffer_get_length(hb_buf));
+    LOG_INFO("infos: %u", count);
+    for (unsigned i = 0; i < count; i++) {
+        LOG_INFO("code point: %04x", info[i].codepoint);
+    }
+    hb_buffer_destroy(hb_buf);
+    return NULL;
+}
+
+#else
+
+const struct fcft_glyph *
+fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
+                              const wchar_t *grapheme, size_t len)
+{
+    return NULL;
+}
+#endif
 
 void
 fcft_destroy(struct fcft_font *_font)

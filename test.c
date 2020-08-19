@@ -80,6 +80,16 @@ START_TEST(test_set_scaling_filter)
 }
 END_TEST
 
+#if defined(FCFT_HAVE_HARFBUZZ)
+START_TEST(test_emoji_zwj)
+{
+    const wchar_t *const emoji = L"🤚🏿";
+    const struct fcft_glyph *glyph = fcft_glyph_rasterize_grapheme(font, emoji, wcslen(emoji));
+    ck_assert_ptr_nonnull(glyph);
+}
+END_TEST
+#endif
+
 Suite *
 fcft_suite(void)
 {
@@ -92,6 +102,10 @@ fcft_suite(void)
     tcase_add_test(core, test_size_adjust);
     tcase_add_test(core, test_precompose);
     tcase_add_test(core, test_set_scaling_filter);
+
+#if defined(FCFT_HAVE_HARFBUZZ)
+    tcase_add_test(core, test_emoji_zwj);
+#endif
 
     /* Slow systems, like the Pinebook Pro, with a *lot* of fonts, *will* be slow */
     tcase_set_timeout(core, 60);
