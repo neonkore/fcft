@@ -1562,7 +1562,7 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
 
     hb_shape(inst->hb_font, hb_buf, NULL, 0);
 
-    hb_glyph_info_t *info __attribute__((unused)) = hb_buffer_get_glyph_infos(hb_buf, count);
+    const hb_glyph_info_t *info = hb_buffer_get_glyph_infos(hb_buf, count);
 
     LOG_DBG("length: %u", hb_buffer_get_length(hb_buf));
     LOG_DBG("infos: %u", *count);
