@@ -1506,8 +1506,7 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
 const struct fcft_glyph **
 fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
                               const wchar_t *grapheme, size_t len,
-                              enum fcft_subpixel subpixel,
-                              unsigned *count)
+                              enum fcft_subpixel subpixel, unsigned *count)
 {
     struct font_priv *font = (struct font_priv *)_font;
     struct instance *inst = NULL;
@@ -1578,10 +1577,10 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
 }
 
 #else
-
-const struct fcft_glyph *
+const struct fcft_glyph **
 fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
-                              const wchar_t *grapheme, size_t len)
+                              const wchar_t *grapheme, size_t len,
+                              enum fcft_subpixel subpixel, unsigned *count)
 {
     return NULL;
 }
