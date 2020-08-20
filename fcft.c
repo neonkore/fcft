@@ -992,22 +992,18 @@ err:
 }
 
 static bool
-glyph_for_wchar(const struct instance *inst, wchar_t wc,
-                enum fcft_subpixel subpixel,
-                struct glyph_priv *glyph)
+glyph_for_index(const struct instance *inst, uint32_t index,
+                enum fcft_subpixel subpixel, struct glyph_priv *glyph)
 {
-    glyph->public.wc = wc;
     glyph->valid = false;
 
     pixman_image_t *pix = NULL;
     uint8_t *data = NULL;
 
     FT_Error err;
-
-    FT_UInt idx = FT_Get_Char_Index(inst->face, wc);
-    if ((err = FT_Load_Glyph(inst->face, idx, inst->load_flags)) != 0) {
+    if ((err = FT_Load_Glyph(inst->face, index, inst->load_flags)) != 0) {
         LOG_ERR("%s: failed to load glyph #%d: %s",
-                inst->path, idx, ft_error_string(err));
+                inst->path, index, ft_error_string(err));
         goto err;
     }
 
@@ -1295,14 +1291,8 @@ glyph_for_wchar(const struct instance *inst, wchar_t wc,
         y *= inst->pixel_size_fixup;
     }
 
-    int cols = wcwidth(wc);
-    if (cols < 0)
-        cols = 0;
-
     *glyph = (struct glyph_priv){
         .public = {
-            .wc = wc,
-            .cols = cols,
             .pix = pix,
             .x = x,
             .y = y,
@@ -1325,6 +1315,17 @@ err:
     free(data);
     assert(!glyph->valid);
     return false;
+}
+
+static bool
+glyph_for_wchar(const struct instance *inst, wchar_t wc,
+                enum fcft_subpixel subpixel, struct glyph_priv *glyph)
+{
+    FT_UInt idx = FT_Get_Char_Index(inst->face, wc);
+    bool ret = glyph_for_index(inst, idx, subpixel, glyph);
+    glyph->public.wc = wc;
+    glyph->public.cols = wcwidth(wc);
+    return ret;
 }
 
 static size_t
@@ -1570,7 +1571,14 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
     const struct fcft_glyph **glyphs = calloc(*count, sizeof(glyphs[0]));
     for (unsigned i = 0; i < *count; i++) {
         LOG_DBG("code point: %04x, cluster: %u", info[i].codepoint, info[i].cluster);
-        glyphs[i] = fcft_glyph_rasterize(_font, info[i].codepoint, subpixel);
+
+        struct glyph_priv *glyph = malloc(sizeof(*glyph));
+        glyphs[i] = &glyph->public;
+        glyph_for_index(inst, info[i].codepoint, subpixel, glyph);
+
+        int width = wcswidth(grapheme, len);
+        glyph->public.wc = grapheme[0];
+        glyph->public.cols = width < 0 ? 0 : width > 1 ? 2 : 1;
     }
     hb_buffer_destroy(hb_buf);
     return glyphs;
