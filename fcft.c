@@ -1570,6 +1570,7 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
     hb_shape(inst->hb_font, hb_buf, NULL, 0);
 
     const hb_glyph_info_t *info = hb_buffer_get_glyph_infos(hb_buf, count);
+    const hb_glyph_position_t *pos = hb_buffer_get_glyph_positions(hb_buf, count);
 
     LOG_DBG("length: %u", hb_buffer_get_length(hb_buf));
     LOG_DBG("infos: %u", *count);
@@ -1577,6 +1578,9 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
     const struct fcft_glyph **glyphs = calloc(*count, sizeof(glyphs[0]));
     for (unsigned i = 0; i < *count; i++) {
         LOG_DBG("code point: %04x, cluster: %u", info[i].codepoint, info[i].cluster);
+        LOG_DBG("x-advance: %d, x-offset: %d, y-advance: %d, y-offset: %d",
+                pos[i].x_advance, pos[i].x_offset,
+                pos[i].y_advance, pos[i].y_offset);
 
         struct glyph_priv *glyph = malloc(sizeof(*glyph));
         glyphs[i] = &glyph->public;
@@ -1585,7 +1589,15 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
         int width = wcswidth(grapheme, len);
         glyph->public.wc = grapheme[0];
         glyph->public.cols = width < 0 ? 0 : width > 1 ? 2 : 1;
+
+        LOG_INFO("OLD: y-advance: %d, y-offset: %d", glyph->public.advance.y, glyph->public.y);
+        LOG_INFO("OLD: x-advance: %d, x-offset: %d", glyph->public.advance.x, glyph->public.x);
+        glyph->public.x = pos[i].x_offset / 64. * inst->pixel_size_fixup;
+        //glyph->public.y += pos[i].y_offset / 64. * inst->pixel_size_fixup;
+        glyph->public.advance.x = pos[i].x_advance / 64. * inst->pixel_size_fixup;
+        glyph->public.advance.y = pos[i].y_advance / 64. * inst->pixel_size_fixup;
     }
+    hb_buffer_clear_contents(hb_buf);
     hb_buffer_destroy(hb_buf);
     mtx_unlock(&font->lock);
     return glyphs;
