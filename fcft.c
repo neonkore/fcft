@@ -1514,6 +1514,8 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
 
     *count = 0;
 
+    mtx_lock(&font->lock);
+
     tll_foreach(font->fallbacks, it) {
         bool has_all_code_points = true;
         for (size_t i = 0; i < len; i++) {
@@ -1526,8 +1528,10 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
         if (has_all_code_points) {
             if (it->item.font == NULL) {
                 inst = malloc(sizeof(*inst));
-                if (inst == NULL)
+                if (inst == NULL) {
+                    mtx_unlock(&font->lock);
                     return NULL;
+                }
 
                 if (!instantiate_pattern(
                         it->item.pattern,
@@ -1550,8 +1554,10 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
         }
     }
 
-    if (inst == NULL)
+    if (inst == NULL){
+        mtx_unlock(&font->lock);
         return NULL;
+    }
 
     assert(inst->hb_font != NULL);
 
@@ -1581,6 +1587,7 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
         glyph->public.cols = width < 0 ? 0 : width > 1 ? 2 : 1;
     }
     hb_buffer_destroy(hb_buf);
+    mtx_unlock(&font->lock);
     return glyphs;
 }
 
