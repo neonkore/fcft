@@ -1588,7 +1588,7 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
 
         int width = wcswidth(grapheme, len);
         glyph->public.wc = grapheme[0];
-        glyph->public.cols = width < 0 ? 0 : width > 1 ? 2 : 1;
+        glyph->public.cols = width < 0 ? 0 : width;
 
         LOG_INFO("OLD: y-advance: %d, y-offset: %d", glyph->public.advance.y, glyph->public.y);
         LOG_INFO("OLD: x-advance: %d, x-offset: %d", glyph->public.advance.x, glyph->public.x);
