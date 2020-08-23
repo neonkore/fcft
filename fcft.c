@@ -1608,8 +1608,13 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
             free(glyph);
             (*count)--;
         }
-
     }
+
+#if defined(_DEBUG)
+    assert(glyph_idx == *count);
+    for (size_t i = 0; i < glyph_idx; i++)
+        assert(glyphs[i] != NULL);
+#endif
 
     hb_buffer_clear_contents(hb_buf);
     hb_buffer_destroy(hb_buf);
