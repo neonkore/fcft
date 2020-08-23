@@ -1583,8 +1583,16 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
                 pos[i].y_advance, pos[i].y_offset);
 
         struct glyph_priv *glyph = malloc(sizeof(*glyph));
-        glyphs[i] = &glyph->public;
         glyph_for_index(inst, info[i].codepoint, subpixel, glyph);
+
+        /* TODO: when we start caching graphemes, glyph should no
+         * longer be free:d */
+        if (glyph->valid)
+            glyphs[i] = &glyph->public;
+        else {
+            free(glyph);
+            glyphs[i] = NULL;
+        }
 
         int width = wcswidth(grapheme, len);
         glyph->public.wc = grapheme[0];
