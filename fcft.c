@@ -1575,8 +1575,12 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
     LOG_DBG("length: %u", hb_buffer_get_length(hb_buf));
     LOG_DBG("infos: %u", *count);
 
+    size_t glyph_idx = 0;
     const struct fcft_glyph **glyphs = calloc(*count, sizeof(glyphs[0]));
-    for (unsigned i = 0; i < *count; i++) {
+
+    const unsigned count_from_the_beginning = *count;
+
+    for (unsigned i = 0; i < count_from_the_beginning; i++) {
         LOG_DBG("code point: %04x, cluster: %u", info[i].codepoint, info[i].cluster);
         LOG_DBG("x-advance: %d, x-offset: %d, y-advance: %d, y-offset: %d",
                 pos[i].x_advance, pos[i].x_offset,
@@ -1584,15 +1588,6 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
 
         struct glyph_priv *glyph = malloc(sizeof(*glyph));
         glyph_for_index(inst, info[i].codepoint, subpixel, glyph);
-
-        /* TODO: when we start caching graphemes, glyph should no
-         * longer be free:d */
-        if (glyph->valid)
-            glyphs[i] = &glyph->public;
-        else {
-            free(glyph);
-            glyphs[i] = NULL;
-        }
 
         int width = wcswidth(grapheme, len);
         glyph->public.wc = grapheme[0];
@@ -1604,7 +1599,18 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
         //glyph->public.y += pos[i].y_offset / 64. * inst->pixel_size_fixup;
         glyph->public.advance.x = pos[i].x_advance / 64. * inst->pixel_size_fixup;
         glyph->public.advance.y = pos[i].y_advance / 64. * inst->pixel_size_fixup;
+
+        if (glyph->valid)
+            glyphs[glyph_idx++] = &glyph->public;
+        else {
+            /* TODO: when we start caching graphemes, glyph should no
+             * longer be free:d */
+            free(glyph);
+            (*count)--;
+        }
+
     }
+
     hb_buffer_clear_contents(hb_buf);
     hb_buffer_destroy(hb_buf);
     mtx_unlock(&font->lock);
