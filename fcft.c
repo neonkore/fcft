@@ -1598,8 +1598,8 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
         glyph->public.wc = grapheme[0];
         glyph->public.cols = width < 0 ? 0 : width;
 
-        LOG_INFO("OLD: y-advance: %d, y-offset: %d", glyph->public.advance.y, glyph->public.y);
-        LOG_INFO("OLD: x-advance: %d, x-offset: %d", glyph->public.advance.x, glyph->public.x);
+        LOG_DBG("OLD: y-advance: %d, y-offset: %d", glyph->public.advance.y, glyph->public.y);
+        LOG_DBG("OLD: x-advance: %d, x-offset: %d", glyph->public.advance.x, glyph->public.x);
         glyph->public.x = pos[i].x_offset / 64. * inst->pixel_size_fixup;
         //glyph->public.y += pos[i].y_offset / 64. * inst->pixel_size_fixup;
         glyph->public.advance.x = pos[i].x_advance / 64. * inst->pixel_size_fixup;
