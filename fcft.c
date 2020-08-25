@@ -77,6 +77,8 @@ struct instance {
 struct fallback {
     FcPattern *pattern;
     FcCharSet *charset;
+    FcLangSet *langset;
+    bool is_color;
     struct instance *font;
 
     /* User-requested size(s) - i.e. sizes from *base* pattern */
@@ -263,6 +265,8 @@ fallback_destroy(struct fallback *fallback)
 {
     FcPatternDestroy(fallback->pattern);
     FcCharSetDestroy(fallback->charset);
+    if (fallback->langset != NULL)
+        FcLangSetDestroy(fallback->langset);
     instance_destroy(fallback->font);
 }
 
@@ -763,6 +767,14 @@ fcft_from_name(size_t count, const char *names[static count],
             break;
         }
 
+        FcLangSet *langset;
+        if (FcPatternGetLangSet(pattern, FC_LANG, 0, &langset) != FcResultMatch)
+            langset = NULL;
+
+        FcBool is_color;
+        if (FcPatternGetBool(pattern, FC_COLOR, 0, &is_color) != FcResultMatch)
+            is_color = FcFalse;
+
         double req_px_size = -1., req_pt_size = -1.;
         FcPatternGetDouble(base_pattern, FC_PIXEL_SIZE, 0, &req_px_size);
         FcPatternGetDouble(base_pattern, FC_SIZE, 0, &req_pt_size);
@@ -810,6 +822,8 @@ fcft_from_name(size_t count, const char *names[static count],
                     free(primary);
                 free(font);
                 free(cache_table);
+                if (langset != NULL)
+                    FcLangSetDestroy(langset);
                 FcCharSetDestroy(charset);
                 FcPatternDestroy(pattern);
                 FcPatternDestroy(base_pattern);
@@ -828,6 +842,8 @@ fcft_from_name(size_t count, const char *names[static count],
             tll_push_back(font->fallbacks, ((struct fallback){
                         .pattern = pattern,
                         .charset = FcCharSetCopy(charset),
+                        .langset = langset != NULL ? FcLangSetCopy(langset) : NULL,
+                        .is_color = is_color == FcTrue,
                         .font = primary,
                         .req_px_size = req_px_size,
                         .req_pt_size = req_pt_size}));
@@ -846,12 +862,22 @@ fcft_from_name(size_t count, const char *names[static count],
                     continue;
                 }
 
+                FcLangSet *fallback_langset;
+                if (FcPatternGetLangSet(fallback_pattern, FC_LANG, 0, &fallback_langset) != FcResultMatch)
+                    fallback_langset = NULL;
+
+                FcBool fallback_is_color;
+                if (FcPatternGetBool(fallback_pattern, FC_COLOR, 0, &fallback_is_color) != FcResultMatch)
+                    fallback_is_color = FcFalse;
+
                 FcPatternGetDouble(base_pattern, FC_PIXEL_SIZE, 0, &req_px_size);
                 FcPatternGetDouble(base_pattern, FC_SIZE, 0, &req_pt_size);
 
                 tll_push_back(fc_fallbacks, ((struct fallback){
                             .pattern = fallback_pattern,
                             .charset = FcCharSetCopy(fallback_charset),
+                            .langset = fallback_langset != NULL ? FcLangSetCopy(fallback_langset) : NULL,
+                            .is_color = fallback_is_color == FcTrue,
                             .req_px_size = req_px_size,
                             .req_pt_size = req_pt_size}));
             }
@@ -861,6 +887,8 @@ fcft_from_name(size_t count, const char *names[static count],
             tll_push_back(font->fallbacks, ((struct fallback){
                         .pattern = pattern,
                         .charset = FcCharSetCopy(charset),
+                        .langset = langset != NULL ? FcLangSetCopy(langset) : NULL,
+                        .is_color = is_color == FcTrue,
                         .req_px_size = req_px_size,
                         .req_pt_size = req_pt_size}));
         }
@@ -963,6 +991,7 @@ fcft_size_adjust(const struct fcft_font *_font, double amount)
         tll_push_back(new->fallbacks, ((struct fallback){
                     .pattern = new_pat,
                     .charset = FcCharSetCopy(it->item.charset),
+                    .langset = it->item.langset != NULL ? FcLangSetCopy(it->item.langset) : NULL,
                     .req_px_size = -1.,
                     .req_pt_size = size}));
 
@@ -1518,7 +1547,48 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
 
     tll_foreach(font->fallbacks, it) {
         bool has_all_code_points = true;
-        for (size_t i = 0; i < len; i++) {
+        for (size_t i = 0; i < len && has_all_code_points; i++) {
+
+            const FcChar8 *const emoji = (const FcChar8 *)"und-zsye";
+
+            if (grapheme[i] == 0x200d) {
+                /* ZWJ */
+                continue;
+            }
+
+            if (grapheme[i] == 0xfe0f) {
+                /* Explicit emoji selector */
+
+#if 0
+                /* Require colored emoji? */
+                if (!it->item.is_color) {
+                    /* Skip font if it is not a colored font */
+                    has_all_code_points = false;
+                }
+#endif
+
+                if (it->item.langset != NULL &&
+                    FcLangSetHasLang(it->item.langset, emoji) != FcLangEqual)
+                {
+                    /* Skip font if it isn't an emoji font */
+                    has_all_code_points = false;
+                }
+
+                continue;
+            }
+
+            else if (grapheme[i] == 0xfe0e) {
+                /* Explicit text selector */
+                if (it->item.langset != NULL &&
+                    FcLangSetHasLang(it->item.langset, emoji) == FcLangEqual)
+                {
+                    /* Skip font if it is an emoji font */
+                    has_all_code_points = false;
+                }
+
+                continue;
+            }
+
             if (!FcCharSetHasChar(it->item.charset, grapheme[i])) {
                 has_all_code_points = false;
                 break;
