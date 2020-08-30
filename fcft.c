@@ -1184,11 +1184,10 @@ glyph_for_wchar(const struct instance *inst, wchar_t wc,
 
         /*
          * TODO:
-         *   - do more comparisons with LANCZOS3
          *   - find out how the subsample_bit_{x,y} parameters should be set
          */
         int param_count = 0;
-        pixman_kernel_t kernel = PIXMAN_KERNEL_CUBIC;
+        pixman_kernel_t kernel = PIXMAN_KERNEL_LANCZOS3;
         pixman_fixed_t *params = pixman_filter_create_separable_convolution(
             &param_count,
             pixman_double_to_fixed(1. / inst->pixel_size_fixup),

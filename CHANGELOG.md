@@ -20,8 +20,8 @@
 ### Added
 ### Changed
 
-* Use cubic filtering when downscaling bitmap fonts. This improves the
-  quality of e.g. color emoji fonts.
+* Use lanczos3 filtering when downscaling bitmap fonts. This improves
+  the quality of e.g. color emoji fonts.
 
 
 ### Deprecated
