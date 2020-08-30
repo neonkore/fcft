@@ -1182,7 +1182,30 @@ glyph_for_wchar(const struct instance *inst, wchar_t wc,
         pixman_transform_from_pixman_f_transform(&_scale, &scale);
         pixman_image_set_transform(pix, &_scale);
 
-        pixman_image_set_filter(pix, PIXMAN_FILTER_BEST, NULL, 0);
+        /*
+         * TODO:
+         *   - do more comparisons with LANCZOS3
+         *   - find out how the subsample_bit_{x,y} parameters should be set
+         */
+        int param_count = 0;
+        pixman_kernel_t kernel = PIXMAN_KERNEL_CUBIC;
+        pixman_fixed_t *params = pixman_filter_create_separable_convolution(
+            &param_count,
+            pixman_double_to_fixed(1. / inst->pixel_size_fixup),
+            pixman_double_to_fixed(1. / inst->pixel_size_fixup),
+            kernel, kernel,
+            kernel, kernel,
+            pixman_int_to_fixed(1),
+            pixman_int_to_fixed(1));
+
+        if (params != NULL || param_count == 0) {
+            pixman_image_set_filter(
+                pix, PIXMAN_FILTER_SEPARABLE_CONVOLUTION,
+                params, param_count);
+        } else
+            pixman_image_set_filter(pix, PIXMAN_FILTER_BEST, NULL, 0);
+
+        free(params);
 
         int scaled_width = width / (1. / inst->pixel_size_fixup);
         int scaled_rows = rows / (1. / inst->pixel_size_fixup);

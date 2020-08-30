@@ -19,6 +19,11 @@
 ## Unreleased
 ### Added
 ### Changed
+
+* Use cubic filtering when downscaling bitmap fonts. This improves the
+  quality of e.g. color emoji fonts.
+
+
 ### Deprecated
 ### Removed
 ### Fixed
