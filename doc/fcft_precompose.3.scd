@@ -1,4 +1,4 @@
-fcft_precompose(3) "2.2.6" "fcft"
+fcft_precompose(3) "2.2.7" "fcft"
 
 # NAME
 

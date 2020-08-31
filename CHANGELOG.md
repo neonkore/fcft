@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [2.2.7](#2-2-7)
 * [2.2.6](#2-2-6)
 * [2.2.5](#2-2-5)
 * [2.2.4](#2-2-4)
@@ -16,22 +16,17 @@
 * [1.1.7](#1-1-7)
 
 
-## Unreleased
-### Added
+## 2.2.7
+
 ### Changed
 
 * Use lanczos3 filtering when downscaling bitmap fonts. This improves
   the quality of e.g. color emoji fonts.
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * Compilation with `-pedantic`
-
-
-### Security
 
 
 ## 2.2.6
