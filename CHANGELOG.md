@@ -27,6 +27,10 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Compilation with `-pedantic`
+
+
 ### Security
 
 
