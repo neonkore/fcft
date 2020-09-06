@@ -113,6 +113,18 @@ struct fcft_font_cache_entry {
 static tll(struct fcft_font_cache_entry) font_cache = tll_init();
 static mtx_t font_cache_lock;
 
+enum fcft_capabilities
+fcft_capabilities(void)
+{
+    enum fcft_capabilities ret = 0;
+
+#if defined(FCFT_HAVE_HARFBUZZ)
+    ret |= FCFT_CAPABILITY_GRAPHEME_SHAPING;
+#endif
+
+    return ret;
+}
+
 static const char *
 ft_error_string(FT_Error err)
 {

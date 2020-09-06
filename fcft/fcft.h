@@ -5,6 +5,11 @@
 
 #include <pixman.h>
 
+/* Bitmask of optional capabilities */
+enum fcft_capabilities {
+    FCFT_CAPABILITY_GRAPHEME_SHAPING = 0x1,
+};
+
 /*
  * Defines the subpixel order to use.
  *
@@ -74,6 +79,8 @@ struct fcft_font {
 };
 
 bool fcft_set_scaling_filter(enum fcft_scaling_filter filter);
+
+enum fcft_capabilities fcft_capabilities(void);
 
 /* First entry is the main/primary font, the remaining (if any) are
  * custom fallback fonts */

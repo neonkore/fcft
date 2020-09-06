@@ -3,7 +3,8 @@ sh = find_program('sh', native: true)
 scdoc = dependency('scdoc', native: true)
 scdoc_prog = find_program(scdoc.get_pkgconfig_variable('scdoc'), native: true)
 
-foreach man_src : ['fcft_clone.3.scd',
+foreach man_src : ['fcft_capabilities.3.scd',
+                   'fcft_clone.3.scd',
                    'fcft_destroy.3.scd',
                    'fcft_from_name.3.scd',
                    'fcft_glyph_rasterize.3.scd',

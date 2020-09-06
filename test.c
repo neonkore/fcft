@@ -18,6 +18,19 @@ teardown(void)
     font = NULL;
 }
 
+START_TEST(test_capabilities)
+{
+    enum fcft_capabilities caps = fcft_capabilities();
+
+#if defined(FCFT_HAVE_HARFBUZZ)
+    ck_assert(caps & FCFT_CAPABILITY_GRAPHEME_SHAPING);
+    caps &= ~FCFT_CAPABILITY_GRAPHEME_SHAPING;
+#endif
+
+    ck_assert_int_eq(caps, 0);
+}
+END_TEST
+
 START_TEST(test_from_name)
 {
     ck_assert_int_gt(font->height, 0);
@@ -101,6 +114,7 @@ fcft_suite(void)
 
     TCase *core = tcase_create("core");
     tcase_add_checked_fixture(core, &setup, &teardown);
+    tcase_add_test(core, test_capabilities);
     tcase_add_test(core, test_from_name);
     tcase_add_test(core, test_glyph_rasterize);
     tcase_add_test(core, test_size_adjust);
