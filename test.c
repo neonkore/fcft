@@ -79,6 +79,10 @@ fcft_suite(void)
     tcase_add_test(core, test_glyph_rasterize);
     tcase_add_test(core, test_size_adjust);
     tcase_add_test(core, test_precompose);
+
+    /* Slow systems, like the Pinebook Pro, with a *lot* of fonts, *will* be slow */
+    tcase_set_timeout(core, 60);
+
     suite_add_tcase(suite, core);
     return suite;
 }

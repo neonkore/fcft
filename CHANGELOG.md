@@ -20,6 +20,11 @@
 ## Unreleased
 ### Added
 ### Changed
+
+* Increased timeout in tests, from 4s (the default), to 60s
+  (https://codeberg.org/dnkl/foot/issues/120).
+
+
 ### Deprecated
 ### Removed
 ### Fixed
