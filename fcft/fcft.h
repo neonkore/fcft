@@ -49,6 +49,13 @@ struct fcft_glyph {
     } advance;
 };
 
+struct fcft_grapheme {
+    int cols;  /* wcswidth(grapheme) */
+
+    size_t count;
+    struct fcft_glyph **glyphs;
+};
+
 struct fcft_font {
     /* font extents */
     int height;
@@ -97,6 +104,11 @@ struct fcft_font *fcft_size_adjust(const struct fcft_font *font, double amount) 
 const struct fcft_glyph *fcft_glyph_rasterize(
     struct fcft_font *font, wchar_t wc, enum fcft_subpixel subpixel);
 
+const struct fcft_grapheme *fcft_glyph_rasterize_grapheme(
+    struct fcft_font *font,
+    size_t len, const wchar_t grapheme_cluster[static len],
+    enum fcft_subpixel subpixel);
+
 bool fcft_kerning(
     struct fcft_font *font, wchar_t left, wchar_t right,
     long *restrict x, long *restrict y);
@@ -106,8 +118,3 @@ wchar_t fcft_precompose(const struct fcft_font *font,
                         bool *base_is_from_primary,
                         bool *comb_is_from_primary,
                         bool *composed_is_from_primary);
-
-const struct fcft_glyph **fcft_glyph_rasterize_grapheme(
-    struct fcft_font *font, const wchar_t *grapheme, size_t len,
-    enum fcft_subpixel subpixel,
-    unsigned *count);

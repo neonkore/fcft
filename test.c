@@ -98,11 +98,10 @@ END_TEST
 START_TEST(test_emoji_zwj)
 {
     const wchar_t *const emoji = L"🤚🏿";
-    unsigned count;
-    const struct fcft_glyph **glyphs = fcft_glyph_rasterize_grapheme(font, emoji, wcslen(emoji), FCFT_SUBPIXEL_DEFAULT, &count);
-    ck_assert_int_eq(count, 1);
-    ck_assert_ptr_nonnull(glyphs);
-    free(glyphs);
+    const struct fcft_grapheme *grapheme = fcft_glyph_rasterize_grapheme(
+        font, wcslen(emoji), emoji, FCFT_SUBPIXEL_DEFAULT);
+    ck_assert_ptr_nonnull(grapheme);
+    ck_assert_int_eq(grapheme->count, 1);
 }
 END_TEST
 #endif

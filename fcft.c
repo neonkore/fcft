@@ -44,11 +44,16 @@ static bool can_set_lcd_filter = false;
 static enum fcft_scaling_filter scaling_filter = FCFT_SCALING_FILTER_CUBIC;
 
 static const size_t glyph_cache_initial_size = 256;
+static const size_t grapheme_cache_initial_size = 256;
 
 struct glyph_priv {
     struct fcft_glyph public;
-
     enum fcft_subpixel subpixel;
+    bool valid;
+};
+
+struct grapheme_priv {
+    struct fcft_grapheme public;
     bool valid;
 };
 
@@ -86,6 +91,13 @@ struct fallback {
     double req_px_size;
 };
 
+struct grapheme_cache_entry {
+    size_t len;
+    wchar_t *cluster;
+    enum fcft_subpixel subpixel;
+    struct grapheme_priv *grapheme;
+};
+
 struct font_priv {
     /* Must be first */
     struct fcft_font public;
@@ -97,6 +109,15 @@ struct font_priv {
         size_t size;
         size_t count;
     } glyph_cache;
+
+#if defined(FCFT_HAVE_HARFBUZZ)
+    pthread_rwlock_t grapheme_cache_lock;
+    struct {
+        struct grapheme_cache_entry **table;
+        size_t size;
+        size_t count;
+    } grapheme_cache;
+#endif
 
     tll(struct fallback) fallbacks;
     size_t ref_counter;
@@ -796,6 +817,7 @@ fcft_from_name(size_t count, const char *names[static count],
 
             bool lock_failed = true;
             bool glyph_cache_lock_failed = true;
+            bool grapheme_cache_lock_failed = true;
             bool pattern_failed = true;
 
             mtx_t lock;
@@ -819,21 +841,43 @@ fcft_from_name(size_t count, const char *names[static count],
                 pattern_failed = false;
 
             font = calloc(1, sizeof(*font));
-            struct glyph_priv **cache_table = calloc(
-                glyph_cache_initial_size, sizeof(cache_table[0]));
+            struct glyph_priv **glyph_cache_table = calloc(
+                glyph_cache_initial_size, sizeof(glyph_cache_table[0]));
+
+#if defined(FCFT_HAVE_HARFBUZZ)
+            pthread_rwlock_t grapheme_cache_lock;
+            if (pthread_rwlock_init(&grapheme_cache_lock, NULL) != 0)
+                LOG_WARN("%s: failed to instantiate grapheme cache rwlock", name);
+            else
+                grapheme_cache_lock_failed = false;
+
+            struct grapheme_cache_entry **grapheme_cache_table = calloc(
+                grapheme_cache_initial_size, sizeof(grapheme_cache_table[0]));
+#else
+            struct grapheme_cache_entry **grapheme_cache_table = NULL;
+            grapheme_cache_lock_failed = false;
+#endif
 
             /* Handle failure(s) */
-            if (lock_failed || glyph_cache_lock_failed || pattern_failed ||
-                font == NULL || cache_table == NULL)
+            if (lock_failed || glyph_cache_lock_failed ||
+                grapheme_cache_lock_failed || pattern_failed ||
+                font == NULL || glyph_cache_table == NULL
+#if defined(FCFT_HAVE_HARFBUZZ)
+                || grapheme_cache_table == NULL
+#endif
+                )
             {
                 if (!lock_failed)
                     mtx_destroy(&lock);
                 if (!glyph_cache_lock_failed)
                     pthread_rwlock_destroy(&glyph_cache_lock);
+                if (!grapheme_cache_lock_failed)
+                    pthread_rwlock_destroy(&grapheme_cache_lock);
                 if (!pattern_failed)
                     free(primary);
                 free(font);
-                free(cache_table);
+                free(glyph_cache_table);
+                free(grapheme_cache_table);
                 if (langset != NULL)
                     FcLangSetDestroy(langset);
                 FcCharSetDestroy(charset);
@@ -848,8 +892,15 @@ fcft_from_name(size_t count, const char *names[static count],
             font->glyph_cache_lock = glyph_cache_lock;
             font->glyph_cache.size = glyph_cache_initial_size;
             font->glyph_cache.count = 0;
-            font->glyph_cache.table = cache_table;
+            font->glyph_cache.table = glyph_cache_table;
             font->public = primary->metrics;
+
+#if defined(FCFT_HAVE_HARFBUZZ)
+            font->grapheme_cache_lock = grapheme_cache_lock;
+            font->grapheme_cache.size = grapheme_cache_initial_size;
+            font->grapheme_cache.count = 0;
+            font->grapheme_cache.table = grapheme_cache_table;
+#endif
 
             tll_push_back(font->fallbacks, ((struct fallback){
                         .pattern = pattern,
@@ -1370,7 +1421,7 @@ glyph_for_wchar(const struct instance *inst, wchar_t wc,
 }
 
 static size_t
-glyph_hash_index_for_size(size_t size, size_t v)
+hash_index_for_size(size_t size, size_t v)
 {
     return (v * 2654435761) & (size - 1);
 }
@@ -1378,10 +1429,10 @@ glyph_hash_index_for_size(size_t size, size_t v)
 static size_t
 glyph_hash_index(const struct font_priv *font, size_t v)
 {
-    return glyph_hash_index_for_size(font->glyph_cache.size, v);
+    return hash_index_for_size(font->glyph_cache.size, v);
 }
 
-static size_t
+static uint32_t
 hash_value_for_wc(wchar_t wc, enum fcft_subpixel subpixel)
 {
     return subpixel << 29 | wc;
@@ -1423,7 +1474,7 @@ glyph_cache_resize(struct font_priv *font)
         if (entry == NULL)
             continue;
 
-        size_t idx = glyph_hash_index_for_size(
+        size_t idx = hash_index_for_size(
             size, hash_value_for_wc(entry->public.wc, entry->subpixel));
 
         while (table[idx] != NULL) {
@@ -1545,15 +1596,32 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
 }
 
 #if defined(FCFT_HAVE_HARFBUZZ)
-const struct fcft_glyph **
+
+#if 0
+static size_t
+grapheme_hash_index(const struct font_priv *font, size_t v)
+{
+    return hash_index_for_size(font->grapheme_cache.size, v);
+}
+
+static uint32_t
+hash_value_for_grapheme(const wchar_t *grapheme, size_t len,
+                        enum fcft_subpixel subpixel)
+{
+    uint32_t res = 0;
+    for (size_t i = 0; i < len; i++)
+        res ^= grapheme[i];
+
+    return subpixel << 29 | res;
+}
+#endif
+const struct fcft_grapheme *
 fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
-                              const wchar_t *grapheme, size_t len,
-                              enum fcft_subpixel subpixel, unsigned *count)
+                              size_t len, const wchar_t cluster[static len],
+                              enum fcft_subpixel subpixel)
 {
     struct font_priv *font = (struct font_priv *)_font;
     struct instance *inst = NULL;
-
-    *count = 0;
 
     mtx_lock(&font->lock);
 
@@ -1563,12 +1631,12 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
 
             const FcChar8 *const emoji = (const FcChar8 *)"und-zsye";
 
-            if (grapheme[i] == 0x200d) {
+            if (cluster[i] == 0x200d) {
                 /* ZWJ */
                 continue;
             }
 
-            if (grapheme[i] == 0xfe0f) {
+            if (cluster[i] == 0xfe0f) {
                 /* Explicit emoji selector */
 
 #if 0
@@ -1589,7 +1657,7 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
                 continue;
             }
 
-            else if (grapheme[i] == 0xfe0e) {
+            else if (cluster[i] == 0xfe0e) {
                 /* Explicit text selector */
                 if (it->item.langset != NULL &&
                     FcLangSetHasLang(it->item.langset, emoji) == FcLangEqual)
@@ -1601,7 +1669,7 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
                 continue;
             }
 
-            if (!FcCharSetHasChar(it->item.charset, grapheme[i])) {
+            if (!FcCharSetHasChar(it->item.charset, cluster[i])) {
                 has_all_code_points = false;
                 break;
             }
@@ -1641,26 +1709,33 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
         return NULL;
     }
 
+    struct grapheme_priv *grapheme = malloc(sizeof(*grapheme));
+    if (grapheme == NULL) {
+        mtx_unlock(&font->lock);
+        return NULL;
+    }
+
     assert(inst->hb_font != NULL);
 
     hb_buffer_t *hb_buf = hb_buffer_create();
-    hb_buffer_add_utf32(hb_buf, (const uint32_t *)grapheme, len, 0, len);
+    hb_buffer_add_utf32(hb_buf, (const uint32_t *)cluster, len, 0, len);
     hb_buffer_set_direction(hb_buf, HB_DIRECTION_LTR);
     hb_buffer_set_script(hb_buf, HB_SCRIPT_LATIN);
     hb_buffer_set_language(hb_buf, hb_language_from_string("en", -1));
 
     hb_shape(inst->hb_font, hb_buf, NULL, 0);
 
-    const hb_glyph_info_t *info = hb_buffer_get_glyph_infos(hb_buf, count);
-    const hb_glyph_position_t *pos = hb_buffer_get_glyph_positions(hb_buf, count);
+    unsigned count = 0;
+    const hb_glyph_info_t *info = hb_buffer_get_glyph_infos(hb_buf, &count);
+    const hb_glyph_position_t *pos = hb_buffer_get_glyph_positions(hb_buf, &count);
 
     LOG_DBG("length: %u", hb_buffer_get_length(hb_buf));
-    LOG_DBG("infos: %u", *count);
+    LOG_DBG("infos: %u", count);
 
     size_t glyph_idx = 0;
-    const struct fcft_glyph **glyphs = calloc(*count, sizeof(glyphs[0]));
+    grapheme->public.glyphs = calloc(count, sizeof(grapheme->public.glyphs[0]));
 
-    const unsigned count_from_the_beginning = *count;
+    const unsigned count_from_the_beginning = count;
 
     for (unsigned i = 0; i < count_from_the_beginning; i++) {
         LOG_DBG("code point: %04x, cluster: %u", info[i].codepoint, info[i].cluster);
@@ -1671,8 +1746,8 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
         struct glyph_priv *glyph = malloc(sizeof(*glyph));
         glyph_for_index(inst, info[i].codepoint, subpixel, glyph);
 
-        int width = wcswidth(grapheme, len);
-        glyph->public.wc = grapheme[0];
+        int width = wcswidth(cluster, len);
+        glyph->public.wc = info[i].codepoint;
         glyph->public.cols = width < 0 ? 0 : width;
 
         LOG_DBG("OLD: y-advance: %d, y-offset: %d", glyph->public.advance.y, glyph->public.y);
@@ -1683,28 +1758,30 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
         glyph->public.advance.y = pos[i].y_advance / 64. * inst->pixel_size_fixup;
 
         if (glyph->valid)
-            glyphs[glyph_idx++] = &glyph->public;
+            grapheme->public.glyphs[glyph_idx++] = &glyph->public;
         else {
             /* TODO: when we start caching graphemes, glyph should no
              * longer be free:d */
             free(glyph);
-            (*count)--;
+            count--;
         }
     }
 
 #if defined(_DEBUG)
-    assert(glyph_idx == *count);
+    assert(glyph_idx == count);
     for (size_t i = 0; i < glyph_idx; i++)
-        assert(glyphs[i] != NULL);
+        assert(grapheme->public.glyphs[i] != NULL);
 #endif
+
+    grapheme->public.count = count;
 
     hb_buffer_clear_contents(hb_buf);
     hb_buffer_destroy(hb_buf);
     mtx_unlock(&font->lock);
-    return glyphs;
+    return &grapheme->public;
 }
 
-#else
+#else /* !FCFT_HAVE_HARFBUZZ */
 const struct fcft_glyph **
 fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
                               const wchar_t *grapheme, size_t len,
@@ -1712,7 +1789,7 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
 {
     return NULL;
 }
-#endif
+#endif /* !FCFT_HAVE_HARFBUZZ */
 
 void
 fcft_destroy(struct fcft_font *_font)
@@ -1758,7 +1835,6 @@ fcft_destroy(struct fcft_font *_font)
 
     tll_free(font->fallbacks);
     mtx_destroy(&font->lock);
-    pthread_rwlock_destroy(&font->glyph_cache_lock);
 
     for (size_t i = 0;
          i < font->glyph_cache.size && font->glyph_cache.table != NULL;
@@ -1777,8 +1853,28 @@ fcft_destroy(struct fcft_font *_font)
 
         free(entry);
     }
-
     free(font->glyph_cache.table);
+    pthread_rwlock_destroy(&font->glyph_cache_lock);
+
+#if defined(FCFT_HAVE_HARFBUZZ)
+    for (size_t i = 0;
+         i < font->grapheme_cache.size && font->grapheme_cache.table != NULL;
+         i++)
+    {
+        struct grapheme_cache_entry *entry = font->grapheme_cache.table[i];
+
+        if (entry == NULL)
+            continue;
+
+        free(entry->cluster);
+        free(entry->grapheme->public.glyphs);
+        free(entry);
+    }
+    free(font->grapheme_cache.table);
+    pthread_rwlock_destroy(&font->grapheme_cache_lock);
+#endif
+
+
     free(font);
 }
 
