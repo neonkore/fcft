@@ -104,7 +104,7 @@ struct fcft_font *fcft_size_adjust(const struct fcft_font *font, double amount) 
 const struct fcft_glyph *fcft_glyph_rasterize(
     struct fcft_font *font, wchar_t wc, enum fcft_subpixel subpixel);
 
-const struct fcft_grapheme *fcft_glyph_rasterize_grapheme(
+const struct fcft_grapheme *fcft_grapheme_rasterize(
     struct fcft_font *font,
     size_t len, const wchar_t grapheme_cluster[static len],
     enum fcft_subpixel subpixel);

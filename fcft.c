@@ -1616,9 +1616,9 @@ hash_value_for_grapheme(const wchar_t *grapheme, size_t len,
 }
 #endif
 const struct fcft_grapheme *
-fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
-                              size_t len, const wchar_t cluster[static len],
-                              enum fcft_subpixel subpixel)
+fcft_grapheme_rasterize(struct fcft_font *_font,
+                        size_t len, const wchar_t cluster[static len],
+                        enum fcft_subpixel subpixel)
 {
     struct font_priv *font = (struct font_priv *)_font;
     struct instance *inst = NULL;
@@ -1783,9 +1783,9 @@ fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
 
 #else /* !FCFT_HAVE_HARFBUZZ */
 const struct fcft_glyph **
-fcft_glyph_rasterize_grapheme(struct fcft_font *_font,
-                              const wchar_t *grapheme, size_t len,
-                              enum fcft_subpixel subpixel, unsigned *count)
+fcft_grapheme_rasterize(struct fcft_font *_font,
+                        const wchar_t *grapheme, size_t len,
+                        enum fcft_subpixel subpixel, unsigned *count)
 {
     return NULL;
 }
