@@ -1490,7 +1490,7 @@ glyph_cache_resize(struct font_priv *font)
     {
         free(font->glyph_cache.table);
 
-        LOG_DBG("resized glyph cache from %zu to %zu", font->cache.size, size);
+        LOG_DBG("resized glyph cache from %zu to %zu", font->glyph_cache.size, size);
         font->glyph_cache.table = table;
         font->glyph_cache.size = size;
     }
