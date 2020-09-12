@@ -1846,6 +1846,7 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
     grapheme->public.count = glyph_idx;
     grapheme->valid = true;
     *entry = grapheme;
+    font->grapheme_cache.count++;
 
     mtx_unlock(&font->lock);
     return &grapheme->public;
