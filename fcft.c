@@ -1757,22 +1757,6 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
         return NULL;
     }
 
-    struct grapheme_priv *grapheme = malloc(sizeof(*grapheme));
-    wchar_t *cluster_copy = malloc(len * sizeof(cluster_copy[0]));
-
-    if (grapheme == NULL || cluster_copy == NULL) {
-        free(grapheme);
-        free(cluster_copy);
-        mtx_unlock(&font->lock);
-        return NULL;
-    }
-
-    wcsncpy(cluster_copy, cluster, len);
-    grapheme->valid = false;
-    grapheme->len = len;
-    grapheme->cluster = cluster_copy;
-    grapheme->subpixel = subpixel;
-
     assert(inst->hb_font != NULL);
 
     hb_buffer_t *hb_buf = hb_buffer_create();
@@ -1786,16 +1770,33 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
     unsigned count = 0;
     const hb_glyph_info_t *info = hb_buffer_get_glyph_infos(hb_buf, &count);
     const hb_glyph_position_t *pos = hb_buffer_get_glyph_positions(hb_buf, &count);
+    const int width = max(0, wcswidth(cluster, len));
 
     LOG_DBG("length: %u", hb_buffer_get_length(hb_buf));
     LOG_DBG("infos: %u", count);
 
+    wchar_t *cluster_copy = malloc(len * sizeof(cluster_copy[0]));
+    struct grapheme_priv *grapheme = malloc(sizeof(*grapheme));
+    struct fcft_glyph **glyphs = calloc(count, sizeof(glyphs[0]));
+
+    if (cluster_copy == NULL || grapheme == NULL || glyphs == NULL) {
+        free(cluster_copy);
+        free(grapheme);
+        free(glyphs);
+        mtx_unlock(&font->lock);
+        return NULL;
+    }
+
+    wcsncpy(cluster_copy, cluster, len);
+    grapheme->valid = false;
+    grapheme->len = len;
+    grapheme->cluster = cluster_copy;
+    grapheme->subpixel = subpixel;
+    grapheme->public.cols = width;
+    grapheme->public.glyphs = glyphs;
+
     size_t glyph_idx = 0;
-    grapheme->public.glyphs = calloc(count, sizeof(grapheme->public.glyphs[0]));
-
     const unsigned count_from_the_beginning = count;
-
-    const int width = max(0, wcswidth(cluster, len));
 
     for (unsigned i = 0; i < count_from_the_beginning; i++) {
         LOG_DBG("code point: %04x, cluster: %u", info[i].codepoint, info[i].cluster);
@@ -1807,8 +1808,12 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
         if (glyph == NULL ||
             !glyph_for_index(inst, info[i].codepoint, subpixel, glyph))
         {
-            /* TODO: handle failure */
+            assert(glyph == NULL || !glyph->valid);
+            free(glyph);
+            goto err;
         }
+
+        assert(glyph->valid);
 
         glyph->public.wc = info[i].codepoint;
         glyph->public.cols = width;
@@ -1820,33 +1825,46 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
         glyph->public.advance.x = pos[i].x_advance / 64. * inst->pixel_size_fixup;
         glyph->public.advance.y = pos[i].y_advance / 64. * inst->pixel_size_fixup;
 
-        if (glyph->valid)
-            grapheme->public.glyphs[glyph_idx++] = &glyph->public;
-        else {
-            /* TODO: when we start caching graphemes, glyph should no
-             * longer be free:d */
-            free(glyph);
-            count--;
-        }
+        grapheme->public.glyphs[glyph_idx++] = &glyph->public;
     }
 
 #if defined(_DEBUG)
     assert(glyph_idx == count);
-    for (size_t i = 0; i < glyph_idx; i++)
-        assert(grapheme->public.glyphs[i] != NULL);
-#endif
+    for (size_t i = 0; i < count; i++) {
+        const struct glyph_priv *g
+            = (const struct glyph_priv *)grapheme->public.glyphs[i];
 
+        assert(g != NULL);
+        assert(g->valid);
+    }
+#endif
 
     hb_buffer_clear_contents(hb_buf);
     hb_buffer_destroy(hb_buf);
 
     assert(*entry == NULL);
-    grapheme->public.count = count;
+    grapheme->public.count = glyph_idx;
     grapheme->valid = true;
     *entry = grapheme;
 
     mtx_unlock(&font->lock);
     return &grapheme->public;
+
+err:
+    for (size_t i = 0; i < glyph_idx; i++) {
+        struct fcft_glyph *glyph = grapheme->public.glyphs[i];
+        void *image = pixman_image_get_data(glyph->pix);
+        pixman_image_unref(glyph->pix);
+        free(image);
+        free(glyph);
+    }
+    free(grapheme->public.glyphs);
+
+    assert(*entry == NULL);
+    assert(!grapheme->valid);
+    *entry = grapheme;
+    mtx_unlock(&font->lock);
+    return NULL;
 }
 
 #else /* !FCFT_HAVE_HARFBUZZ */
