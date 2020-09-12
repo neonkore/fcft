@@ -1635,6 +1635,48 @@ grapheme_cache_lookup(struct font_priv *font,
 static bool
 grapheme_cache_resize(struct font_priv *font)
 {
+    if (font->grapheme_cache.count * 100 / font->grapheme_cache.size < 75)
+        return false;
+
+    size_t size = 2 * font->grapheme_cache.size;
+    assert(__builtin_popcount(size) == 1);
+
+    struct grapheme_priv **table = calloc(size, sizeof(table[0]));
+    if (table == NULL)
+        return false;
+
+    for (size_t i = 0; i < font->grapheme_cache.size; i++) {
+        struct grapheme_priv *entry = font->grapheme_cache.table[i];
+
+        if (entry == NULL)
+            continue;
+
+        size_t idx = hash_index_for_size(
+            size, hash_value_for_grapheme(
+                entry->len, entry->cluster, entry->subpixel));
+
+        while (table[idx] != NULL) {
+            assert(
+                !(table[idx]->len == entry->len &&
+                  wcsncmp(table[idx]->cluster, entry->cluster, entry->len) == 0 &&
+                  table[idx]->subpixel == entry->subpixel));
+            idx = (idx + 1) & (size - 1);
+        }
+
+        assert(table[idx] == NULL);
+        table[idx] = entry;
+        font->grapheme_cache.table[i] = NULL;
+    }
+
+    pthread_rwlock_wrlock(&font->grapheme_cache_lock);
+    {
+        free(font->grapheme_cache.table);
+
+        LOG_DBG("resized grapheme cache from %zu to %zu", font->grapheme_cache.size, size);
+        font->grapheme_cache.table = table;
+        font->grapheme_cache.size = size;
+    }
+    pthread_rwlock_unlock(&font->grapheme_cache_lock);
     return true;
 }
 
