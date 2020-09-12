@@ -53,7 +53,7 @@ struct fcft_grapheme {
     int cols;  /* wcswidth(grapheme) */
 
     size_t count;
-    struct fcft_glyph **glyphs;
+    const struct fcft_glyph **glyphs;
 };
 
 struct fcft_font {

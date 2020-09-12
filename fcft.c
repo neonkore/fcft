@@ -1793,7 +1793,7 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
     grapheme->cluster = cluster_copy;
     grapheme->subpixel = subpixel;
     grapheme->public.cols = width;
-    grapheme->public.glyphs = glyphs;
+    grapheme->public.glyphs = (const struct fcft_glyph **)glyphs;
 
     size_t glyph_idx = 0;
     const unsigned count_from_the_beginning = count;
@@ -1852,11 +1852,11 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
 
 err:
     for (size_t i = 0; i < glyph_idx; i++) {
-        struct fcft_glyph *glyph = grapheme->public.glyphs[i];
+        const struct fcft_glyph *glyph = grapheme->public.glyphs[i];
         void *image = pixman_image_get_data(glyph->pix);
         pixman_image_unref(glyph->pix);
         free(image);
-        free(glyph);
+        free((struct fcft_priv *)glyph);
     }
     free(grapheme->public.glyphs);
 
