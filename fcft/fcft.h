@@ -19,6 +19,13 @@ enum fcft_subpixel {
     FCFT_SUBPIXEL_VERTICAL_BGR,
 };
 
+enum fcft_downscale_filter {
+    FCFT_DOWNSCALE_FILTER_NONE,
+    FCFT_DOWNSCALE_FILTER_NEAREST,
+    FCFT_DOWNSCALE_FILTER_CUBIC,
+    FCFT_DOWNSCALE_FILTER_LANCZOS3,
+};
+
 struct fcft_glyph {
     wchar_t wc;
     int cols;              /* wcwidth(wc) */
@@ -89,3 +96,6 @@ wchar_t fcft_precompose(const struct fcft_font *font,
                         bool *base_is_from_primary,
                         bool *comb_is_from_primary,
                         bool *composed_is_from_primary);
+
+bool fcft_set_downscale_filter(
+    struct fcft_font *font, enum fcft_downscale_filter filter);
