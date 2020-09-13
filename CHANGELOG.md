@@ -19,6 +19,12 @@
 
 ## Unreleased
 ### Added
+
+* `fcft_set_downscale_filter()`: new API that lets the calling
+  application configure the filter to use when downscaling bitmap
+  fonts (e.g emoji fonts).
+
+
 ### Changed
 
 * Increased timeout in tests, from 4s (the default), to 60s
