@@ -68,6 +68,17 @@ START_TEST(test_precompose)
 }
 END_TEST
 
+START_TEST(test_set_downscale_filter)
+{
+    ck_assert(fcft_set_downscale_filter(FCFT_DOWNSCALE_FILTER_NONE));
+    ck_assert(fcft_set_downscale_filter(FCFT_DOWNSCALE_FILTER_NEAREST));
+    ck_assert(fcft_set_downscale_filter(FCFT_DOWNSCALE_FILTER_CUBIC));
+    ck_assert(fcft_set_downscale_filter(FCFT_DOWNSCALE_FILTER_LANCZOS3));
+
+    ck_assert(!fcft_set_downscale_filter(FCFT_DOWNSCALE_FILTER_LANCZOS3 + 120));
+}
+END_TEST
+
 Suite *
 fcft_suite(void)
 {
@@ -79,6 +90,7 @@ fcft_suite(void)
     tcase_add_test(core, test_glyph_rasterize);
     tcase_add_test(core, test_size_adjust);
     tcase_add_test(core, test_precompose);
+    tcase_add_test(core, test_set_downscale_filter);
 
     /* Slow systems, like the Pinebook Pro, with a *lot* of fonts, *will* be slow */
     tcase_set_timeout(core, 60);
