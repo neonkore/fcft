@@ -973,7 +973,6 @@ err:
 static bool
 glyph_for_wchar(const struct instance *inst, wchar_t wc,
                 enum fcft_subpixel subpixel,
-                enum fcft_scaling_filter scaling_filter,
                 struct glyph_priv *glyph)
 {
     glyph->public.wc = wc;
@@ -1458,8 +1457,7 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
         }
 
         assert(it->item.font != NULL);
-        got_glyph = glyph_for_wchar(
-            it->item.font, wc, subpixel, scaling_filter, glyph);
+        got_glyph = glyph_for_wchar(it->item.font, wc, subpixel, glyph);
         noone = false;
         break;
     }
@@ -1472,7 +1470,7 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
         struct instance *inst = tll_front(font->fallbacks).font;
 
         assert(inst != NULL);
-        got_glyph = glyph_for_wchar(inst, wc, subpixel, scaling_filter, glyph);
+        got_glyph = glyph_for_wchar(inst, wc, subpixel, glyph);
     }
 
     assert(*entry == NULL);
