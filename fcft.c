@@ -36,6 +36,7 @@ static FT_Error ft_lib_err;
 static FT_Library ft_lib;
 static mtx_t ft_lock;
 static bool can_set_lcd_filter = false;
+static enum fcft_scaling_filter scaling_filter = FCFT_SCALING_FILTER_CUBIC;
 
 static const size_t glyph_cache_initial_size = 256;
 
@@ -212,6 +213,22 @@ log_version_information(void)
         LOG_INFO("freetype: %d.%d.%d", major, minor, patch);
     }
 
+}
+
+bool
+fcft_set_scaling_filter(enum fcft_scaling_filter filter)
+{
+    switch (filter) {
+    case FCFT_SCALING_FILTER_NONE:
+    case FCFT_SCALING_FILTER_NEAREST:
+    case FCFT_SCALING_FILTER_BILINEAR:
+    case FCFT_SCALING_FILTER_CUBIC:
+    case FCFT_SCALING_FILTER_LANCZOS3:
+        scaling_filter = filter;
+        return true;
+    }
+
+    return false;
 }
 
 static void
@@ -955,7 +972,9 @@ err:
 
 static bool
 glyph_for_wchar(const struct instance *inst, wchar_t wc,
-                enum fcft_subpixel subpixel, struct glyph_priv *glyph)
+                enum fcft_subpixel subpixel,
+                enum fcft_scaling_filter scaling_filter,
+                struct glyph_priv *glyph)
 {
     glyph->public.wc = wc;
     glyph->valid = false;
@@ -1182,29 +1201,42 @@ glyph_for_wchar(const struct instance *inst, wchar_t wc,
         pixman_transform_from_pixman_f_transform(&_scale, &scale);
         pixman_image_set_transform(pix, &_scale);
 
-        /*
-         * TODO:
-         *   - find out how the subsample_bit_{x,y} parameters should be set
-         */
-        int param_count = 0;
-        pixman_kernel_t kernel = PIXMAN_KERNEL_LANCZOS3;
-        pixman_fixed_t *params = pixman_filter_create_separable_convolution(
-            &param_count,
-            pixman_double_to_fixed(1. / inst->pixel_size_fixup),
-            pixman_double_to_fixed(1. / inst->pixel_size_fixup),
-            kernel, kernel,
-            kernel, kernel,
-            pixman_int_to_fixed(1),
-            pixman_int_to_fixed(1));
+        switch (scaling_filter) {
+        case FCFT_SCALING_FILTER_NONE:
+            break;
 
-        if (params != NULL || param_count == 0) {
+        case FCFT_SCALING_FILTER_NEAREST:
+            pixman_image_set_filter(pix, PIXMAN_FILTER_NEAREST, NULL, 0);
+            break;
+
+        case FCFT_SCALING_FILTER_BILINEAR:
+            pixman_image_set_filter(pix, PIXMAN_FILTER_BILINEAR, NULL, 0);
+            break;
+
+        case FCFT_SCALING_FILTER_CUBIC:
+        case FCFT_SCALING_FILTER_LANCZOS3: {
+            /*
+             * TODO:
+             *   - find out how the subsample_bit_{x,y} parameters should be set
+             */
+            int param_count = 0;
+            pixman_kernel_t kernel = PIXMAN_KERNEL_LANCZOS3;
+            pixman_fixed_t *params = pixman_filter_create_separable_convolution(
+                &param_count,
+                pixman_double_to_fixed(1. / inst->pixel_size_fixup),
+                pixman_double_to_fixed(1. / inst->pixel_size_fixup),
+                kernel, kernel,
+                kernel, kernel,
+                pixman_int_to_fixed(1),
+                pixman_int_to_fixed(1));
+
             pixman_image_set_filter(
                 pix, PIXMAN_FILTER_SEPARABLE_CONVOLUTION,
                 params, param_count);
-        } else
-            pixman_image_set_filter(pix, PIXMAN_FILTER_BEST, NULL, 0);
-
-        free(params);
+            free(params);
+            break;
+        }
+        }
 
         int scaled_width = width / (1. / inst->pixel_size_fixup);
         int scaled_rows = rows / (1. / inst->pixel_size_fixup);
@@ -1426,7 +1458,8 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
         }
 
         assert(it->item.font != NULL);
-        got_glyph = glyph_for_wchar(it->item.font, wc, subpixel, glyph);
+        got_glyph = glyph_for_wchar(
+            it->item.font, wc, subpixel, scaling_filter, glyph);
         noone = false;
         break;
     }
@@ -1439,7 +1472,7 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
         struct instance *inst = tll_front(font->fallbacks).font;
 
         assert(inst != NULL);
-        got_glyph = glyph_for_wchar(inst, wc, subpixel, glyph);
+        got_glyph = glyph_for_wchar(inst, wc, subpixel, scaling_filter, glyph);
     }
 
     assert(*entry == NULL);

@@ -123,6 +123,9 @@ blend them onto a target pixman image.
 int
 main(void)
 {
+    if (!fcft_set_scaling_filter(FCFT_SCALING_FILTER_LANCZOS3))
+       return EXIT_FAILURE;
+
     struct fcft_font *font = fcft_from_name(
         2,
         (const char *[]){

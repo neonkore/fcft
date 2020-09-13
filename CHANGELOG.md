@@ -19,6 +19,12 @@
 
 ## Unreleased
 ### Added
+
+* `fcft_set_scaling_filter()`: new API that lets the calling
+  application configure the filter to use when downscaling bitmap
+  fonts (https://codeberg.org/dnkl/fcft/issues/9).
+
+
 ### Changed
 
 * Increased timeout in tests, from 4s (the default), to 60s

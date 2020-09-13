@@ -19,6 +19,14 @@ enum fcft_subpixel {
     FCFT_SUBPIXEL_VERTICAL_BGR,
 };
 
+enum fcft_scaling_filter {
+    FCFT_SCALING_FILTER_NONE,
+    FCFT_SCALING_FILTER_NEAREST,
+    FCFT_SCALING_FILTER_BILINEAR,
+    FCFT_SCALING_FILTER_CUBIC,
+    FCFT_SCALING_FILTER_LANCZOS3,
+};
+
 struct fcft_glyph {
     wchar_t wc;
     int cols;              /* wcwidth(wc) */
@@ -64,6 +72,8 @@ struct fcft_font {
         int thickness;
     } strikeout;
 };
+
+bool fcft_set_scaling_filter(enum fcft_scaling_filter filter);
 
 /* First entry is the main/primary font, the remaining (if any) are
  * custom fallback fonts */
