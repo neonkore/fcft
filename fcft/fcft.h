@@ -72,6 +72,8 @@ struct fcft_font {
     } strikeout;
 };
 
+bool fcft_set_downscale_filter(enum fcft_downscale_filter filter);
+
 /* First entry is the main/primary font, the remaining (if any) are
  * custom fallback fonts */
 struct fcft_font *fcft_from_name(
@@ -96,6 +98,3 @@ wchar_t fcft_precompose(const struct fcft_font *font,
                         bool *base_is_from_primary,
                         bool *comb_is_from_primary,
                         bool *composed_is_from_primary);
-
-bool fcft_set_downscale_filter(
-    struct fcft_font *font, enum fcft_downscale_filter filter);

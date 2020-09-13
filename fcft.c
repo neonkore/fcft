@@ -36,6 +36,7 @@ static FT_Error ft_lib_err;
 static FT_Library ft_lib;
 static mtx_t ft_lock;
 static bool can_set_lcd_filter = false;
+static enum fcft_downscale_filter downscale_filter = FCFT_DOWNSCALE_FILTER_CUBIC;
 
 static const size_t glyph_cache_initial_size = 256;
 
@@ -213,6 +214,21 @@ log_version_information(void)
         LOG_INFO("freetype: %d.%d.%d", major, minor, patch);
     }
 
+}
+
+bool
+fcft_set_downscale_filter(enum fcft_downscale_filter filter)
+{
+    switch (filter) {
+    case FCFT_DOWNSCALE_FILTER_NONE:
+    case FCFT_DOWNSCALE_FILTER_NEAREST:
+    case FCFT_DOWNSCALE_FILTER_CUBIC:
+    case FCFT_DOWNSCALE_FILTER_LANCZOS3:
+        downscale_filter = filter;
+        return true;
+    }
+
+    return false;
 }
 
 static void
@@ -1634,22 +1650,4 @@ fcft_precompose(const struct fcft_font *_font, wchar_t base, wchar_t comb,
     if (composed_is_from_primary != NULL)
         *composed_is_from_primary = false;
     return (wchar_t)-1;
-}
-
-bool
-fcft_set_downscale_filter(struct fcft_font *_font,
-                          enum fcft_downscale_filter filter)
-{
-    switch (filter) {
-    case FCFT_DOWNSCALE_FILTER_NONE:
-    case FCFT_DOWNSCALE_FILTER_NEAREST:
-    case FCFT_DOWNSCALE_FILTER_CUBIC:
-    case FCFT_DOWNSCALE_FILTER_LANCZOS3: {
-        struct font_priv *font = (struct font_priv *)_font;
-        font->downscale_filter = filter;
-        return true;
-    }
-    }
-
-    return false;
 }
