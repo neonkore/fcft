@@ -36,7 +36,7 @@ static FT_Error ft_lib_err;
 static FT_Library ft_lib;
 static mtx_t ft_lock;
 static bool can_set_lcd_filter = false;
-static enum fcft_downscale_filter downscale_filter = FCFT_DOWNSCALE_FILTER_CUBIC;
+static enum fcft_scaling_filter scaling_filter = FCFT_SCALING_FILTER_CUBIC;
 
 static const size_t glyph_cache_initial_size = 256;
 
@@ -78,7 +78,6 @@ struct fallback {
 struct font_priv {
     /* Must be first */
     struct fcft_font public;
-    enum fcft_downscale_filter downscale_filter;
 
     mtx_t lock;
     pthread_rwlock_t cache_lock;
@@ -217,15 +216,15 @@ log_version_information(void)
 }
 
 bool
-fcft_set_downscale_filter(enum fcft_downscale_filter filter)
+fcft_set_scaling_filter(enum fcft_scaling_filter filter)
 {
     switch (filter) {
-    case FCFT_DOWNSCALE_FILTER_NONE:
-    case FCFT_DOWNSCALE_FILTER_NEAREST:
-    case FCFT_DOWNSCALE_FILTER_BILINEAR:
-    case FCFT_DOWNSCALE_FILTER_CUBIC:
-    case FCFT_DOWNSCALE_FILTER_LANCZOS3:
-        downscale_filter = filter;
+    case FCFT_SCALING_FILTER_NONE:
+    case FCFT_SCALING_FILTER_NEAREST:
+    case FCFT_SCALING_FILTER_BILINEAR:
+    case FCFT_SCALING_FILTER_CUBIC:
+    case FCFT_SCALING_FILTER_LANCZOS3:
+        scaling_filter = filter;
         return true;
     }
 
@@ -803,7 +802,6 @@ fcft_from_name(size_t count, const char *names[static count],
             font->cache.size = glyph_cache_initial_size;
             font->cache.count = 0;
             font->cache.table = cache_table;
-            font->downscale_filter = FCFT_DOWNSCALE_FILTER_CUBIC;
             font->public = primary->metrics;
 
             tll_push_back(font->fallbacks, ((struct fallback){
@@ -975,7 +973,7 @@ err:
 static bool
 glyph_for_wchar(const struct instance *inst, wchar_t wc,
                 enum fcft_subpixel subpixel,
-                enum fcft_downscale_filter downscale_filter,
+                enum fcft_scaling_filter scaling_filter,
                 struct glyph_priv *glyph)
 {
     glyph->public.wc = wc;
@@ -1203,20 +1201,20 @@ glyph_for_wchar(const struct instance *inst, wchar_t wc,
         pixman_transform_from_pixman_f_transform(&_scale, &scale);
         pixman_image_set_transform(pix, &_scale);
 
-        switch (downscale_filter) {
-        case FCFT_DOWNSCALE_FILTER_NONE:
+        switch (scaling_filter) {
+        case FCFT_SCALING_FILTER_NONE:
             break;
 
-        case FCFT_DOWNSCALE_FILTER_NEAREST:
+        case FCFT_SCALING_FILTER_NEAREST:
             pixman_image_set_filter(pix, PIXMAN_FILTER_NEAREST, NULL, 0);
             break;
 
-        case FCFT_DOWNSCALE_FILTER_BILINEAR:
+        case FCFT_SCALING_FILTER_BILINEAR:
             pixman_image_set_filter(pix, PIXMAN_FILTER_BILINEAR, NULL, 0);
             break;
 
-        case FCFT_DOWNSCALE_FILTER_CUBIC:
-        case FCFT_DOWNSCALE_FILTER_LANCZOS3: {
+        case FCFT_SCALING_FILTER_CUBIC:
+        case FCFT_SCALING_FILTER_LANCZOS3: {
             /*
              * TODO:
              *   - find out how the subsample_bit_{x,y} parameters should be set
@@ -1461,7 +1459,7 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
 
         assert(it->item.font != NULL);
         got_glyph = glyph_for_wchar(
-            it->item.font, wc, subpixel, font->downscale_filter, glyph);
+            it->item.font, wc, subpixel, scaling_filter, glyph);
         noone = false;
         break;
     }
@@ -1474,8 +1472,7 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
         struct instance *inst = tll_front(font->fallbacks).font;
 
         assert(inst != NULL);
-        got_glyph = glyph_for_wchar(
-            inst, wc, subpixel, font->downscale_filter, glyph);
+        got_glyph = glyph_for_wchar(inst, wc, subpixel, scaling_filter, glyph);
     }
 
     assert(*entry == NULL);

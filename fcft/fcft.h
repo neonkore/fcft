@@ -19,12 +19,12 @@ enum fcft_subpixel {
     FCFT_SUBPIXEL_VERTICAL_BGR,
 };
 
-enum fcft_downscale_filter {
-    FCFT_DOWNSCALE_FILTER_NONE,
-    FCFT_DOWNSCALE_FILTER_NEAREST,
-    FCFT_DOWNSCALE_FILTER_BILINEAR,
-    FCFT_DOWNSCALE_FILTER_CUBIC,
-    FCFT_DOWNSCALE_FILTER_LANCZOS3,
+enum fcft_scaling_filter {
+    FCFT_SCALING_FILTER_NONE,
+    FCFT_SCALING_FILTER_NEAREST,
+    FCFT_SCALING_FILTER_BILINEAR,
+    FCFT_SCALING_FILTER_CUBIC,
+    FCFT_SCALING_FILTER_LANCZOS3,
 };
 
 struct fcft_glyph {
@@ -73,7 +73,7 @@ struct fcft_font {
     } strikeout;
 };
 
-bool fcft_set_downscale_filter(enum fcft_downscale_filter filter);
+bool fcft_set_scaling_filter(enum fcft_scaling_filter filter);
 
 /* First entry is the main/primary font, the remaining (if any) are
  * custom fallback fonts */

@@ -20,7 +20,7 @@
 ## Unreleased
 ### Added
 
-* `fcft_set_downscale_filter()`: new API that lets the calling
+* `fcft_set_scaling_filter()`: new API that lets the calling
   application configure the filter to use when downscaling bitmap
   fonts (https://codeberg.org/dnkl/fcft/issues/9).
 
