@@ -222,6 +222,7 @@ fcft_set_downscale_filter(enum fcft_downscale_filter filter)
     switch (filter) {
     case FCFT_DOWNSCALE_FILTER_NONE:
     case FCFT_DOWNSCALE_FILTER_NEAREST:
+    case FCFT_DOWNSCALE_FILTER_BILINEAR:
     case FCFT_DOWNSCALE_FILTER_CUBIC:
     case FCFT_DOWNSCALE_FILTER_LANCZOS3:
         downscale_filter = filter;
@@ -1208,6 +1209,10 @@ glyph_for_wchar(const struct instance *inst, wchar_t wc,
 
         case FCFT_DOWNSCALE_FILTER_NEAREST:
             pixman_image_set_filter(pix, PIXMAN_FILTER_NEAREST, NULL, 0);
+            break;
+
+        case FCFT_DOWNSCALE_FILTER_BILINEAR:
+            pixman_image_set_filter(pix, PIXMAN_FILTER_BILINEAR, NULL, 0);
             break;
 
         case FCFT_DOWNSCALE_FILTER_CUBIC:

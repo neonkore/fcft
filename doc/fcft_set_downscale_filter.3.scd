@@ -23,13 +23,15 @@ Possible values for _filter_ are:
 
 - *FCFT\_DOWNSCALE\_FILTER\_NONE*
 - *FCFT\_DOWNSCALE\_FILTER\_NEAREST*
+- *FCFT\_DOWNSCALE\_FILTER\_BILINEAR*
 - *FCFT\_DOWNSCALE\_FILTER\_CUBIC*
 - *FCFT\_DOWNSCALE\_FILTER\_LANCZOS3*
 
 *FCFT\_DOWNSCALE\_FILTER\_NONE* disables filtering.
 
-*FCFT\_DOWNSCALE\_FILTER\_NEAREST* is the fastest filter, performing
-"nearest neighbouring" filtering.
+*FCFT\_DOWNSCALE\_FILTER\_NEAREST* and
+*FCFT\_DOWNSCALE\_FILTER\_BILINEAR* are traditional filters, with
+_nearest_ being the fastest.
 
 *FCFT\_DOWNSCALE\_FILTER\_CUBIC* and
 *FCFT\_DOWNSCALE\_FILTER\_LANCZOS3* are both examples of separable
@@ -39,7 +41,6 @@ than _nearest_.
 
 If this function is not called, fcft defaults to
 *FCFT\_DOWNSCALE\_FILTER\_CUBIC*.
-
 
 # RETURN VALUE
 

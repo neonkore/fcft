@@ -72,6 +72,7 @@ START_TEST(test_set_downscale_filter)
 {
     ck_assert(fcft_set_downscale_filter(FCFT_DOWNSCALE_FILTER_NONE));
     ck_assert(fcft_set_downscale_filter(FCFT_DOWNSCALE_FILTER_NEAREST));
+    ck_assert(fcft_set_downscale_filter(FCFT_DOWNSCALE_FILTER_BILINEAR));
     ck_assert(fcft_set_downscale_filter(FCFT_DOWNSCALE_FILTER_CUBIC));
     ck_assert(fcft_set_downscale_filter(FCFT_DOWNSCALE_FILTER_LANCZOS3));
 
