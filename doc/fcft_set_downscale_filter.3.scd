@@ -37,6 +37,9 @@ convolution filters. _Cubic_ is faster than _lanczos3_, but with
 slightly worse result. However, both produce much better looking glyphs
 than _nearest_.
 
+If this function is not called, fcft defaults to
+*FCFT\_DOWNSCALE\_FILTER\_CUBIC*.
+
 
 # RETURN VALUE
 
