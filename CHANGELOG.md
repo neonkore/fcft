@@ -22,7 +22,7 @@
 
 * `fcft_set_downscale_filter()`: new API that lets the calling
   application configure the filter to use when downscaling bitmap
-  fonts (e.g emoji fonts).
+  fonts (https://codeberg.org/dnkl/fcft/issues/9).
 
 
 ### Changed
