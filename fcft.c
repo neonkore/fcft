@@ -71,6 +71,7 @@ struct instance {
 
 #if defined(FCFT_HAVE_HARFBUZZ)
     hb_font_t *hb_font;
+    hb_buffer_t *hb_buf;
 #endif
 
     bool antialias;
@@ -283,6 +284,7 @@ instance_destroy(struct instance *inst)
 
 #if defined(FCFT_HAVE_HARFBUZZ)
     hb_font_destroy(inst->hb_font);
+    hb_buffer_destroy(inst->hb_buf);
 #endif
 
     mtx_lock(&ft_lock);
@@ -609,7 +611,12 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
     font->hb_font = hb_ft_font_create_referenced(ft_face);
     if (font->hb_font == NULL) {
         LOG_ERR("%s: failed to instantiate harfbuzz font", face_file);
-        goto err_done_face;
+        goto err_free_path;
+    }
+    font->hb_buf = hb_buffer_create();
+    if (font->hb_buf == NULL) {
+        LOG_ERR("%s: failed to instantiate harfbuzz buffer", face_file);
+        goto err_hb_font_destroy;
     }
 #endif
 
@@ -663,6 +670,10 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
 
     return true;
 
+err_free_path:
+    free(font->path);
+err_hb_font_destroy:
+    hb_font_destroy(font->hb_font);
 err_done_face:
     mtx_lock(&ft_lock);
     FT_Done_Face(ft_face);
@@ -1805,20 +1816,19 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
 
     assert(inst->hb_font != NULL);
 
-    hb_buffer_t *hb_buf = hb_buffer_create();
-    hb_buffer_add_utf32(hb_buf, (const uint32_t *)cluster, len, 0, len);
-    hb_buffer_set_direction(hb_buf, HB_DIRECTION_LTR);
-    hb_buffer_set_script(hb_buf, HB_SCRIPT_LATIN);
-    hb_buffer_set_language(hb_buf, hb_language_from_string("en", -1));
+    hb_buffer_add_utf32(inst->hb_buf, (const uint32_t *)cluster, len, 0, len);
+    hb_buffer_set_direction(inst->hb_buf, HB_DIRECTION_LTR);
+    hb_buffer_set_script(inst->hb_buf, HB_SCRIPT_LATIN);
+    hb_buffer_set_language(inst->hb_buf, hb_language_from_string("en", -1));
 
-    hb_shape(inst->hb_font, hb_buf, NULL, 0);
+    hb_shape(inst->hb_font, inst->hb_buf, NULL, 0);
 
     unsigned count = 0;
-    const hb_glyph_info_t *info = hb_buffer_get_glyph_infos(hb_buf, &count);
-    const hb_glyph_position_t *pos = hb_buffer_get_glyph_positions(hb_buf, &count);
+    const hb_glyph_info_t *info = hb_buffer_get_glyph_infos(inst->hb_buf, &count);
+    const hb_glyph_position_t *pos = hb_buffer_get_glyph_positions(inst->hb_buf, &count);
     const int width = max(0, wcswidth(cluster, len));
 
-    LOG_DBG("length: %u", hb_buffer_get_length(hb_buf));
+    LOG_DBG("length: %u", hb_buffer_get_length(inst->hb_buf));
     LOG_DBG("infos: %u", count);
 
     wchar_t *cluster_copy = malloc(len * sizeof(cluster_copy[0]));
@@ -1885,8 +1895,7 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
     }
 #endif
 
-    hb_buffer_clear_contents(hb_buf);
-    hb_buffer_destroy(hb_buf);
+    hb_buffer_clear_contents(inst->hb_buf);
 
     assert(*entry == NULL);
     grapheme->public.count = glyph_idx;
