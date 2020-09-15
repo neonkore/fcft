@@ -44,7 +44,9 @@ static bool can_set_lcd_filter = false;
 static enum fcft_scaling_filter scaling_filter = FCFT_SCALING_FILTER_CUBIC;
 
 static const size_t glyph_cache_initial_size = 256;
+#if defined(FCFT_HAVE_HARFBUZZ)
 static const size_t grapheme_cache_initial_size = 256;
+#endif
 
 struct glyph_priv {
     struct fcft_glyph public;
@@ -869,8 +871,10 @@ fcft_from_name(size_t count, const char *names[static count],
                     mtx_destroy(&lock);
                 if (!glyph_cache_lock_failed)
                     pthread_rwlock_destroy(&glyph_cache_lock);
+#if defined(FCFT_HAVE_HARFBUZZ)
                 if (!grapheme_cache_lock_failed)
                     pthread_rwlock_destroy(&grapheme_cache_lock);
+#endif
                 if (!pattern_failed)
                     free(primary);
                 free(font);
@@ -1912,10 +1916,10 @@ err:
 
 #else /* !FCFT_HAVE_HARFBUZZ */
 
-const struct fcft_glyph **
+const struct fcft_grapheme *
 fcft_grapheme_rasterize(struct fcft_font *_font,
-                        const wchar_t *grapheme, size_t len,
-                        enum fcft_subpixel subpixel, unsigned *count)
+                        size_t len, const wchar_t cluster[static len],
+                        enum fcft_subpixel subpixel)
 {
     return NULL;
 }
