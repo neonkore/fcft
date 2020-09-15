@@ -23,6 +23,7 @@ subproject.
 * fontconfig
 * freetype
 * pixman
+* harfbuzz (optional)
 * [tllist](https://codeberg.org/dnkl/tllist), _unless_ built as a subproject
 
 
@@ -89,6 +90,26 @@ library first, and fallback to a subproject:
 ```meson
 fcft = dependency('fcft', version: '>=0.4.0', fallback: 'fcft')
 ```
+
+## Building
+
+For most users, this is typically enough:
+```sh
+meson build --buildtype=release
+ninja -C build
+ninja -C build test
+sudo ninja -C build install
+```
+
+By default, fcft will be built with support for **text-shaping** if
+_HarfBuzz_ is available. You can explicitly enable or disable this
+with the `-Dtext-shaping=disabled|enabled|auto` meson command line
+option.
+
+The tests require at least **one** font to be installed.
+
+If text-shaping has been enabled, the tests also reuire an **emoji**
+font to be installed (`fc-match emoji` should return an emoji font).
 
 
 ## License
