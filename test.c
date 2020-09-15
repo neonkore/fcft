@@ -1,4 +1,7 @@
 #include <stdlib.h>
+#include <stdio.h>
+#include <getopt.h>
+
 #include <check.h>
 #include <fcft/fcft.h>
 
@@ -132,7 +135,7 @@ END_TEST
 #endif
 
 Suite *
-fcft_suite(void)
+fcft_suite(bool run_text_shaping_tests)
 {
     Suite *suite = suite_create("fcft");
 
@@ -151,22 +154,68 @@ fcft_suite(void)
     suite_add_tcase(suite, core);
 
 #if defined(FCFT_HAVE_HARFBUZZ)
-    TCase *text_shaping = tcase_create("text-shaping");
-    tcase_set_timeout(text_shaping, 60);
-    tcase_add_checked_fixture(
-        text_shaping, &text_shaping_setup, &text_shaping_teardown);
-    tcase_add_test(text_shaping, test_emoji_zwj);
-    suite_add_tcase(suite, text_shaping);
+    if (run_text_shaping_tests) {
+        TCase *text_shaping = tcase_create("text-shaping");
+        tcase_set_timeout(text_shaping, 60);
+        tcase_add_checked_fixture(
+            text_shaping, &text_shaping_setup, &text_shaping_teardown);
+        tcase_add_test(text_shaping, test_emoji_zwj);
+        suite_add_tcase(suite, text_shaping);
+    }
 #endif
 
     suite_add_tcase(suite, core);
     return suite;
 }
 
-int
-main(int argc, const char *const *argv)
+static void
+print_usage(const char *prog_name)
 {
-    Suite *suite = fcft_suite();
+    printf(
+        "Usage: %s [OPTIONS...]\n"
+        "\n"
+        "Options:\n"
+#if defined(FCFT_HAVE_HARFBUZZ)
+        "  -s,--no-text-shaping                  skip text shaping tests\n"
+#endif
+        ,
+        prog_name);
+}
+
+int
+main(int argc, char *const *argv)
+{
+    const char *const prog_name = argv[0];
+
+    static const struct option longopts[] =  {
+#if defined(FCFT_HAVE_HARFBUZZ)
+        {"no-text-shaping", no_argument, NULL, 's'},
+#endif
+        {NULL,              no_argument, NULL,   0},
+    };
+
+    bool run_text_shaping_tests = true;
+
+    while (true) {
+        int c = getopt_long(argc, argv, "sh", longopts, NULL);
+        if (c == -1)
+            break;
+
+        switch (c) {
+        case 's':
+            run_text_shaping_tests = false;
+            break;
+
+        case 'h':
+            print_usage(prog_name);
+            return EXIT_SUCCESS;
+
+        case '?':
+            return EXIT_FAILURE;
+        }
+    }
+
+    Suite *suite = fcft_suite(run_text_shaping_tests);
     SRunner *runner = srunner_create(suite);
 
     srunner_run_all(runner, CK_NORMAL);
