@@ -670,10 +670,13 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
 
     return true;
 
+#if defined(FCFT_HAVE_HARFBUZZ)
 err_free_path:
     free(font->path);
 err_hb_font_destroy:
     hb_font_destroy(font->hb_font);
+#endif
+
 err_done_face:
     mtx_lock(&ft_lock);
     FT_Done_Face(ft_face);
