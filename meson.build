@@ -64,7 +64,7 @@ math = cc.find_library('m')
 threads = dependency('threads')
 fontconfig = dependency('fontconfig')
 freetype = dependency('freetype2')
-harfbuzz = dependency('harfbuzz', required: false)  # TODO: meson_options::feature
+harfbuzz = dependency('harfbuzz', required: get_option('text-shaping'))
 pixman = dependency('pixman-1')
 # required on the freebsd platform (maybe even on others)
 stdthreads = cc.find_library('stdthreads', required: host_machine.system() == 'freebsd')
@@ -121,3 +121,10 @@ if not meson.is_subproject()
 
   subdir('doc')
 endif
+
+summary(
+  {
+    'Text shaping': harfbuzz.found(),
+  },
+  bool_yn: true
+)
