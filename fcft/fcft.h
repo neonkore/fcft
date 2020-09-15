@@ -5,6 +5,11 @@
 
 #include <pixman.h>
 
+/* Bitmask of optional capabilities */
+enum fcft_capabilities {
+    FCFT_CAPABILITY_GRAPHEME_SHAPING = 0x1,
+};
+
 /*
  * Defines the subpixel order to use.
  *
@@ -44,6 +49,13 @@ struct fcft_glyph {
     } advance;
 };
 
+struct fcft_grapheme {
+    int cols;  /* wcswidth(grapheme) */
+
+    size_t count;
+    const struct fcft_glyph **glyphs;
+};
+
 struct fcft_font {
     /* font extents */
     int height;
@@ -75,6 +87,8 @@ struct fcft_font {
 
 bool fcft_set_scaling_filter(enum fcft_scaling_filter filter);
 
+enum fcft_capabilities fcft_capabilities(void);
+
 /* First entry is the main/primary font, the remaining (if any) are
  * custom fallback fonts */
 struct fcft_font *fcft_from_name(
@@ -89,6 +103,11 @@ struct fcft_font *fcft_size_adjust(const struct fcft_font *font, double amount) 
  * antialiasing is enabled for this font */
 const struct fcft_glyph *fcft_glyph_rasterize(
     struct fcft_font *font, wchar_t wc, enum fcft_subpixel subpixel);
+
+const struct fcft_grapheme *fcft_grapheme_rasterize(
+    struct fcft_font *font,
+    size_t len, const wchar_t grapheme_cluster[static len],
+    enum fcft_subpixel subpixel);
 
 bool fcft_kerning(
     struct fcft_font *font, wchar_t left, wchar_t right,

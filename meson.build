@@ -62,13 +62,18 @@ endif
 
 math = cc.find_library('m')
 threads = dependency('threads')
-freetype = dependency('freetype2')
 fontconfig = dependency('fontconfig')
+freetype = dependency('freetype2')
+harfbuzz = dependency('harfbuzz', required: get_option('text-shaping'))
 pixman = dependency('pixman-1')
 # required on the freebsd platform (maybe even on others)
 stdthreads = cc.find_library('stdthreads', required: host_machine.system() == 'freebsd')
 
 tllist = dependency('tllist', version: '>=1.0.1', fallback: 'tllist')
+
+if harfbuzz.found()
+  add_project_arguments('-DFCFT_HAVE_HARFBUZZ', language: 'c')
+endif
 
 generate_unicode_precompose_sh = files('generate-unicode-precompose.sh')
 unicode_data = custom_target(
@@ -89,7 +94,7 @@ fcft_lib = build_target(
   unicode_data, version,
   target_type: meson.is_subproject() ? 'static_library' : 'library',
   version: '.'.join(so_version),
-  dependencies: [math, threads, fontconfig, freetype, pixman, tllist, stdthreads],
+  dependencies: [math, threads, fontconfig, freetype, harfbuzz, pixman, tllist, stdthreads],
   install: not meson.is_subproject())
 
 fcft = declare_dependency(
@@ -116,3 +121,10 @@ if not meson.is_subproject()
 
   subdir('doc')
 endif
+
+summary(
+  {
+    'Text shaping': harfbuzz.found(),
+  },
+  bool_yn: true
+)

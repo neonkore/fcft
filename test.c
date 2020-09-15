@@ -1,21 +1,38 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <getopt.h>
+
 #include <check.h>
 #include <fcft/fcft.h>
 
 static struct fcft_font *font = NULL;
 
 static void
-setup(void)
+core_setup(void)
 {
     font = fcft_from_name(1, (const char *[]){"Serif"}, NULL);
     ck_assert_ptr_nonnull(font);
 }
 
 static void
-teardown(void)
+core_teardown(void)
 {
     fcft_destroy(font);
     font = NULL;
 }
+
+START_TEST(test_capabilities)
+{
+    enum fcft_capabilities caps = fcft_capabilities();
+
+#if defined(FCFT_HAVE_HARFBUZZ)
+    ck_assert(caps & FCFT_CAPABILITY_GRAPHEME_SHAPING);
+    caps &= ~FCFT_CAPABILITY_GRAPHEME_SHAPING;
+#endif
+
+    ck_assert_int_eq(caps, 0);
+}
+END_TEST
 
 START_TEST(test_from_name)
 {
@@ -80,30 +97,125 @@ START_TEST(test_set_scaling_filter)
 }
 END_TEST
 
+#if defined(FCFT_HAVE_HARFBUZZ)
+
+static struct fcft_font *emoji_font = NULL;
+
+static void
+text_shaping_setup(void)
+{
+    core_setup();
+    emoji_font = fcft_from_name(1, (const char *[]){"emoji"}, NULL);
+    ck_assert_ptr_nonnull(emoji_font);
+}
+
+static void
+text_shaping_teardown(void)
+{
+    core_teardown();
+    fcft_destroy(emoji_font);
+    emoji_font = NULL;
+}
+
+
+START_TEST(test_emoji_zwj)
+{
+    const wchar_t *const emoji = L"🤚🏿";
+    const struct fcft_grapheme *grapheme = fcft_grapheme_rasterize(
+        emoji_font, wcslen(emoji), emoji, FCFT_SUBPIXEL_DEFAULT);
+    ck_assert_ptr_nonnull(grapheme);
+    ck_assert_int_eq(grapheme->count, 1);
+
+    /* Verify grapheme was cached */
+    const struct fcft_grapheme *grapheme2 = fcft_grapheme_rasterize(
+        emoji_font, wcslen(emoji), emoji, FCFT_SUBPIXEL_DEFAULT);
+    ck_assert_ptr_eq(grapheme, grapheme2);
+}
+END_TEST
+#endif
+
 Suite *
-fcft_suite(void)
+fcft_suite(bool run_text_shaping_tests)
 {
     Suite *suite = suite_create("fcft");
 
     TCase *core = tcase_create("core");
-    tcase_add_checked_fixture(core, &setup, &teardown);
+    tcase_add_checked_fixture(core, &core_setup, &core_teardown);
+
+    /* Slow systems, like the Pinebook Pro, with a *lot* of fonts, *will* be slow */
+    tcase_set_timeout(core, 60);
+
+    tcase_add_test(core, test_capabilities);
     tcase_add_test(core, test_from_name);
     tcase_add_test(core, test_glyph_rasterize);
     tcase_add_test(core, test_size_adjust);
     tcase_add_test(core, test_precompose);
     tcase_add_test(core, test_set_scaling_filter);
+    suite_add_tcase(suite, core);
 
-    /* Slow systems, like the Pinebook Pro, with a *lot* of fonts, *will* be slow */
-    tcase_set_timeout(core, 60);
+#if defined(FCFT_HAVE_HARFBUZZ)
+    if (run_text_shaping_tests) {
+        TCase *text_shaping = tcase_create("text-shaping");
+        tcase_set_timeout(text_shaping, 60);
+        tcase_add_checked_fixture(
+            text_shaping, &text_shaping_setup, &text_shaping_teardown);
+        tcase_add_test(text_shaping, test_emoji_zwj);
+        suite_add_tcase(suite, text_shaping);
+    }
+#endif
 
     suite_add_tcase(suite, core);
     return suite;
 }
 
-int
-main(int argc, const char *const *argv)
+static void
+print_usage(const char *prog_name)
 {
-    Suite *suite = fcft_suite();
+    printf(
+        "Usage: %s [OPTIONS...]\n"
+        "\n"
+        "Options:\n"
+#if defined(FCFT_HAVE_HARFBUZZ)
+        "  -s,--no-text-shaping                  skip text shaping tests\n"
+#endif
+        ,
+        prog_name);
+}
+
+int
+main(int argc, char *const *argv)
+{
+    const char *const prog_name = argv[0];
+
+    static const struct option longopts[] =  {
+#if defined(FCFT_HAVE_HARFBUZZ)
+        {"no-text-shaping", no_argument, NULL, 's'},
+#endif
+        {NULL,              no_argument, NULL,   0},
+    };
+
+    bool run_text_shaping_tests = true;
+
+    while (true) {
+        int c = getopt_long(argc, argv, "sh", longopts, NULL);
+        if (c == -1)
+            break;
+
+        switch (c) {
+        case 's':
+            run_text_shaping_tests = false;
+            break;
+
+        case 'h':
+            print_usage(prog_name);
+            return EXIT_SUCCESS;
+
+        case '?':
+            return EXIT_FAILURE;
+        }
+    }
+
+    Suite *suite = fcft_suite(run_text_shaping_tests);
     SRunner *runner = srunner_create(suite);
 
     srunner_run_all(runner, CK_NORMAL);
