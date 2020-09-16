@@ -11,7 +11,7 @@ packages:
   - pixman
   - check
   - dejavu
-  # - font-noto-emoji  no such package
+  - twemoji-color-font-ttf
 
 sources:
   - https://codeberg.org/dnkl/tllist
@@ -25,11 +25,11 @@ sources:
 tasks:
   - debug: |
       mkdir -p bld/debug
-      meson --buildtype=debug -Dtext-shaping=enabled -Dtest-text-shaping=false fcft bld/debug
+      meson --buildtype=debug -Dtext-shaping=enabled -Dtest-text-shaping=true fcft bld/debug
       ninja -C bld/debug -k0
       meson test -C bld/debug --print-errorlogs
   - release: |
       mkdir -p bld/release
-      meson --buildtype=minsize -Dtext-shaping=enabled -Dtest-text-shaping=false fcft bld/release
+      meson --buildtype=minsize -Dtext-shaping=enabled -Dtest-text-shaping=true fcft bld/release
       ninja -C bld/release -k0
       meson test -C bld/release --print-errorlogs
