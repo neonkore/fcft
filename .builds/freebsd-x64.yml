@@ -10,7 +10,7 @@ packages:
   - utf8proc
   - pixman
   - check
-  - dejavu
+  - hack-font
   - twemoji-color-font-ttf
 
 sources:
