@@ -154,7 +154,7 @@ fcft_suite(bool run_text_shaping_tests)
     suite_add_tcase(suite, core);
 
 #if defined(FCFT_HAVE_HARFBUZZ)
-    if (run_text_shaping_tests && false) {
+    if (run_text_shaping_tests) {
         TCase *text_shaping = tcase_create("text-shaping");
         tcase_set_timeout(text_shaping, 60);
         tcase_add_checked_fixture(
@@ -176,7 +176,7 @@ print_usage(const char *prog_name)
         "\n"
         "Options:\n"
 #if defined(FCFT_HAVE_HARFBUZZ)
-        "  -s,--no-text-shaping                  skip text shaping tests\n"
+        "  -s,--text-shaping                  run text shaping tests (requires an emoji font to be installed)\n"
 #endif
         ,
         prog_name);
@@ -189,12 +189,12 @@ main(int argc, char *const *argv)
 
     static const struct option longopts[] =  {
 #if defined(FCFT_HAVE_HARFBUZZ)
-        {"no-text-shaping", no_argument, NULL, 's'},
+        {"text-shaping", no_argument, NULL, 's'},
 #endif
-        {NULL,              no_argument, NULL,   0},
+        {NULL,           no_argument, NULL,   0},
     };
 
-    bool run_text_shaping_tests = true;
+    bool run_text_shaping_tests = false;
 
     while (true) {
         int c = getopt_long(argc, argv, "sh", longopts, NULL);
@@ -203,7 +203,7 @@ main(int argc, char *const *argv)
 
         switch (c) {
         case 's':
-            run_text_shaping_tests = false;
+            run_text_shaping_tests = true;
             break;
 
         case 'h':
