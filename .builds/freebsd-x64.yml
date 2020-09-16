@@ -10,7 +10,7 @@ packages:
   - utf8proc
   - pixman
   - check
-  - ttf-hack
+  - dejavu
   - font-noto-emoji
 
 sources:
