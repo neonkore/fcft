@@ -1560,7 +1560,7 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
 
     assert(tll_length(font->fallbacks) > 0);
 
-    bool noone = true;
+    bool no_one = true;
     bool got_glyph = false;
     tll_foreach(font->fallbacks, it) {
         if (!FcCharSetHasChar(it->item.charset, wc))
@@ -1589,11 +1589,11 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
 
         assert(it->item.font != NULL);
         got_glyph = glyph_for_wchar(it->item.font, wc, subpixel, glyph);
-        noone = false;
+        no_one = false;
         break;
     }
 
-    if (noone) {
+    if (no_one) {
         /*
          * No font claimed this glyph - use the primary font anyway.
          */
