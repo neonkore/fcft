@@ -104,7 +104,7 @@ meson.override_dependency('fcft', fcft)
 check = dependency('check', required: false)
 if check.found()
   fcft_test = executable('test-fcft', 'test.c', dependencies: [check, fcft])
-  test('fcft', fcft_test)
+  test('fcft', fcft_test, args: get_option('test-text-shaping') ? ['--text-shaping'] : [])
 endif
 
 if not meson.is_subproject()
@@ -125,6 +125,7 @@ endif
 summary(
   {
     'Text shaping': harfbuzz.found(),
+    'Test text shaping': get_option('test-text-shaping'),
   },
   bool_yn: true
 )

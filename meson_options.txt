@@ -1,1 +1,5 @@
 option('text-shaping', type: 'feature')
+
+# Test-related options
+option('test-text-shaping', type: 'boolean', value: false,
+       description: 'include text shaping tests (requires an emoji font to be installed)')
