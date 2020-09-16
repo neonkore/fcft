@@ -101,15 +101,17 @@ ninja -C build test
 sudo ninja -C build install
 ```
 
+The tests require at least **one** latin font to be installed.
+
 By default, fcft will be built with support for **text-shaping** if
 _HarfBuzz_ is available. You can explicitly enable or disable this
 with the `-Dtext-shaping=disabled|enabled|auto` meson command line
 option.
 
-The tests require at least **one** font to be installed.
-
-If text-shaping has been enabled, the tests also reuire an **emoji**
-font to be installed (`fc-match emoji` should return an emoji font).
+If text-shaping is enabled, you might also want to enable the
+associated tests. Use `-Dtest-text-shaping=true` to do so. Note that
+these tests require an emoji font to be installed, and `fc-match
+emoji` must return that font first.
 
 
 ## License
