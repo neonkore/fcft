@@ -8,7 +8,7 @@ packages:
   - fontconfig
   - pixman
   - check
-  - dejavu
+  - ttf-hack
 
 sources:
   - https://codeberg.org/dnkl/tllist
