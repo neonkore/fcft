@@ -21,6 +21,9 @@ sources:
 #     to: <committer>
 
 tasks:
+  - subprojects: |
+      mkdir fcft/subprojects
+      ln -s ../../tllist fcft/subprojects/tllist
   - debug: |
       mkdir -p bld/debug
       meson --buildtype=debug fcft bld/debug
