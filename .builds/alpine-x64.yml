@@ -10,6 +10,8 @@ packages:
   - pixman-dev
   - check-dev
   - ttf-dejavu
+  - python3
+  - py3-pip
 
 sources:
   - https://codeberg.org/dnkl/tllist
@@ -34,3 +36,6 @@ tasks:
       meson --buildtype=minsize fcft bld/release
       ninja -C bld/release -k0
       meson test -C bld/release --print-errorlogs
+  - codespell: |
+      pip install codespell
+      ~/.local/bin/codespell *.c *.h
