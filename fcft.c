@@ -985,7 +985,8 @@ fcft_from_name(size_t count, const char *names[static count],
 
     mtx_lock(&font_cache_lock);
     cache_entry->font = font;
-    cache_entry->font->ref_counter += cache_entry->waiters;
+    if (cache_entry->font != NULL)
+        cache_entry->font->ref_counter += cache_entry->waiters;
     cnd_broadcast(&cache_entry->cond);
     mtx_unlock(&font_cache_lock);
 
