@@ -154,7 +154,7 @@ fcft_suite(bool run_text_shaping_tests)
     suite_add_tcase(suite, core);
 
 #if defined(FCFT_HAVE_HARFBUZZ)
-    if (run_text_shaping_tests) {
+    if (run_text_shaping_tests && false) {
         TCase *text_shaping = tcase_create("text-shaping");
         tcase_set_timeout(text_shaping, 60);
         tcase_add_checked_fixture(
