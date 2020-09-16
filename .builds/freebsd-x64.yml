@@ -31,6 +31,11 @@ tasks:
       meson --buildtype=debug -Dtext-shaping=enabled -Dtest-text-shaping=true fcft bld/debug
       ninja -C bld/debug -k0
       meson test -C bld/debug --print-errorlogs
+  - debug-no-text-shaping: |
+      mkdir -p bld/no-text-shaping
+      meson --buildtype=debug -Dtext-shaping=disabled -Dtest-text-shaping=false fcft bld/no-text-shaping
+      ninja -C bld/no-text-shaping -k0
+      meson test -C bld/no-text-shaping --print-errorlogs
   - release: |
       mkdir -p bld/release
       meson --buildtype=minsize -Dtext-shaping=enabled -Dtest-text-shaping=true fcft bld/release
