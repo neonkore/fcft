@@ -9,7 +9,7 @@ packages:
   - fontconfig-dev
   - pixman-dev
   - check-dev
-  - ttf-dejavu
+  - ttf-hack
   - python3
   - py3-pip
 
