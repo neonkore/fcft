@@ -7,9 +7,12 @@ packages:
   - scdoc
   - freetype-dev
   - fontconfig-dev
+  - harfbuzz-dev
+  - utf8proc-dev
   - pixman-dev
   - check-dev
   - ttf-hack
+  - font-noto-emoji
   - python3
   - py3-pip
 
@@ -28,12 +31,12 @@ tasks:
       ln -s ../../tllist fcft/subprojects/tllist
   - debug: |
       mkdir -p bld/debug
-      meson --buildtype=debug fcft bld/debug
+      meson --buildtype=debug -Dtext-shaping=enabled -Dtest-text-shaping=true fcft bld/debug
       ninja -C bld/debug -k0
       meson test -C bld/debug --print-errorlogs
   - release: |
       mkdir -p bld/release
-      meson --buildtype=minsize fcft bld/release
+      meson --buildtype=minsize -Dtext-shaping=enabled -Dtest-text-shaping=true fcft bld/release
       ninja -C bld/release -k0
       meson test -C bld/release --print-errorlogs
   - codespell: |
