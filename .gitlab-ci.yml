@@ -29,6 +29,20 @@ debug-x64:
     reports:
       junit: bld/debug/meson-logs/testlog.junit.xml
 
+debug-x64-no-text-shaping:
+  image: alpine:edge
+  stage: build
+  script:
+    - apk del harfbuzz harfbuzz-dev
+    - mkdir -p bld/debug
+    - cd bld/debug
+    - meson --buildtype=debug -Dtext-shaping=disabled -Dtest-text-shaping=false ../../
+    - ninja -v -k0
+    - ninja -v test
+  artifacts:
+    reports:
+      junit: bld/debug/meson-logs/testlog.junit.xml
+
 release-x64:
   image: alpine:edge
   stage: build
