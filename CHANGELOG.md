@@ -24,6 +24,11 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* `fcft_grapheme_rasterize()` now makes use of the optional
+  `tags`. These were previously ignored.
+
+
 ### Security
 
 

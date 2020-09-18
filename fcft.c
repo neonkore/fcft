@@ -1837,7 +1837,26 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
     hb_buffer_set_script(inst->hb_buf, HB_SCRIPT_LATIN);
     hb_buffer_set_language(inst->hb_buf, hb_language_from_string("en", -1));
 
-    hb_shape(inst->hb_font, inst->hb_buf, NULL, 0);
+    hb_feature_t feats[tag_count];
+
+    for (size_t i = 0; i < tag_count; i++) {
+        hb_feature_t *feat = &feats[i];
+        const struct fcft_layout_tag *tag = &tags[i];
+
+        static_assert(sizeof(feat->tag) == sizeof(tag->tag), "tag size mismatch");
+
+        feat->tag = 0;
+        for (size_t j = 0; j < 4; j++) {
+            feat->tag <<= 8;
+            feat->tag |= tag->tag[j];
+        }
+
+        feat->value = tag->value;
+        feat->start = HB_FEATURE_GLOBAL_START;
+        feat->end = HB_FEATURE_GLOBAL_END;
+    }
+
+    hb_shape(inst->hb_font, inst->hb_buf, feats, tag_count);
 
     unsigned count = 0;
     const hb_glyph_info_t *info = hb_buffer_get_glyph_infos(inst->hb_buf, &count);
