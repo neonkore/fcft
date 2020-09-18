@@ -25,7 +25,7 @@
   fonts (https://codeberg.org/dnkl/fcft/issues/9).
 * `fcft_grapheme_rasterize()`: new API that uses HarfBuzz to shape a
   grapheme cluster. Note that HarfBuzz is an **optional** dependency,
-  see [README](README.md#building).
+  see [README](README.md#user-content-building).
 
 
 ### Changed
