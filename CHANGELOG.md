@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [2.3.0](#2-3-0)
 * [2.2.7](#2-2-7)
 * [2.2.6](#2-2-6)
 * [2.2.5](#2-2-5)
@@ -17,7 +17,8 @@
 * [1.1.7](#1-1-7)
 
 
-## Unreleased
+## 2.3.0
+
 ### Added
 
 * `fcft_set_scaling_filter()`: new API that lets the calling
@@ -32,12 +33,6 @@
 
 * Increased timeout in tests, from 4s (the default), to 60s
   (https://codeberg.org/dnkl/foot/issues/120).
-
-
-### Deprecated
-### Removed
-### Fixed
-### Security
 
 
 ## 2.2.7
