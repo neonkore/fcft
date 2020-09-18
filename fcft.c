@@ -1833,15 +1833,32 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
     assert(inst->hb_font != NULL);
 
     hb_buffer_add_utf32(inst->hb_buf, (const uint32_t *)cluster, len, 0, len);
-    hb_buffer_set_direction(inst->hb_buf, HB_DIRECTION_LTR);
-    hb_buffer_set_script(inst->hb_buf, HB_SCRIPT_LATIN);
-    hb_buffer_set_language(inst->hb_buf, hb_language_from_string("en", -1));
+    hb_buffer_guess_segment_properties(inst->hb_buf);
 
-    hb_shape(inst->hb_font, inst->hb_buf, NULL, 0);
+    hb_feature_t feats[tag_count];
 
-    unsigned count = 0;
-    const hb_glyph_info_t *info = hb_buffer_get_glyph_infos(inst->hb_buf, &count);
-    const hb_glyph_position_t *pos = hb_buffer_get_glyph_positions(inst->hb_buf, &count);
+    for (size_t i = 0; i < tag_count; i++) {
+        hb_feature_t *feat = &feats[i];
+        const struct fcft_layout_tag *tag = &tags[i];
+
+        static_assert(sizeof(feat->tag) == sizeof(tag->tag), "tag size mismatch");
+
+        feat->tag = 0;
+        for (size_t j = 0; j < 4; j++) {
+            feat->tag <<= 8;
+            feat->tag |= tag->tag[j];
+        }
+
+        feat->value = tag->value;
+        feat->start = HB_FEATURE_GLOBAL_START;
+        feat->end = HB_FEATURE_GLOBAL_END;
+    }
+
+    hb_shape(inst->hb_font, inst->hb_buf, feats, tag_count);
+
+    unsigned count = hb_buffer_get_length(inst->hb_buf);
+    const hb_glyph_info_t *info = hb_buffer_get_glyph_infos(inst->hb_buf, NULL);
+    const hb_glyph_position_t *pos = hb_buffer_get_glyph_positions(inst->hb_buf, NULL);
     const int width = max(0, wcswidth(cluster, len));
 
     LOG_DBG("length: %u", hb_buffer_get_length(inst->hb_buf));
@@ -1954,6 +1971,7 @@ err:
 const struct fcft_grapheme *
 fcft_grapheme_rasterize(struct fcft_font *_font,
                         size_t len, const wchar_t cluster[static len],
+                        size_t tag_count, const struct fcft_layout_tag tags[static tag_count],
                         enum fcft_subpixel subpixel)
 {
     return NULL;
