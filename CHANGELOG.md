@@ -23,6 +23,9 @@
 * `fcft_set_scaling_filter()`: new API that lets the calling
   application configure the filter to use when downscaling bitmap
   fonts (https://codeberg.org/dnkl/fcft/issues/9).
+* `fcft_grapheme_rasterize()`: new API that uses HarfBuzz to shape a
+  grapheme cluster. Note that HarfBuzz is an **optional** dependency,
+  see [README](README.md#building).
 
 
 ### Changed
