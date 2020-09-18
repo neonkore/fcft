@@ -5,57 +5,6 @@
 
 #include <pixman.h>
 
-/* Bitmask of optional capabilities */
-enum fcft_capabilities {
-    FCFT_CAPABILITY_GRAPHEME_SHAPING = 0x1,
-};
-
-/*
- * Defines the subpixel order to use.
- *
- * Note that this is *ignored* if antialiasing has been disabled.
- */
-enum fcft_subpixel {
-    FCFT_SUBPIXEL_DEFAULT,          /* Use subpixel order from FontConfig */
-    FCFT_SUBPIXEL_NONE,             /* Disable subpixel antialiasing (use grayscale antialiasing) */
-    FCFT_SUBPIXEL_HORIZONTAL_RGB,
-    FCFT_SUBPIXEL_HORIZONTAL_BGR,
-    FCFT_SUBPIXEL_VERTICAL_RGB,
-    FCFT_SUBPIXEL_VERTICAL_BGR,
-};
-
-enum fcft_scaling_filter {
-    FCFT_SCALING_FILTER_NONE,
-    FCFT_SCALING_FILTER_NEAREST,
-    FCFT_SCALING_FILTER_BILINEAR,
-    FCFT_SCALING_FILTER_CUBIC,
-    FCFT_SCALING_FILTER_LANCZOS3,
-};
-
-struct fcft_glyph {
-    wchar_t wc;
-    int cols;              /* wcwidth(wc) */
-
-    pixman_image_t *pix;
-
-    int x;
-    int y;
-    int width;
-    int height;
-
-    struct {
-        int x;
-        int y;
-    } advance;
-};
-
-struct fcft_grapheme {
-    int cols;  /* wcswidth(grapheme) */
-
-    size_t count;
-    const struct fcft_glyph **glyphs;
-};
-
 struct fcft_font {
     /* font extents */
     int height;
@@ -85,7 +34,10 @@ struct fcft_font {
     } strikeout;
 };
 
-bool fcft_set_scaling_filter(enum fcft_scaling_filter filter);
+/* Bitmask of optional capabilities */
+enum fcft_capabilities {
+    FCFT_CAPABILITY_GRAPHEME_SHAPING = 0x1,
+};
 
 enum fcft_capabilities fcft_capabilities(void);
 
@@ -99,10 +51,48 @@ void fcft_destroy(struct fcft_font *font);
 /* Returns a *new* font instance */
 struct fcft_font *fcft_size_adjust(const struct fcft_font *font, double amount) __attribute__((deprecated));
 
+/*
+ * Defines the subpixel order to use.
+ *
+ * Note that this is *ignored* if antialiasing has been disabled.
+ */
+enum fcft_subpixel {
+    FCFT_SUBPIXEL_DEFAULT,          /* Use subpixel order from FontConfig */
+    FCFT_SUBPIXEL_NONE,             /* Disable subpixel antialiasing (use grayscale antialiasing) */
+    FCFT_SUBPIXEL_HORIZONTAL_RGB,
+    FCFT_SUBPIXEL_HORIZONTAL_BGR,
+    FCFT_SUBPIXEL_VERTICAL_RGB,
+    FCFT_SUBPIXEL_VERTICAL_BGR,
+};
+
+struct fcft_glyph {
+    wchar_t wc;
+    int cols;              /* wcwidth(wc) */
+
+    pixman_image_t *pix;
+
+    int x;
+    int y;
+    int width;
+    int height;
+
+    struct {
+        int x;
+        int y;
+    } advance;
+};
+
 /* Rasterize 'wc' using 'font'. Use the defined subpixel mode *if*
  * antialiasing is enabled for this font */
 const struct fcft_glyph *fcft_glyph_rasterize(
     struct fcft_font *font, wchar_t wc, enum fcft_subpixel subpixel);
+
+struct fcft_grapheme {
+    int cols;  /* wcswidth(grapheme) */
+
+    size_t count;
+    const struct fcft_glyph **glyphs;
+};
 
 const struct fcft_grapheme *fcft_grapheme_rasterize(
     struct fcft_font *font,
@@ -118,3 +108,13 @@ wchar_t fcft_precompose(const struct fcft_font *font,
                         bool *base_is_from_primary,
                         bool *comb_is_from_primary,
                         bool *composed_is_from_primary);
+
+enum fcft_scaling_filter {
+    FCFT_SCALING_FILTER_NONE,
+    FCFT_SCALING_FILTER_NEAREST,
+    FCFT_SCALING_FILTER_BILINEAR,
+    FCFT_SCALING_FILTER_CUBIC,
+    FCFT_SCALING_FILTER_LANCZOS3,
+};
+
+bool fcft_set_scaling_filter(enum fcft_scaling_filter filter);
