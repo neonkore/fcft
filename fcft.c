@@ -1637,7 +1637,7 @@ hash_value_for_grapheme(size_t len, const wchar_t grapheme[static len],
 static struct grapheme_priv **
 grapheme_cache_lookup(struct font_priv *font,
                       size_t len, const wchar_t cluster[static len],
-                      size_t tag_count, const struct fcft_layout_tag tags[static tag_count],
+                      size_t tag_count, const struct fcft_layout_tag *tags,
                       enum fcft_subpixel subpixel)
 {
     size_t idx = grapheme_hash_index(
@@ -1712,7 +1712,7 @@ const struct fcft_grapheme *
 fcft_grapheme_rasterize(struct fcft_font *_font,
                         size_t len, const wchar_t cluster[static len],
                         size_t tag_count,
-                        const struct fcft_layout_tag tags[static tag_count],
+                        const struct fcft_layout_tag *tags,
                         enum fcft_subpixel subpixel)
 {
     struct font_priv *font = (struct font_priv *)_font;
@@ -1971,7 +1971,7 @@ err:
 const struct fcft_grapheme *
 fcft_grapheme_rasterize(struct fcft_font *_font,
                         size_t len, const wchar_t cluster[static len],
-                        size_t tag_count, const struct fcft_layout_tag tags[static tag_count],
+                        size_t tag_count, const struct fcft_layout_tag *tags,
                         enum fcft_subpixel subpixel)
 {
     return NULL;
