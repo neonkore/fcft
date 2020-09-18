@@ -122,13 +122,13 @@ START_TEST(test_emoji_zwj)
 {
     const wchar_t *const emoji = L"🤚🏿";
     const struct fcft_grapheme *grapheme = fcft_grapheme_rasterize(
-        emoji_font, wcslen(emoji), emoji, FCFT_SUBPIXEL_DEFAULT);
+        emoji_font, wcslen(emoji), emoji, 0, NULL, FCFT_SUBPIXEL_DEFAULT);
     ck_assert_ptr_nonnull(grapheme);
     ck_assert_int_eq(grapheme->count, 1);
 
     /* Verify grapheme was cached */
     const struct fcft_grapheme *grapheme2 = fcft_grapheme_rasterize(
-        emoji_font, wcslen(emoji), emoji, FCFT_SUBPIXEL_DEFAULT);
+        emoji_font, wcslen(emoji), emoji, 0, NULL, FCFT_SUBPIXEL_DEFAULT);
     ck_assert_ptr_eq(grapheme, grapheme2);
 }
 END_TEST

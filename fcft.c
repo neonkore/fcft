@@ -60,6 +60,9 @@ struct grapheme_priv {
     size_t len;
     wchar_t *cluster;  /* ‘len’ characters */
 
+    size_t tag_count;
+    struct fcft_layout_tag *tags;
+
     enum fcft_subpixel subpixel;
     bool valid;
 };
@@ -1634,15 +1637,21 @@ hash_value_for_grapheme(size_t len, const wchar_t grapheme[static len],
 static struct grapheme_priv **
 grapheme_cache_lookup(struct font_priv *font,
                       size_t len, const wchar_t cluster[static len],
+                      size_t tag_count, const struct fcft_layout_tag tags[static tag_count],
                       enum fcft_subpixel subpixel)
 {
     size_t idx = grapheme_hash_index(
         font, hash_value_for_grapheme(len, cluster, subpixel));
     struct grapheme_priv **entry = &font->grapheme_cache.table[idx];
 
-    while (*entry != NULL && !((*entry)->len == len &&
-                               wcsncmp((*entry)->cluster, cluster, len) == 0 &&
-                               (*entry)->subpixel == subpixel))
+    while (*entry != NULL && !(
+               (*entry)->len == len &&
+               wcsncmp((*entry)->cluster, cluster, len) == 0 &&
+               (*entry)->tag_count == tag_count &&
+               (((*entry)->tags == NULL && tags == NULL) ||
+                ((*entry)->tags != NULL && tags != NULL &&
+                 memcmp((*entry)->tags, tags, tag_count * sizeof(tags[0])) == 0)) &&
+               (*entry)->subpixel == subpixel))
     {
         idx = (idx + 1) & (font->grapheme_cache.size - 1);
         entry = &font->grapheme_cache.table[idx];
@@ -1702,6 +1711,8 @@ grapheme_cache_resize(struct font_priv *font)
 const struct fcft_grapheme *
 fcft_grapheme_rasterize(struct fcft_font *_font,
                         size_t len, const wchar_t cluster[static len],
+                        size_t tag_count,
+                        const struct fcft_layout_tag tags[static tag_count],
                         enum fcft_subpixel subpixel)
 {
     struct font_priv *font = (struct font_priv *)_font;
@@ -1709,7 +1720,7 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
 
     pthread_rwlock_rdlock(&font->grapheme_cache_lock);
     struct grapheme_priv **entry = grapheme_cache_lookup(
-        font, len, cluster, subpixel);
+        font, len, cluster, tag_count, tags, subpixel);
 
     if (*entry != NULL) {
         const struct grapheme_priv *grapheme = *entry;
@@ -1722,7 +1733,7 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
 
     /* Check again - another thread may have resized the cache, or
      * populated the entry while we acquired the write-lock */
-    entry = grapheme_cache_lookup(font, len, cluster, subpixel);
+    entry = grapheme_cache_lookup(font, len, cluster, tag_count, tags, subpixel);
     if (*entry != NULL) {
         const struct grapheme_priv *grapheme = *entry;
         mtx_unlock(&font->lock);
@@ -1731,7 +1742,8 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
 
     if (grapheme_cache_resize(font)) {
         /* Entry pointer is invalid if the cache was resized */
-        entry = grapheme_cache_lookup(font, len, cluster, subpixel);
+        entry = grapheme_cache_lookup(
+            font, len, cluster, tag_count, tags, subpixel);
     }
 
     tll_foreach(font->fallbacks, it) {
@@ -1838,11 +1850,16 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
     wchar_t *cluster_copy = malloc(len * sizeof(cluster_copy[0]));
     struct grapheme_priv *grapheme = malloc(sizeof(*grapheme));
     struct fcft_glyph **glyphs = calloc(count, sizeof(glyphs[0]));
+    struct fcft_layout_tag *tags_copy
+        = tag_count == 0 ? NULL : malloc(tag_count * sizeof(tags_copy[0]));
 
-    if (cluster_copy == NULL || grapheme == NULL || glyphs == NULL) {
+    if (cluster_copy == NULL || grapheme == NULL || glyphs == NULL ||
+        (tag_count > 0 && tags_copy == NULL))
+    {
         free(cluster_copy);
         free(grapheme);
         free(glyphs);
+        free(tags_copy);
         mtx_unlock(&font->lock);
         return NULL;
     }
@@ -1851,9 +1868,14 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
     grapheme->valid = false;
     grapheme->len = len;
     grapheme->cluster = cluster_copy;
+    grapheme->tag_count = tag_count;
+    grapheme->tags = tags_copy;
     grapheme->subpixel = subpixel;
     grapheme->public.cols = width;
     grapheme->public.glyphs = (const struct fcft_glyph **)glyphs;
+
+    for (size_t i = 0; i < tag_count; i++)
+        grapheme->tags[i] = tags[i];
 
     size_t glyph_idx = 0;
     const unsigned count_from_the_beginning = count;
@@ -2013,23 +2035,22 @@ fcft_destroy(struct fcft_font *_font)
         if (entry == NULL)
             continue;
 
-        if (entry->valid) {
-            for (size_t j = 0; j < entry->public.count; j++) {
-                struct glyph_priv *g
-                    = (struct glyph_priv *)entry->public.glyphs[j];
+        for (size_t j = 0; j < entry->public.count; j++) {
+            struct glyph_priv *g
+                = (struct glyph_priv *)entry->public.glyphs[j];
 
-                if (g->valid) {
-                    void *image = pixman_image_get_data(g->public.pix);
-                    pixman_image_unref(g->public.pix);
-                    free(image);
-                    free(g);
-                }
+            if (g->valid) {
+                void *image = pixman_image_get_data(g->public.pix);
+                pixman_image_unref(g->public.pix);
+                free(image);
             }
 
-            free(entry->public.glyphs);
-            free(entry->cluster);
+            free(g);
         }
 
+        free(entry->tags);
+        free(entry->public.glyphs);
+        free(entry->cluster);
         free(entry);
     }
     free(font->grapheme_cache.table);

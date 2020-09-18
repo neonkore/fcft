@@ -94,9 +94,15 @@ struct fcft_grapheme {
     const struct fcft_glyph **glyphs;
 };
 
+struct fcft_layout_tag {
+    char tag[4];
+    unsigned value;
+};
+
 const struct fcft_grapheme *fcft_grapheme_rasterize(
     struct fcft_font *font,
     size_t len, const wchar_t grapheme_cluster[static len],
+    size_t tag_count, const struct fcft_layout_tag tags[static tag_count],
     enum fcft_subpixel subpixel);
 
 bool fcft_kerning(
