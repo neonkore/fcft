@@ -1841,7 +1841,7 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
         hb_feature_t *feat = &feats[i];
         const struct fcft_layout_tag *tag = &tags[i];
 
-        static_assert(sizeof(feat->tag) == sizeof(tag->tag), "tag size mismatch");
+        _Static_assert(sizeof(feat->tag) == sizeof(tag->tag), "tag size mismatch");
 
         feat->tag = 0;
         for (size_t j = 0; j < 4; j++) {
