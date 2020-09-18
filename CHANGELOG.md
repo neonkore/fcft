@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#Unreleased)
+* [2.3.1](#2-3-1)
 * [2.3.0](#2-3-0)
 * [2.2.7](#2-2-7)
 * [2.2.6](#2-2-6)
@@ -18,19 +18,13 @@
 * [1.1.7](#1-1-7)
 
 
-## Unreleased
-### Added
-### Changed
-### Deprecated
-### Removed
+## 2.3.1
+
 ### Fixed
 
 * `fcft_grapheme_rasterize()` now makes use of the optional
   `tags`. These were previously ignored.
 * Compilation error when text shaping was disabled.
-
-
-### Security
 
 
 ## 2.3.0
