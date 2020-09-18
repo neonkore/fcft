@@ -1858,9 +1858,9 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
 
     hb_shape(inst->hb_font, inst->hb_buf, feats, tag_count);
 
-    unsigned count = 0;
-    const hb_glyph_info_t *info = hb_buffer_get_glyph_infos(inst->hb_buf, &count);
-    const hb_glyph_position_t *pos = hb_buffer_get_glyph_positions(inst->hb_buf, &count);
+    unsigned count = hb_buffer_get_length(inst->hb_buf);
+    const hb_glyph_info_t *info = hb_buffer_get_glyph_infos(inst->hb_buf, NULL);
+    const hb_glyph_position_t *pos = hb_buffer_get_glyph_positions(inst->hb_buf, NULL);
     const int width = max(0, wcswidth(cluster, len));
 
     LOG_DBG("length: %u", hb_buffer_get_length(inst->hb_buf));
