@@ -1833,9 +1833,7 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
     assert(inst->hb_font != NULL);
 
     hb_buffer_add_utf32(inst->hb_buf, (const uint32_t *)cluster, len, 0, len);
-    hb_buffer_set_direction(inst->hb_buf, HB_DIRECTION_LTR);
-    hb_buffer_set_script(inst->hb_buf, HB_SCRIPT_LATIN);
-    hb_buffer_set_language(inst->hb_buf, hb_language_from_string("en", -1));
+    hb_buffer_guess_segment_properties(inst->hb_buf);
 
     hb_feature_t feats[tag_count];
 
