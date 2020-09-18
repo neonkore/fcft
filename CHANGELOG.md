@@ -27,6 +27,7 @@
 
 * `fcft_grapheme_rasterize()` now makes use of the optional
   `tags`. These were previously ignored.
+* Compilation error when text shaping was disabled.
 
 
 ### Security

@@ -1973,6 +1973,7 @@ err:
 const struct fcft_grapheme *
 fcft_grapheme_rasterize(struct fcft_font *_font,
                         size_t len, const wchar_t cluster[static len],
+                        size_t tag_count, const struct fcft_layout_tag tags[static tag_count],
                         enum fcft_subpixel subpixel)
 {
     return NULL;
