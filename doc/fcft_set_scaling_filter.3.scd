@@ -16,7 +16,7 @@ fcft_set_scaling_filter - configures the filter to use when downscaling bitmap f
 downscaling bitmap fonts (typically emoji fonts). The setting affects
 *all* font instances.
 
-This function does *not* clear the glyph caches and should therefor be
+This function does *not* clear the glyph caches and should therefore be
 called before any calls to *fcft_glyph_rasterize*(3).
 
 Possible values for _filter_ are:
