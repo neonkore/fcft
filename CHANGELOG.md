@@ -27,6 +27,10 @@
 ### Fixed
 ### Security
 
+### Contributors
+
+* [birger](https://codeberg.org/birger)
+
 
 ## 2.3.1
 
