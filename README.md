@@ -93,6 +93,22 @@ fcft = dependency('fcft', version: '>=0.4.0', fallback: 'fcft')
 
 ## Building
 
+Run-time dependencies:
+
+* fontconfig
+* freetype2
+* pixman
+* harfbuzz (_optional_)
+
+Build dependencies:
+
+* Development packages of the run-time dependencies
+* meson
+* ninja
+* scdoc
+* [tllist](https://codeberg.org/dnkl/tllist)
+* [check](https://libcheck.github.io/check/) (_optional_, for unit tests)
+
 For most users, this is typically enough:
 ```sh
 meson build --buildtype=release
