@@ -217,8 +217,12 @@ init(void)
 static void __attribute__((destructor))
 fini(void)
 {
-    while (tll_length(font_cache) > 0)
-        fcft_destroy(&tll_front(font_cache).font->public);
+    while (tll_length(font_cache) > 0) {
+        struct fcft_font_cache_entry e = tll_pop_front(font_cache);
+
+        if (e.font != NULL)
+            fcft_destroy(&e.font->public);
+    }
 
     mtx_destroy(&font_cache_lock);
     mtx_destroy(&ft_lock);

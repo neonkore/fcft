@@ -25,6 +25,11 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Hang in library destructor when system has no fonts installed
+  (https://codeberg.org/dnkl/foot/issues/174).
+
+
 ### Security
 
 ### Contributors
