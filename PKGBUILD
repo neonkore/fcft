@@ -8,7 +8,7 @@ url=https://codeberg.org/dnkl/fcft
 license=(mit)
 makedepends=('meson' 'ninja' 'tllist>=1.0.1' 'scdoc')
 depends=('freetype2' 'fontconfig' 'pixman')
-checkdepends=('check')
+checkdepends=('check' 'ttf-dejavu')
 source=()
 
 pkgver() {
