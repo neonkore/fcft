@@ -246,7 +246,14 @@ log_version_information(void)
     has_already_logged = true;
     mtx_unlock(&font_cache_lock);
 
-    LOG_INFO("fcft: %s", FCFT_VERSION);
+    enum fcft_capabilities caps = fcft_capabilities();
+
+    static char caps_str[256];
+    snprintf(
+        caps_str, sizeof(caps_str),
+        "%cgraphemes", caps & FCFT_CAPABILITY_GRAPHEME_SHAPING ? '+' : '-');
+
+    LOG_INFO("fcft: %s %s", FCFT_VERSION, caps_str);
 
     {
         int raw_version = FcGetVersion();
