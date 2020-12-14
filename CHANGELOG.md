@@ -21,8 +21,19 @@
 
 ## Unreleased
 ### Added
+
+* Limited support for _"fontfeatures_" . fcft is still not a layout
+  engine, but with this we can support e.g. _stylistic sets_
+  (HarfBuzz-enabled builds only).
+
+
 ### Changed
 ### Deprecated
+
+* `tags` argument in `fcft_grapheme_rasterize()`. It is now being
+  ignored, and will be removed in a future release.
+
+
 ### Removed
 ### Fixed
 

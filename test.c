@@ -130,13 +130,6 @@ START_TEST(test_emoji_zwj)
     const struct fcft_grapheme *grapheme2 = fcft_grapheme_rasterize(
         emoji_font, wcslen(emoji), emoji, 0, NULL, FCFT_SUBPIXEL_DEFAULT);
     ck_assert_ptr_eq(grapheme, grapheme2);
-
-    const struct fcft_grapheme *grapheme3 = fcft_grapheme_rasterize(
-        emoji_font, wcslen(emoji), emoji,
-        1, &(struct fcft_layout_tag){.tag = "liga", .value = 1},
-        FCFT_SUBPIXEL_DEFAULT);
-    ck_assert_ptr_nonnull(grapheme3);
-    ck_assert_ptr_ne(grapheme3, grapheme);
 }
 END_TEST
 #endif
