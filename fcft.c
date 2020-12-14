@@ -620,7 +620,6 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
     font->render_flags_subpixel = render_flags_subpixel;
     font->pixel_size_fixup = pixel_fixup;
     font->bgr = fc_rgba == FC_RGBA_BGR || fc_rgba == FC_RGBA_VBGR;
-    font->hb_feats_count = 0;
 
     /* For logging: e.g. "+ss01 -dlig" */
     char features[256] = {0};
@@ -638,7 +637,7 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
         goto err_hb_font_destroy;
     }
 
-    for (; font->hb_feats_count < ALEN(font->hb_feats); ) {
+    for (font->hb_feats_count = 0; font->hb_feats_count < ALEN(font->hb_feats); ) {
         FcChar8 *fc_feat;
         if (FcPatternGetString(
                 pattern, FC_FONT_FEATURES,
@@ -1487,7 +1486,7 @@ glyph_for_wchar(const struct instance *inst, wchar_t wc,
      * Use HarfBuzz if we have any font features. If we don’t, there’s
      * no point in using HarfBuzz since it only slows things down, and
      * we can just lookup the glyph index directly using FreeType’s
-     * API.
+     * API.x
      */
     if (inst->hb_feats_count > 0) {
         hb_buffer_add_utf32(inst->hb_buf, (const uint32_t *)&wc, 1, 0, 1);
@@ -2008,6 +2007,7 @@ err:
 const struct fcft_grapheme *
 fcft_grapheme_rasterize(struct fcft_font *_font,
                         size_t len, const wchar_t cluster[static len],
+                        size_t tag_count, const struct fcft_layout_tag *tags,
                         enum fcft_subpixel subpixel)
 {
     return NULL;
