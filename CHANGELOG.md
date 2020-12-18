@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#Unreleased)
+* [2.3.2](#2-3-2)
 * [2.3.1](#2-3-1)
 * [2.3.0](#2-3-0)
 * [2.2.7](#2-2-7)
@@ -19,7 +19,8 @@
 * [1.1.7](#1-1-7)
 
 
-## Unreleased
+## 2.3.2
+
 ### Added
 
 * Limited support for _"fontfeatures_" . fcft is still not a layout
@@ -27,21 +28,17 @@
   (HarfBuzz-enabled builds only).
 
 
-### Changed
 ### Deprecated
 
 * `tags` argument in `fcft_grapheme_rasterize()`. It is now being
   ignored, and will be removed in a future release.
 
 
-### Removed
 ### Fixed
 
 * Hang in library destructor when system has no fonts installed
   (https://codeberg.org/dnkl/foot/issues/174).
 
-
-### Security
 
 ### Contributors
 
