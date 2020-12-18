@@ -1,4 +1,4 @@
-fcft_grapheme_rasterize(3) "2.3.1" "fcft"
+fcft_grapheme_rasterize(3) "2.3.2" "fcft"
 
 # NAME
 
