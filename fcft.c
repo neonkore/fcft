@@ -36,6 +36,7 @@
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
+#define ALEN(v) (sizeof(v) / sizeof((v)[0]))
 
 static FT_Error ft_lib_err;
 static FT_Library ft_lib;
@@ -60,9 +61,6 @@ struct grapheme_priv {
     size_t len;
     wchar_t *cluster;  /* ‘len’ characters */
 
-    size_t tag_count;
-    struct fcft_layout_tag *tags;
-
     enum fcft_subpixel subpixel;
     bool valid;
 };
@@ -75,6 +73,8 @@ struct instance {
 #if defined(FCFT_HAVE_HARFBUZZ)
     hb_font_t *hb_font;
     hb_buffer_t *hb_buf;
+    hb_feature_t hb_feats[32];
+    size_t hb_feats_count;
 #endif
 
     bool antialias;
@@ -217,8 +217,12 @@ init(void)
 static void __attribute__((destructor))
 fini(void)
 {
-    while (tll_length(font_cache) > 0)
-        fcft_destroy(&tll_front(font_cache).font->public);
+    while (tll_length(font_cache) > 0) {
+        struct fcft_font_cache_entry e = tll_pop_front(font_cache);
+
+        if (e.font != NULL)
+            fcft_destroy(&e.font->public);
+    }
 
     mtx_destroy(&font_cache_lock);
     mtx_destroy(&ft_lock);
@@ -242,7 +246,14 @@ log_version_information(void)
     has_already_logged = true;
     mtx_unlock(&font_cache_lock);
 
-    LOG_INFO("fcft: %s", FCFT_VERSION);
+    enum fcft_capabilities caps = fcft_capabilities();
+
+    static char caps_str[256];
+    snprintf(
+        caps_str, sizeof(caps_str),
+        "%cgraphemes", caps & FCFT_CAPABILITY_GRAPHEME_SHAPING ? '+' : '-');
+
+    LOG_INFO("fcft: %s %s", FCFT_VERSION, caps_str);
 
     {
         int raw_version = FcGetVersion();
@@ -610,16 +621,48 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
     font->pixel_size_fixup = pixel_fixup;
     font->bgr = fc_rgba == FC_RGBA_BGR || fc_rgba == FC_RGBA_VBGR;
 
+    /* For logging: e.g. "+ss01 -dlig" */
+    char features[256] = {0};
+
 #if defined(FCFT_HAVE_HARFBUZZ)
     font->hb_font = hb_ft_font_create_referenced(ft_face);
     if (font->hb_font == NULL) {
         LOG_ERR("%s: failed to instantiate harfbuzz font", face_file);
         goto err_free_path;
     }
+
     font->hb_buf = hb_buffer_create();
     if (font->hb_buf == NULL) {
         LOG_ERR("%s: failed to instantiate harfbuzz buffer", face_file);
         goto err_hb_font_destroy;
+    }
+
+    for (font->hb_feats_count = 0; font->hb_feats_count < ALEN(font->hb_feats); ) {
+        FcChar8 *fc_feat;
+        if (FcPatternGetString(
+                pattern, FC_FONT_FEATURES,
+                font->hb_feats_count, &fc_feat) != FcResultMatch)
+        {
+            break;
+        }
+
+        hb_feature_t *feat = &font->hb_feats[font->hb_feats_count];
+
+        if (hb_feature_from_string((const char *)fc_feat, -1, feat)) {
+            const char tag[4] = {
+                (feat->tag >> 24) & 0xff,
+                (feat->tag >> 16) & 0xff,
+                (feat->tag >> 8) & 0xff,
+                (feat->tag >> 0) & 0xff,
+            };
+
+            size_t ofs = font->hb_feats_count * 6;
+            snprintf(&features[ofs], sizeof(features) - ofs,
+                     " %c%.4s", feat->value ? '+' : '-', tag);
+
+            LOG_DBG("feature: %.4s=%s", tag, feat->value ? "on" : "off");
+            font->hb_feats_count++;
+        }
     }
 #endif
 
@@ -663,21 +706,24 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
 
 #if defined(LOG_ENABLE_DBG) && LOG_ENABLE_DBG
     LOG_DBG("%s: size=%.2fpt/%.2fpx, dpi=%.2f, fixup-factor: %.4f, "
-            "line-height: %dpx, ascent: %dpx, descent: %dpx, x-advance (max/space): %d/%dpx",
+            "line-height: %dpx, ascent: %dpx, descent: %dpx, "
+            "x-advance (max/space): %d/%dpx, features:%s",
             font->path, size, pixel_size, dpi, font->pixel_size_fixup,
             font->metrics.height, font->metrics.ascent, font->metrics.descent,
-            font->metrics.max_advance.x, font->metrics.space_advance.x);
+            font->metrics.max_advance.x, font->metrics.space_advance.x,
+            features);
 #else
-    LOG_INFO("%s: size=%.2fpt/%dpx, dpi=%.2f", font->path, size, (int)pixel_size, dpi);
+    LOG_INFO("%s: size=%.2fpt/%dpx, dpi=%.2f%s",
+             font->path, size, (int)pixel_size, dpi, features);
 #endif
 
     return true;
 
 #if defined(FCFT_HAVE_HARFBUZZ)
-err_free_path:
-    free(font->path);
 err_hb_font_destroy:
     hb_font_destroy(font->hb_font);
+err_free_path:
+    free(font->path);
 #endif
 
 err_done_face:
@@ -1433,7 +1479,33 @@ static bool
 glyph_for_wchar(const struct instance *inst, wchar_t wc,
                 enum fcft_subpixel subpixel, struct glyph_priv *glyph)
 {
-    FT_UInt idx = FT_Get_Char_Index(inst->face, wc);
+    FT_UInt idx = -1;
+
+#if defined(FCFT_HAVE_HARFBUZZ)
+    /*
+     * Use HarfBuzz if we have any font features. If we don’t, there’s
+     * no point in using HarfBuzz since it only slows things down, and
+     * we can just lookup the glyph index directly using FreeType’s
+     * API.x
+     */
+    if (inst->hb_feats_count > 0) {
+        hb_buffer_add_utf32(inst->hb_buf, (const uint32_t *)&wc, 1, 0, 1);
+        hb_buffer_guess_segment_properties(inst->hb_buf);
+        hb_shape(inst->hb_font, inst->hb_buf, inst->hb_feats, inst->hb_feats_count);
+
+        unsigned count = hb_buffer_get_length(inst->hb_buf);
+        if (count == 1) {
+            const hb_glyph_info_t *info = hb_buffer_get_glyph_infos(inst->hb_buf, NULL);
+            idx = info[0].codepoint;
+        }
+
+        hb_buffer_clear_contents(inst->hb_buf);
+    }
+#endif
+
+    if (idx == (FT_UInt)-1)
+        idx = FT_Get_Char_Index(inst->face, wc);
+
     bool ret = glyph_for_index(inst, idx, subpixel, glyph);
     glyph->public.wc = wc;
     glyph->public.cols = wcwidth(wc);
@@ -1637,7 +1709,6 @@ hash_value_for_grapheme(size_t len, const wchar_t grapheme[static len],
 static struct grapheme_priv **
 grapheme_cache_lookup(struct font_priv *font,
                       size_t len, const wchar_t cluster[static len],
-                      size_t tag_count, const struct fcft_layout_tag *tags,
                       enum fcft_subpixel subpixel)
 {
     size_t idx = grapheme_hash_index(
@@ -1647,10 +1718,6 @@ grapheme_cache_lookup(struct font_priv *font,
     while (*entry != NULL && !(
                (*entry)->len == len &&
                wcsncmp((*entry)->cluster, cluster, len) == 0 &&
-               (*entry)->tag_count == tag_count &&
-               (((*entry)->tags == NULL && tags == NULL) ||
-                ((*entry)->tags != NULL && tags != NULL &&
-                 memcmp((*entry)->tags, tags, tag_count * sizeof(tags[0])) == 0)) &&
                (*entry)->subpixel == subpixel))
     {
         idx = (idx + 1) & (font->grapheme_cache.size - 1);
@@ -1711,8 +1778,7 @@ grapheme_cache_resize(struct font_priv *font)
 const struct fcft_grapheme *
 fcft_grapheme_rasterize(struct fcft_font *_font,
                         size_t len, const wchar_t cluster[static len],
-                        size_t tag_count,
-                        const struct fcft_layout_tag *tags,
+                        size_t tag_count, const struct fcft_layout_tag *tags,
                         enum fcft_subpixel subpixel)
 {
     struct font_priv *font = (struct font_priv *)_font;
@@ -1720,7 +1786,7 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
 
     pthread_rwlock_rdlock(&font->grapheme_cache_lock);
     struct grapheme_priv **entry = grapheme_cache_lookup(
-        font, len, cluster, tag_count, tags, subpixel);
+        font, len, cluster, subpixel);
 
     if (*entry != NULL) {
         const struct grapheme_priv *grapheme = *entry;
@@ -1733,7 +1799,7 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
 
     /* Check again - another thread may have resized the cache, or
      * populated the entry while we acquired the write-lock */
-    entry = grapheme_cache_lookup(font, len, cluster, tag_count, tags, subpixel);
+    entry = grapheme_cache_lookup(font, len, cluster, subpixel);
     if (*entry != NULL) {
         const struct grapheme_priv *grapheme = *entry;
         mtx_unlock(&font->lock);
@@ -1742,8 +1808,7 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
 
     if (grapheme_cache_resize(font)) {
         /* Entry pointer is invalid if the cache was resized */
-        entry = grapheme_cache_lookup(
-            font, len, cluster, tag_count, tags, subpixel);
+        entry = grapheme_cache_lookup(font, len, cluster, subpixel);
     }
 
     tll_foreach(font->fallbacks, it) {
@@ -1835,26 +1900,7 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
     hb_buffer_add_utf32(inst->hb_buf, (const uint32_t *)cluster, len, 0, len);
     hb_buffer_guess_segment_properties(inst->hb_buf);
 
-    hb_feature_t feats[tag_count];
-
-    for (size_t i = 0; i < tag_count; i++) {
-        hb_feature_t *feat = &feats[i];
-        const struct fcft_layout_tag *tag = &tags[i];
-
-        _Static_assert(sizeof(feat->tag) == sizeof(tag->tag), "tag size mismatch");
-
-        feat->tag = 0;
-        for (size_t j = 0; j < 4; j++) {
-            feat->tag <<= 8;
-            feat->tag |= tag->tag[j];
-        }
-
-        feat->value = tag->value;
-        feat->start = HB_FEATURE_GLOBAL_START;
-        feat->end = HB_FEATURE_GLOBAL_END;
-    }
-
-    hb_shape(inst->hb_font, inst->hb_buf, feats, tag_count);
+    hb_shape(inst->hb_font, inst->hb_buf, inst->hb_feats, inst->hb_feats_count);
 
     unsigned count = hb_buffer_get_length(inst->hb_buf);
     const hb_glyph_info_t *info = hb_buffer_get_glyph_infos(inst->hb_buf, NULL);
@@ -1867,16 +1913,11 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
     wchar_t *cluster_copy = malloc(len * sizeof(cluster_copy[0]));
     struct grapheme_priv *grapheme = malloc(sizeof(*grapheme));
     struct fcft_glyph **glyphs = calloc(count, sizeof(glyphs[0]));
-    struct fcft_layout_tag *tags_copy
-        = tag_count == 0 ? NULL : malloc(tag_count * sizeof(tags_copy[0]));
 
-    if (cluster_copy == NULL || grapheme == NULL || glyphs == NULL ||
-        (tag_count > 0 && tags_copy == NULL))
-    {
+    if (cluster_copy == NULL || grapheme == NULL || glyphs == NULL) {
         free(cluster_copy);
         free(grapheme);
         free(glyphs);
-        free(tags_copy);
         mtx_unlock(&font->lock);
         return NULL;
     }
@@ -1885,14 +1926,9 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
     grapheme->valid = false;
     grapheme->len = len;
     grapheme->cluster = cluster_copy;
-    grapheme->tag_count = tag_count;
-    grapheme->tags = tags_copy;
     grapheme->subpixel = subpixel;
     grapheme->public.cols = width;
     grapheme->public.glyphs = (const struct fcft_glyph **)glyphs;
-
-    for (size_t i = 0; i < tag_count; i++)
-        grapheme->tags[i] = tags[i];
 
     size_t glyph_idx = 0;
     const unsigned count_from_the_beginning = count;
@@ -2066,7 +2102,6 @@ fcft_destroy(struct fcft_font *_font)
             free(g);
         }
 
-        free(entry->tags);
         free(entry->public.glyphs);
         free(entry->cluster);
         free(entry);
@@ -2074,7 +2109,6 @@ fcft_destroy(struct fcft_font *_font)
     free(font->grapheme_cache.table);
     pthread_rwlock_destroy(&font->grapheme_cache_lock);
 #endif
-
 
     free(font);
 }

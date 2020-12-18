@@ -1,5 +1,6 @@
 # Changelog
 
+* [Unreleased](#Unreleased)
 * [2.3.1](#2-3-1)
 * [2.3.0](#2-3-0)
 * [2.2.7](#2-2-7)
@@ -16,6 +17,35 @@
 * [2.1.0](#2-1-0)
 * [2.0.0](#2-0-0)
 * [1.1.7](#1-1-7)
+
+
+## Unreleased
+### Added
+
+* Limited support for _"fontfeatures_" . fcft is still not a layout
+  engine, but with this we can support e.g. _stylistic sets_
+  (HarfBuzz-enabled builds only).
+
+
+### Changed
+### Deprecated
+
+* `tags` argument in `fcft_grapheme_rasterize()`. It is now being
+  ignored, and will be removed in a future release.
+
+
+### Removed
+### Fixed
+
+* Hang in library destructor when system has no fonts installed
+  (https://codeberg.org/dnkl/foot/issues/174).
+
+
+### Security
+
+### Contributors
+
+* [birger](https://codeberg.org/birger)
 
 
 ## 2.3.1
