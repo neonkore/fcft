@@ -66,8 +66,7 @@ fontconfig = dependency('fontconfig')
 freetype = dependency('freetype2')
 harfbuzz = dependency('harfbuzz', required: get_option('text-shaping'))
 pixman = dependency('pixman-1')
-# required on the freebsd platform (maybe even on others)
-stdthreads = cc.find_library('stdthreads', required: host_machine.system() == 'freebsd')
+stdthreads = cc.find_library('stdthreads', required: false)
 
 tllist = dependency('tllist', version: '>=1.0.1', fallback: 'tllist')
 
