@@ -26,6 +26,10 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Cloned fonts not being properly freed in library destructor.
+
+
 ### Security
 
 
