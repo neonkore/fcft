@@ -1,5 +1,7 @@
 # fcft
 
+[![Packaging status](https://repology.org/badge/vertical-allrepos/fcft.svg)](https://repology.org/project/fcft/versions)
+
 **fcft** is a small font loading and glyph rasterization library built
 on-top of FontConfig, FreeType2 and pixman.
 
