@@ -46,4 +46,4 @@ tasks:
       meson test -C bld/release --print-errorlogs
   - codespell: |
       pip install codespell
-      ~/.local/bin/codespell README.md *.c *.h fcft/*.h doc/*.scd
+      ~/.local/bin/codespell README.md CHANGELOG.md *.c *.h fcft/*.h doc/*.scd
