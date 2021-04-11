@@ -101,6 +101,11 @@ Run-time dependencies:
 * freetype2
 * pixman
 * harfbuzz (_optional_)
+* utf8proc[^2]
+* wayland[^2]
+* wayland-protocols[^2]
+
+[^2]: required by example programs
 
 Build dependencies:
 
@@ -130,6 +135,9 @@ If text-shaping is enabled, you might also want to enable the
 associated tests. Use `-Dtest-text-shaping=true` to do so. Note that
 these tests require an emoji font to be installed, and `fc-match
 emoji` must return that font first.
+
+To build the example programs, use the `-Dexamples=true` meson command
+line option.
 
 
 ## License
