@@ -1,0 +1,591 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
+#include <ctype.h>
+#include <locale.h>
+#include <poll.h>
+#include <signal.h>
+#include <wchar.h>
+#include <assert.h>
+#include <errno.h>
+#include <unistd.h>
+#include <getopt.h>
+
+#include <utf8proc.h>
+
+#include <wayland-client.h>
+#include <xdg-shell.h>
+#include <xdg-decoration-unstable-v1.h>
+
+#include <tllist.h>
+#include <fcft/fcft.h>
+
+#define LOG_MODULE "example"
+#define LOG_ENABLE_DBG 0
+#include "log.h"
+#include "shm.h"
+
+static struct wl_display *display;
+static struct wl_registry *registry;
+static struct wl_compositor *compositor;
+static struct wl_shm *shm;
+static struct wl_surface *surf;
+static struct xdg_wm_base *shell;
+static struct xdg_surface *xdg;
+static struct xdg_toplevel *toplevel;
+static struct zxdg_decoration_manager_v1 *deco_mgr;
+static struct zxdg_toplevel_decoration_v1 *deco;
+
+static bool have_argb8888 = false;
+
+static wchar_t *text;
+static size_t text_len;
+
+struct grapheme {
+    size_t begin;
+    size_t len;
+};
+static struct grapheme *graphemes;
+static size_t grapheme_count = 0;
+
+static struct fcft_font *font = NULL;
+static enum fcft_subpixel subpixel_mode = FCFT_SUBPIXEL_DEFAULT;
+
+static pixman_color_t fg = {0x0000, 0x0000, 0x0000, 0xffff};
+static pixman_color_t bg = {0xffff, 0xffff, 0xffff, 0xffff};
+
+static int width;
+static int height;
+
+static volatile sig_atomic_t aborted = false;
+
+static void
+sig_handler(int signo)
+{
+    aborted = true;
+}
+
+static void
+shm_format(void *data, struct wl_shm *wl_shm, uint32_t format)
+{
+    if (format == WL_SHM_FORMAT_ARGB8888)
+        have_argb8888 = true;
+}
+
+static const struct wl_shm_listener shm_listener = {
+    .format = &shm_format,
+};
+
+static void
+xdg_wm_base_ping(void *data, struct xdg_wm_base *shell, uint32_t serial)
+{
+    xdg_wm_base_pong(shell, serial);
+}
+
+static const struct xdg_wm_base_listener xdg_wm_base_listener = {
+    .ping = &xdg_wm_base_ping,
+};
+
+static void
+xdg_toplevel_configure(void *data, struct xdg_toplevel *xdg_toplevel,
+                       int32_t _width, int32_t _height, struct wl_array *states)
+{
+    width = _width;
+    height = _height;
+}
+
+static void
+xdg_toplevel_close(void *data, struct xdg_toplevel *xdg_toplevel)
+{
+    aborted = true;
+}
+
+static const struct xdg_toplevel_listener xdg_toplevel_listener = {
+    .configure = &xdg_toplevel_configure,
+    .close = &xdg_toplevel_close,
+};
+
+static void
+render_glyphs(struct buffer *buf, int *x, const int *y, pixman_image_t *color,
+              size_t count, const struct fcft_glyph *glyphs[static count],
+              long *kern)
+{
+    for (size_t i = 0; i < count; i++) {
+        const struct fcft_glyph *g = glyphs[i];
+
+        if (kern != NULL)
+            *x += kern[i];
+
+        if (pixman_image_get_format(g->pix) == PIXMAN_a8r8g8b8) {
+            pixman_image_composite32(
+                PIXMAN_OP_OVER, g->pix, NULL, buf->pix, 0, 0, 0, 0,
+                *x + g->x, *y + font->ascent - g->y, g->width, g->height);
+        } else {
+            pixman_image_composite32(
+                PIXMAN_OP_OVER, color, g->pix, buf->pix, 0, 0, 0, 0,
+                *x + g->x, *y + font->ascent - g->y, g->width, g->height);
+        }
+
+        *x += g->advance.x;
+    }
+}
+
+static void
+render_chars(struct buffer *buf, int y, pixman_image_t *color)
+{
+    const struct fcft_glyph *glyphs[text_len];
+    long kern[text_len];
+    int text_width = 0;
+
+    for (size_t i = 0; i < wcslen(text); i++) {
+        glyphs[i] = fcft_glyph_rasterize(font, text[i], subpixel_mode);
+
+        kern[i] = 0;
+        if (i > 0) {
+            long x_kern;
+            if (fcft_kerning(font, text[i - 1], text[i], &x_kern, NULL))
+                kern[i] = x_kern;
+        }
+
+        text_width += kern[i] + glyphs[i]->advance.x;
+    }
+
+    int x = (buf->width - text_width) / 2;
+    render_glyphs(buf, &x, &y, color, text_len, glyphs, kern);
+}
+
+static void
+render_graphemes(struct buffer *buf, int y, pixman_image_t *color)
+{
+    const struct fcft_grapheme *graphs[grapheme_count];
+    int text_width = 0;
+
+    for (size_t i = 0; i < grapheme_count; i++) {
+        graphs[i] = fcft_grapheme_rasterize(
+            font, graphemes[i].len, &text[graphemes[i].begin],
+            0, NULL, subpixel_mode);
+
+        if (graphs[i] == NULL)
+            continue;
+
+        for (size_t j = 0; j < graphs[i]->count; j++)
+            text_width += graphs[i]->glyphs[j]->advance.x;
+    }
+
+    int x = (buf->width - text_width) / 2;
+
+    for (size_t i = 0; i < grapheme_count; i++) {
+        render_glyphs(
+            buf, &x, &y, color, graphs[i]->count, graphs[i]->glyphs, NULL);
+    }
+}
+
+static void
+xdg_surface_configure(void *data, struct xdg_surface *xdg_surface,
+                      uint32_t serial)
+{
+    xdg_surface_ack_configure(xdg, serial);
+
+    static int last_width = -1;
+    static int last_height = -1;
+
+    if (last_width == width && last_height == height) {
+        wl_surface_commit(surf);
+        return;
+    }
+
+    int w = width == 0 ? 100 : width;
+    int h = height == 0 ? 100 : height;
+
+    last_width = w;
+    last_height = h;
+
+    struct buffer *buf = shm_get_buffer(shm, w, h, 0xdeadbeef);
+    assert(buf != NULL);
+
+    /* Background */
+    pixman_image_fill_rectangles(
+        PIXMAN_OP_SRC, buf->pix, &bg, 1,
+        (pixman_rectangle16_t []){{0, 0, w, h}});
+
+    /* Source “image” (foreground color) to composite with */
+    pixman_image_t *clr_pix = pixman_image_create_solid_fill(&fg);
+
+    /* Center 2 lines, using a 1.5x line height */
+    int y = (h - 2 * (3 * font->height / 2)) / 2;
+    render_chars(buf, y, clr_pix);
+
+    /* 1.5x line height */
+    y += 3 * font->height / 2;
+    render_graphemes(buf, y, clr_pix);
+
+    pixman_image_unref(clr_pix);
+
+    wl_surface_attach(surf, buf->wl_buf, 0, 0);
+    wl_surface_damage_buffer(surf, 0, 0, w, h);
+    wl_surface_commit(surf);
+}
+
+static const struct xdg_surface_listener xdg_surface_listener = {
+    .configure = &xdg_surface_configure,
+};
+
+static void
+xdg_toplevel_decoration_configure(
+    void *data,
+    struct zxdg_toplevel_decoration_v1 *zxdg_toplevel_decoration_v1,
+    uint32_t mode)
+{
+    switch (mode) {
+    case ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE:
+        LOG_WARN("compositor refuses to use server side decorations");
+        break;
+    }
+}
+
+static const struct zxdg_toplevel_decoration_v1_listener xdg_toplevel_decoration_listener = {
+    .configure = &xdg_toplevel_decoration_configure,
+};
+
+static bool
+verify_iface_version(const char *iface, uint32_t version, uint32_t wanted)
+{
+    if (version >= wanted)
+        return true;
+
+    LOG_ERR("%s: need interface version %u, but compositor only implements %u",
+            iface, wanted, version);
+    return false;
+}
+
+static void
+handle_global(void *data, struct wl_registry *registry,
+              uint32_t name, const char *interface, uint32_t version)
+{
+    if (strcmp(interface, wl_compositor_interface.name) == 0) {
+        const uint32_t required = 4;
+        if (!verify_iface_version(interface, version, required))
+            return;
+
+        compositor = wl_registry_bind(
+            registry, name, &wl_compositor_interface, required);
+    }
+
+    else if (strcmp(interface, wl_shm_interface.name) == 0) {
+        const uint32_t required = 1;
+        if (!verify_iface_version(interface, version, required))
+            return;
+
+        shm = wl_registry_bind(
+            registry, name, &wl_shm_interface, required);
+        wl_shm_add_listener(shm, &shm_listener, NULL);
+    }
+
+    else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
+        const uint32_t required = 1;
+        if (!verify_iface_version(interface, version, required))
+            return;
+
+        shell = wl_registry_bind(
+            registry, name, &xdg_wm_base_interface, required);
+        xdg_wm_base_add_listener(shell, &xdg_wm_base_listener, NULL);
+    }
+
+    else if (strcmp(interface, zxdg_decoration_manager_v1_interface.name) == 0) {
+        const uint32_t required = 1;
+        if (!verify_iface_version(interface, version, required))
+            return;
+
+        deco_mgr = wl_registry_bind(
+            registry, name, &zxdg_decoration_manager_v1_interface, required);
+    }
+}
+
+static void
+handle_global_remove(void *data, struct wl_registry *registry, uint32_t name)
+{
+}
+
+static const struct wl_registry_listener registry_listener = {
+    .global = &handle_global,
+    .global_remove = &handle_global_remove,
+};
+
+static void
+usage(const char *name)
+{
+    printf(
+        "Usage: %s [OPTIONS...]\n"
+        "\n"
+        "Options:\n"
+        "  -t,--text=TEXT            text string to render\n"
+        "  -f,--font=FONTS           comma separated list of FontConfig formatted font specifications\n"
+        "  -b,--background=RRGGBBAA  background color (e.g. ff000077 for semi-transparent red)\n"
+        "  -c,--foreground=RRGGBBAA  foreground color (e.g. 00ff00ff for non-transparent green)\n"
+        "  -h,--help                 show usage\n",
+        name);
+}
+
+int
+main(int argc, char *const *argv)
+{
+    setlocale(LC_CTYPE, "");
+
+    const char *prog_name = argv[0];
+
+    const struct option options[] = {
+        {"text",       required_argument, NULL, 't'},
+        {"font",       required_argument, NULL, 'f'},
+        {"background", required_argument, NULL, 'b'},
+        {"foreground", required_argument, NULL, 'c'},
+        {NULL,         no_argument,       NULL, '\0'},
+    };
+
+    const char *user_text = "hello world 🇸🇪";
+    const char *font_list = "serif:size=24";
+
+    while (true) {
+        int c = getopt_long(argc, argv, "+t:f:b:c:h", options, NULL);
+        if (c < 0)
+            break;
+
+        switch (c) {
+        case 't':
+            user_text = optarg;
+            break;
+
+        case 'f':
+            font_list = optarg;
+            break;
+
+        case 'b':
+        case 'c': {
+            errno = 0;
+            char *end;
+            unsigned long color = strtoul(optarg, &end, 16);
+
+            assert(*end == '\0');
+            assert(errno == 0);
+
+            uint8_t _alpha = color & 0xff;
+            uint16_t alpha = (uint16_t)_alpha << 8 | _alpha;
+
+            uint32_t r = (color >> 24) & 0xff;
+            uint32_t g = (color >> 16) & 0xff;
+            uint32_t b = (color >> 8) & 0xff;
+
+            pixman_color_t *clr = c == 'b' ? &bg : &fg;
+            *clr = (pixman_color_t){
+                .red =   (r << 8 | r) * alpha / 0xffff,
+                .green = (g << 8 | g) * alpha / 0xffff,
+                .blue =  (b << 8 | b) * alpha / 0xffff,
+                .alpha = alpha,
+            };
+            break;
+        }
+
+        case 'h':
+            usage(prog_name);
+            return EXIT_SUCCESS;
+
+        case '?':
+            return EXIT_FAILURE;
+        }
+    }
+
+    /* Convert text string to Unicode */
+    text_len = mbstowcs(NULL, user_text, 0);
+    assert(text_len != (size_t)-1);
+
+    text = malloc((text_len + 1) * sizeof(wchar_t));
+    mbstowcs(text, user_text, text_len + 1);
+
+    /* Grapheme segmentation */
+    graphemes = malloc(text_len * sizeof(graphemes[0]));
+    assert(graphemes != NULL);
+
+    {
+        graphemes[0].begin = 0;
+        utf8proc_int32_t state = 0;
+
+        for (size_t i = 1; i < text_len; i++) {
+            if (text[i - 1] == 0x200d) {
+                /* ZWJ */
+                continue;
+            }
+
+            if (utf8proc_grapheme_break_stateful(text[i - 1], text[i], &state)) {
+                state = 0;
+
+                /* Terminate previous grapheme */
+                struct grapheme *grapheme = &graphemes[grapheme_count];
+                grapheme->len = i - grapheme->begin;
+
+                /* And begin the next one */
+                grapheme = &graphemes[++grapheme_count];
+                assert(grapheme_count <= text_len);
+                grapheme->begin = i;
+            }
+        }
+
+        /* Terminate final grapheme */
+        struct grapheme *grapheme = &graphemes[grapheme_count];
+        grapheme->len = text_len - grapheme->begin;
+        grapheme_count++;
+    }
+
+    /* Instantiate font, and fallbacks */
+    {
+        tll(const char *) font_names = tll_init();
+
+        char *copy = strdup(font_list);
+        for (char *name = strtok(copy, ",");
+             name != NULL;
+             name = strtok(NULL, ","))
+        {
+            while (isspace(*name))
+                name++;
+
+            size_t len = strlen(name);
+            while (len > 0 && isspace(name[len - 1]))
+                name[--len] = '\0';
+
+            tll_push_back(font_names, name);
+        }
+
+        const char *names[tll_length(font_names)];
+        size_t idx = 0;
+
+        tll_foreach(font_names, it)
+            names[idx++] = it->item;
+
+        font = fcft_from_name(tll_length(font_names), names, NULL);
+        assert(font != NULL);
+
+        tll_free(font_names);
+        free(copy);
+    }
+
+    display = wl_display_connect(NULL);
+    assert(display != NULL);
+
+    registry = wl_display_get_registry(display);
+    assert(registry != NULL);
+
+    wl_registry_add_listener(registry, &registry_listener, NULL);
+
+    /* Trigger handle_global() */
+    wl_display_roundtrip(display);
+
+    /* Trigger listeners registered in handle_global() */
+    wl_display_roundtrip(display);
+
+    assert(compositor != NULL);
+    assert(shell != NULL);
+    assert(have_argb8888);
+
+    surf = wl_compositor_create_surface(compositor);
+    assert(surf != NULL);
+
+    struct wl_region *empty_region = wl_compositor_create_region(compositor);
+    wl_surface_set_input_region(surf, empty_region);
+    wl_region_destroy(empty_region);
+
+    xdg = xdg_wm_base_get_xdg_surface(shell, surf);
+    assert(xdg != NULL);
+    xdg_surface_add_listener(xdg, &xdg_surface_listener, NULL);
+
+    toplevel = xdg_surface_get_toplevel(xdg);
+    assert(toplevel != NULL);
+    xdg_toplevel_add_listener(toplevel, &xdg_toplevel_listener, NULL);
+    xdg_toplevel_set_app_id(toplevel, "fcft-example");
+
+    /* We don’t have client side decorations - try to enable server side */
+    if (deco_mgr != NULL) {
+        deco = zxdg_decoration_manager_v1_get_toplevel_decoration(
+            deco_mgr, toplevel);
+        assert(deco != NULL);
+
+        zxdg_toplevel_decoration_v1_add_listener(
+            deco, &xdg_toplevel_decoration_listener, NULL);
+
+        zxdg_toplevel_decoration_v1_set_mode(
+            deco, ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+    } else
+        LOG_WARN("compositor does not implement server side decorations");
+
+    wl_surface_commit(surf);
+
+    sigset_t mask;
+    {
+        sigset_t blocked;
+        sigemptyset(&blocked);
+        sigaddset(&blocked, SIGINT);
+        sigaddset(&blocked, SIGQUIT);
+
+        sigprocmask(SIG_BLOCK, &blocked, &mask);
+    }
+
+    const struct sigaction sig_action = {.sa_handler = &sig_handler};
+    sigaction(SIGINT, &sig_action, NULL);
+    sigaction(SIGQUIT, &sig_action, NULL);
+    sigaction(SIGTERM, &sig_action, NULL);
+
+    int exit_code = EXIT_SUCCESS;
+
+    while (!aborted) {
+        wl_display_flush(display);
+
+        struct pollfd fds[] = {
+            {.fd = wl_display_get_fd(display), .events = POLLIN},
+        };
+        int ret = ppoll(fds, sizeof(fds) / sizeof(fds[0]), NULL, &mask);
+
+        if (ret < 0) {
+            if (errno == EINTR) {
+                if (aborted)
+                    break;
+                continue;
+            }
+
+            LOG_ERRNO("failed to poll");
+            exit_code = EXIT_FAILURE;
+            break;
+        }
+
+        if (fds[0].revents & POLLHUP) {
+            LOG_WARN("disconnected by compositor");
+            exit_code = EXIT_FAILURE;
+            break;
+        }
+
+        if (fds[0].revents & POLLIN)
+            wl_display_dispatch(display);
+    }
+
+    if (deco != NULL)
+        zxdg_toplevel_decoration_v1_destroy(deco);
+    if (toplevel != NULL)
+        xdg_toplevel_destroy(toplevel);
+    if (xdg != NULL)
+        xdg_surface_destroy(xdg);
+    if (shell != NULL)
+        xdg_wm_base_destroy(shell);
+    if (surf != NULL)
+        wl_surface_destroy(surf);
+    if (deco_mgr != NULL)
+        zxdg_decoration_manager_v1_destroy(deco_mgr);
+    if (shm != NULL)
+        wl_shm_destroy(shm);
+    if (compositor != NULL)
+        wl_compositor_destroy(compositor);
+    if (registry != NULL)
+        wl_registry_destroy(registry);
+    if (display != NULL)
+        wl_display_disconnect(display);
+    fcft_destroy(font);
+    free(text);
+
+    return exit_code;
+}

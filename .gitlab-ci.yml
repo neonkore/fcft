@@ -8,6 +8,7 @@ before_script:
   - apk update
   - apk add musl-dev linux-headers meson ninja gcc scdoc
   - apk add pixman-dev freetype-dev fontconfig-dev harfbuzz-dev
+  - apk add utf8proc-dev wayland-dev wayland-protocols
   - apk add git
   - apk add check-dev
   - apk add ttf-hack font-noto-emoji
@@ -21,7 +22,7 @@ debug-x64:
   script:
     - mkdir -p bld/debug
     - cd bld/debug
-    - meson --buildtype=debug -Dtext-shaping=enabled -Dtest-text-shaping=true ../../
+    - meson --buildtype=debug -Dtext-shaping=enabled -Dtest-text-shaping=true -Dexamples=true ../../
     - ninja -v -k0
     - ninja -v test
   artifacts:
@@ -48,7 +49,7 @@ release-x64:
   script:
     - mkdir -p bld/release
     - cd bld/release
-    - meson --buildtype=release -Dtext-shaping=enabled  -Dtest-text-shaping=true ../../
+    - meson --buildtype=release -Dtext-shaping=enabled  -Dtest-text-shaping=true -Dexamples=true ../../
     - ninja -v -k0
     - ninja -v test
   artifacts:
@@ -61,7 +62,7 @@ debug-x86:
   script:
     - mkdir -p bld/debug
     - cd bld/debug
-    - meson --buildtype=debug -Dtext-shaping=enabled  -Dtest-text-shaping=true ../../
+    - meson --buildtype=debug -Dtext-shaping=enabled  -Dtest-text-shaping=true -Dexamples=true ../../
     - ninja -v -k0
     - ninja -v test
   artifacts:
@@ -74,7 +75,7 @@ release-x86:
   script:
     - mkdir -p bld/release
     - cd bld/release
-    - meson --buildtype=release -Dtext-shaping=enabled  -Dtest-text-shaping=true ../../
+    - meson --buildtype=release -Dtext-shaping=enabled  -Dtest-text-shaping=true -Dexamples=true ../../
     - ninja -v -k0
     - ninja -v test
   artifacts:
