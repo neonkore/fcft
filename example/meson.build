@@ -1,5 +1,4 @@
 libepoll = dependency('epoll-shim', required: false)
-pixman = dependency('pixman-1')
 utf8proc = dependency('libutf8proc')
 wayland_protocols = dependency('wayland-protocols')
 wayland_client = dependency('wayland-client')
