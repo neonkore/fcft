@@ -182,6 +182,20 @@ render_graphemes(struct buffer *buf, int y, pixman_image_t *color)
 }
 
 static void
+render_shaped(struct buffer *buf, int y, pixman_image_t *color)
+{
+    struct fcft_text_run *run = fcft_text_run_rasterize(
+        font, text_len, text, subpixel_mode);
+
+    int text_width = 0;
+    for (size_t i = 0; i < run->count; i++)
+        text_width += run->glyphs[i]->advance.x;
+    int x = (buf->width - text_width) / 2;
+    render_glyphs(buf, &x, &y, color, run->count, run->glyphs, NULL);
+    fcft_text_run_destroy(run);
+}
+
+static void
 xdg_surface_configure(void *data, struct xdg_surface *xdg_surface,
                       uint32_t serial)
 {
@@ -219,6 +233,10 @@ xdg_surface_configure(void *data, struct xdg_surface *xdg_surface,
     /* 1.5x line height */
     y += 3 * font->height / 2;
     render_graphemes(buf, y, clr_pix);
+
+    /* 1.5x line height */
+    y += 3 * font->height / 2;
+    render_shaped(buf, y, clr_pix);
 
     pixman_image_unref(clr_pix);
 
@@ -342,7 +360,7 @@ main(int argc, char *const *argv)
         {NULL,         no_argument,       NULL, '\0'},
     };
 
-    const char *user_text = "hello world 🇸🇪";
+    const char *user_text = "hello world 🇸🇪 👨‍👩‍👧‍👦x";
     const char *font_list = "serif:size=24";
 
     while (true) {

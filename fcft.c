@@ -210,6 +210,11 @@ init(void)
     if (can_set_lcd_filter)
         FT_Library_SetLcdFilter(ft_lib, FT_LCD_FILTER_NONE);
 
+#if defined(FCFT_HAVE_HARFBUZZ)
+    /* Not thread safe first time called */
+    hb_language_get_default();
+#endif
+
     mtx_init(&ft_lock, mtx_plain);
     mtx_init(&font_cache_lock, mtx_plain);
 
@@ -290,6 +295,24 @@ fcft_set_scaling_filter(enum fcft_scaling_filter filter)
     }
 
     return false;
+}
+
+static void
+glyph_destroy_private(struct glyph_priv *glyph)
+{
+    if (glyph->valid) {
+        void *image = pixman_image_get_data(glyph->public.pix);
+        pixman_image_unref(glyph->public.pix);
+        free(image);
+    }
+
+    free(glyph);
+}
+
+static void
+glyph_destroy(const struct fcft_glyph *glyph)
+{
+    glyph_destroy_private((struct glyph_priv *)glyph);
 }
 
 static void
@@ -1962,10 +1985,23 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
         glyph->public.wc = info[i].codepoint;
         glyph->public.cols = width;
 
-        LOG_DBG("OLD: y-advance: %d, y-offset: %d", glyph->public.advance.y, glyph->public.y);
-        LOG_DBG("OLD: x-advance: %d, x-offset: %d", glyph->public.advance.x, glyph->public.x);
-        glyph->public.x = pos[i].x_offset / 64. * inst->pixel_size_fixup;
-        //glyph->public.y += pos[i].y_offset / 64. * inst->pixel_size_fixup;
+#if 0
+        LOG_DBG("grapheme: x: advance: %d -> %d, offset: %d -> %d",
+                glyph->public.advance.x,
+                (int)(pos[i].x_advance / 64. * inst->pixel_size_fixup),
+                glyph->public.x,
+                (int)(pos[i].x_offset / 64. * inst->pixel_size_fixup));
+        LOG_DBG("grapheme: y: advance: %d -> %d, offset: %d -> %d",
+                glyph->public.advance.y,
+                (int)(pos[i].y_advance / 64. * inst->pixel_size_fixup),
+                glyph->public.y,
+                (int)(pos[i].y_offset / 64. * inst->pixel_size_fixup));
+#endif
+
+        /* TODO: figure out what’s up with the ‘y’ offset (and are we
+         * really handling ‘x’ correctly?) */
+        glyph->public.x += pos[i].x_offset / 64. * inst->pixel_size_fixup;
+        glyph->public.y += pos[i].y_offset / 64. * inst->pixel_size_fixup;
         glyph->public.advance.x = pos[i].x_advance / 64. * inst->pixel_size_fixup;
         glyph->public.advance.y = pos[i].y_advance / 64. * inst->pixel_size_fixup;
 
@@ -1995,18 +2031,319 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
     return &grapheme->public;
 
 err:
-    for (size_t i = 0; i < glyph_idx; i++) {
-        const struct fcft_glyph *glyph = grapheme->public.glyphs[i];
-        void *image = pixman_image_get_data(glyph->pix);
-        pixman_image_unref(glyph->pix);
-        free(image);
-        free((struct fcft_priv *)glyph);
-    }
+    for (size_t i = 0; i < glyph_idx; i++)
+        glyph_destroy(grapheme->public.glyphs[i]);
     free(grapheme->public.glyphs);
 
     assert(*entry == NULL);
     assert(!grapheme->valid);
     *entry = grapheme;
+    mtx_unlock(&font->lock);
+    return NULL;
+}
+
+struct text_run_context {
+    enum text_run_state {
+        TEXT_RUN_PRIMARY,
+        TEXT_RUN_PRIMARY_FORCE,
+        TEXT_RUN_FALLBACK,
+        TEXT_RUN_DONE,
+        TEXT_RUN_ERROR,
+    } state;
+
+    const uint32_t *const text;
+    const size_t len;
+    size_t ofs;
+
+    struct {
+        const struct fcft_glyph **items;
+        int *cluster;
+        size_t size;
+        size_t count;
+    } glyphs;
+
+    struct {
+        hb_direction_t dir;
+        size_t since;
+    } direction;
+};
+
+static void
+text_run_reverse_rtl(struct text_run_context *ctx)
+{
+    assert(ctx->direction.dir == HB_DIRECTION_RTL);
+
+    /* Reverse all RTL glyphs we’ve emitted so far */
+    size_t start = ctx->direction.since;
+    size_t end = ctx->glyphs.count;
+    size_t middle = start + (end - start) / 2;
+
+    LOG_DBG("reversing %zu glyphs (%zu-%zu, middle=%zu)",
+            end - start, start, end, middle);
+
+    for (size_t i = start; i < middle; i++) {
+        LOG_DBG("  swapping %zu with %zu", i, end - (i - start) - 1);
+
+        const struct fcft_glyph *tmp = ctx->glyphs.items[i];
+        ctx->glyphs.items[i] = ctx->glyphs.items[end - (i - start) - 1];
+        ctx->glyphs.items[end - (i - start) - 1] = tmp;
+    }
+}
+
+static enum text_run_state
+text_run_rasterize_partial(
+    struct instance *inst, enum fcft_subpixel subpixel,
+    struct text_run_context *ctx)
+{
+    hb_buffer_add_utf32(
+        inst->hb_buf, ctx->text, ctx->len, ctx->ofs, ctx->len - ctx->ofs);
+    hb_buffer_guess_segment_properties(inst->hb_buf);
+
+    hb_segment_properties_t props;
+    hb_buffer_get_segment_properties(inst->hb_buf, &props);
+
+    assert(props.direction == HB_DIRECTION_LTR ||
+           props.direction == HB_DIRECTION_RTL);
+
+    if (props.direction != HB_DIRECTION_LTR &&
+        props.direction != HB_DIRECTION_RTL)
+    {
+        LOG_ERR("unimplemented: hb_direction=%d", props.direction);
+        return TEXT_RUN_ERROR;
+    }
+
+    if (props.direction != ctx->direction.dir) {
+        if (ctx->direction.dir == HB_DIRECTION_RTL)
+            text_run_reverse_rtl(ctx);
+
+        ctx->direction.dir = props.direction;
+        ctx->direction.since = ctx->glyphs.count;
+    }
+
+    const bool rtl = props.direction == HB_DIRECTION_RTL;
+
+    hb_shape(inst->hb_font, inst->hb_buf, inst->hb_feats, inst->hb_feats_count);
+
+    unsigned count = hb_buffer_get_length(inst->hb_buf);
+    const hb_glyph_info_t *infos = hb_buffer_get_glyph_infos(inst->hb_buf, NULL);
+    const hb_glyph_position_t *poss = hb_buffer_get_glyph_positions(inst->hb_buf, NULL);
+
+    LOG_DBG("ofs=%zu", ctx->ofs);
+    LOG_DBG("info count: %u", count);
+
+    for (int i = 0; i < count; i++) {
+        const hb_glyph_info_t *info = &infos[rtl ? count - i - 1 : i];
+        const hb_glyph_position_t *pos = &poss[rtl ? count - i - 1 : i];
+
+        LOG_DBG("#%u: codepoint=%04x, cluster=%d", i, info->codepoint, info->cluster);
+
+        if (ctx->state == TEXT_RUN_FALLBACK && info->cluster != ctx->ofs) {
+            ctx->ofs = info->cluster;
+            return TEXT_RUN_PRIMARY;
+        }
+
+        if (info->codepoint == 0 && ctx->state != TEXT_RUN_PRIMARY_FORCE) {
+            ctx->ofs = info->cluster;
+            for (ssize_t j = ctx->glyphs.count - 1; j >= 0; j--) {
+                if (ctx->glyphs.cluster[j] != info->cluster) {
+                    /* Assume they are sorted */
+                    break;
+                }
+
+                glyph_destroy(ctx->glyphs.items[j]);
+                ctx->glyphs.count--;
+            }
+            return TEXT_RUN_FALLBACK;
+        }
+
+        assert(info->codepoint != 0 || ctx->state == TEXT_RUN_PRIMARY_FORCE);
+
+        struct glyph_priv *glyph = malloc(sizeof(*glyph));
+        if (glyph == NULL)
+            return TEXT_RUN_ERROR;
+
+        if (!glyph_for_index(inst, info->codepoint, subpixel, glyph)) {
+            free(glyph);
+            continue;
+        }
+
+        glyph->public.wc = info->codepoint;
+        glyph->public.cols = 1;  /* TODO */
+
+#if 0
+        LOG_DBG("text-run: #%zu: x: advance: %d -> %d, offset: %d -> %d",
+                ctx->ofs, glyph->public.advance.x,
+                (int)(pos->x_advance / 64. * inst->pixel_size_fixup),
+                glyph->public.x,
+                (int)(pos->x_offset / 64. * inst->pixel_size_fixup));
+        LOG_DBG("text-run: #%zu: y: advance: %d -> %d, offset: %d -> %d",
+                ctx->ofs, glyph->public.advance.y,
+                (int)(pos->y_advance / 64. * inst->pixel_size_fixup),
+                glyph->public.y,
+                (int)(pos->y_offset / 64. * inst->pixel_size_fixup));
+#endif
+
+        /* TODO: figure out what’s up with the ‘y’ offset (and are we
+         * really handling ‘x’ correctly?) */
+        glyph->public.x += pos->x_offset / 64. * inst->pixel_size_fixup;
+        glyph->public.y += pos->y_offset / 64. * inst->pixel_size_fixup;
+        glyph->public.advance.x = pos->x_advance / 64. * inst->pixel_size_fixup;
+        glyph->public.advance.y = pos->y_advance / 64. * inst->pixel_size_fixup;
+
+        if (ctx->glyphs.count >= ctx->glyphs.size) {
+            size_t new_glyphs_size = ctx->glyphs.size * 2;
+            const struct fcft_glyph **new_glyphs = realloc(
+                ctx->glyphs.items, new_glyphs_size * sizeof(new_glyphs[0]));
+            int *new_cluster = realloc(
+                ctx->glyphs.cluster, new_glyphs_size * sizeof(new_cluster[0]));
+
+            if (new_glyphs == NULL || new_cluster == NULL) {
+                free(new_glyphs);
+                free(new_cluster);
+                return TEXT_RUN_ERROR;
+            }
+
+            ctx->glyphs.items = new_glyphs;
+            ctx->glyphs.cluster = new_cluster;
+            ctx->glyphs.size = new_glyphs_size;
+        }
+
+        assert(ctx->glyphs.count < ctx->glyphs.size);
+        ctx->glyphs.cluster[ctx->glyphs.count] = info->cluster;
+        ctx->glyphs.items[ctx->glyphs.count] = &glyph->public;
+        ctx->glyphs.count++;
+    }
+
+    ctx->ofs = ctx->len;
+    return TEXT_RUN_DONE;
+}
+
+FCFT_EXPORT struct fcft_text_run *
+fcft_text_run_rasterize(
+    struct fcft_font *_font, size_t len, const wchar_t text[static len],
+    enum fcft_subpixel subpixel)
+{
+    struct font_priv *font = (struct font_priv *)_font;
+
+    LOG_DBG("rasterizing a %zu character text run", len);
+
+    struct text_run_context ctx = {
+        .state = TEXT_RUN_PRIMARY,
+        .text = (const uint32_t *)text,
+        .len = len,
+
+        .glyphs = {
+            .size = len,
+            .items = malloc(len * sizeof(ctx.glyphs.items[0])),
+            .cluster = malloc(len * sizeof(ctx.glyphs.cluster[0])),
+        },
+
+        .direction = {
+            .dir = HB_DIRECTION_INVALID,
+            .since = 0,
+        },
+    };
+
+    if (ctx.glyphs.items == NULL || ctx.glyphs.cluster == NULL) {
+        free(ctx.glyphs.items);
+        free(ctx.glyphs.cluster);
+        return NULL;
+    }
+
+    mtx_lock(&font->lock);
+
+    while (ctx.state != TEXT_RUN_DONE) {
+        if (ctx.state == TEXT_RUN_FALLBACK) {
+            /* We ran out of fallback fonts, force using the primary */
+            ctx.state = TEXT_RUN_PRIMARY_FORCE;
+        }
+
+        tll_foreach(font->fallbacks, it) {
+            struct instance *inst = it->item.font;
+
+            if (inst == NULL) {
+                inst = malloc(sizeof(*inst));
+                if (inst == NULL)
+                    goto err;
+
+                if (!instantiate_pattern(
+                        it->item.pattern,
+                        it->item.req_pt_size, it->item.req_px_size,
+                        inst))
+                {
+                    /* Remove, so that we don't have to keep trying to
+                     * instantiate it */
+                    free(inst);
+                    fallback_destroy(&it->item);
+                    tll_remove(font->fallbacks, it);
+                    continue;
+                }
+
+                it->item.font = inst;
+            }
+
+            ctx.state = text_run_rasterize_partial(inst, subpixel, &ctx);
+            hb_buffer_clear_contents(inst->hb_buf);
+
+            if (ctx.state == TEXT_RUN_PRIMARY) {
+                LOG_DBG("switching (back) to primary font at offset %zu/%zu",
+                        ctx.ofs, ctx.len);
+                break;
+            } else if (ctx.state == TEXT_RUN_FALLBACK) {
+                LOG_DBG("switching to next fallback font at offset %zu/%zu",
+                        ctx.ofs, ctx.len);
+                /* continue; */
+            } else if (ctx.state == TEXT_RUN_DONE) {
+                break;
+            } else if (ctx.state == TEXT_RUN_ERROR) {
+                goto err;
+            }
+        }
+    }
+
+    if (ctx.direction.dir == HB_DIRECTION_RTL)
+        text_run_reverse_rtl(&ctx);
+
+    {
+        const struct fcft_glyph **final_glyphs = realloc(
+            ctx.glyphs.items, ctx.glyphs.count * sizeof(final_glyphs[0]));
+        int *final_cluster = realloc(
+            ctx.glyphs.cluster, ctx.glyphs.count * sizeof(final_cluster[0]));
+        if ((final_glyphs == NULL || final_cluster == NULL) &&
+            ctx.glyphs.count > 0)
+        {
+            free(final_glyphs);
+            free(final_cluster);
+            goto err;
+        }
+
+        ctx.glyphs.items = final_glyphs;
+        ctx.glyphs.cluster = final_cluster;
+    }
+
+    LOG_DBG("glyph count: %zu", ctx.glyphs.count);
+
+    struct fcft_text_run *ret = malloc(sizeof(*ret));
+    if (ret == NULL)
+        goto err;
+
+    *ret = (struct fcft_text_run){
+        .glyphs = ctx.glyphs.items,
+        .cluster = ctx.glyphs.cluster,
+        .count = ctx.glyphs.count,
+    };
+
+    mtx_unlock(&font->lock);
+    return ret;
+
+err:
+    for (size_t i = 0; i < ctx.glyphs.count; i++) {
+        assert(ctx.glyphs.items[i] != NULL);
+        glyph_destroy(ctx.glyphs.items[i]);
+    }
+    free(ctx.glyphs.items);
+    free(ctx.glyphs.cluster);
+
     mtx_unlock(&font->lock);
     return NULL;
 }
@@ -2021,7 +2358,32 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
 {
     return NULL;
 }
+
+FCFT_EXPORT struct fcft_text_run *
+fcft_text_run_rasterize(
+    struct fcft_font *font, size_t len, const wchar_t text[static len],
+    enum fcft_subpixel subpixel)
+{
+    return NULL;
+}
+
 #endif /* !FCFT_HAVE_HARFBUZZ */
+
+FCFT_EXPORT void
+fcft_text_run_destroy(struct fcft_text_run *run)
+{
+    if (run == NULL)
+        return;
+
+    for (size_t i = 0; i < run->count; i++) {
+        assert(run->glyphs[i] != NULL);
+        glyph_destroy(run->glyphs[i]);
+    }
+
+    free(run->glyphs);
+    free(run->cluster);
+    free(run);
+}
 
 FCFT_EXPORT void
 fcft_destroy(struct fcft_font *_font)
@@ -2077,13 +2439,7 @@ fcft_destroy(struct fcft_font *_font)
         if (entry == NULL)
             continue;
 
-        if (entry->valid) {
-            void *image = pixman_image_get_data(entry->public.pix);
-            pixman_image_unref(entry->public.pix);
-            free(image);
-        }
-
-        free(entry);
+        glyph_destroy_private(entry);
     }
     free(font->glyph_cache.table);
     pthread_rwlock_destroy(&font->glyph_cache_lock);
@@ -2099,16 +2455,8 @@ fcft_destroy(struct fcft_font *_font)
             continue;
 
         for (size_t j = 0; j < entry->public.count; j++) {
-            struct glyph_priv *g
-                = (struct glyph_priv *)entry->public.glyphs[j];
-
-            if (g->valid) {
-                void *image = pixman_image_get_data(g->public.pix);
-                pixman_image_unref(g->public.pix);
-                free(image);
-            }
-
-            free(g);
+            assert(entry->public.glyphs[j] != NULL);
+            glyph_destroy(entry->public.glyphs[j]);
         }
 
         free(entry->public.glyphs);
