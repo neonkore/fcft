@@ -109,7 +109,7 @@ static const struct xdg_toplevel_listener xdg_toplevel_listener = {
 static void
 render_glyphs(struct buffer *buf, int *x, const int *y, pixman_image_t *color,
               size_t count, const struct fcft_glyph *glyphs[static count],
-              long kern[static count])
+              long *kern)
 {
     for (size_t i = 0; i < count; i++) {
         const struct fcft_glyph *g = glyphs[i];
