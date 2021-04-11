@@ -8,6 +8,7 @@ before_script:
   - apk update
   - apk add musl-dev linux-headers meson ninja gcc scdoc
   - apk add pixman-dev freetype-dev fontconfig-dev harfbuzz-dev
+  - apk add utf8proc-dev wayland-dev wayland-protocols
   - apk add git
   - apk add check-dev
   - apk add ttf-hack font-noto-emoji

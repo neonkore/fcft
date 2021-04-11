@@ -10,6 +10,8 @@ packages:
   - harfbuzz-dev
   - utf8proc-dev
   - pixman-dev
+  - wayland-dev
+  - wayland-protocols
   - check-dev
   - ttf-hack
   - font-noto-emoji
