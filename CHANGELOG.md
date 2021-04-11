@@ -22,6 +22,13 @@
 
 ## Unreleased
 ### Added
+
+* Example program. Very simple bare bones Wayland program that renders
+  a user provided string with user configurable fonts and colors. No
+  proper error checking etc. To build, configure meson with
+  `-Dexamples=true`.
+
+
 ### Changed
 ### Deprecated
 ### Removed
