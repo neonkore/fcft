@@ -28,7 +28,7 @@ tasks:
       ln -s ../../tllist fcft/subprojects/tllist
   - debug: |
       mkdir -p bld/debug
-      meson --buildtype=debug -Dtext-shaping=enabled -Dtest-text-shaping=true fcft bld/debug
+      meson --buildtype=debug -Dtext-shaping=enabled -Dtest-text-shaping=true -Dexamples=true fcft bld/debug
       ninja -C bld/debug -k0
       meson test -C bld/debug --print-errorlogs
   - debug-no-text-shaping: |
@@ -38,6 +38,6 @@ tasks:
       meson test -C bld/no-text-shaping --print-errorlogs
   - release: |
       mkdir -p bld/release
-      meson --buildtype=minsize -Dtext-shaping=enabled -Dtest-text-shaping=true fcft bld/release
+      meson --buildtype=minsize -Dtext-shaping=enabled -Dtest-text-shaping=true fcft -Dexamples=true bld/release
       ninja -C bld/release -k0
       meson test -C bld/release --print-errorlogs

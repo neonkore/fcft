@@ -21,7 +21,7 @@ debug-x64:
   script:
     - mkdir -p bld/debug
     - cd bld/debug
-    - meson --buildtype=debug -Dtext-shaping=enabled -Dtest-text-shaping=true ../../
+    - meson --buildtype=debug -Dtext-shaping=enabled -Dtest-text-shaping=true -Dexamples=true ../../
     - ninja -v -k0
     - ninja -v test
   artifacts:
@@ -48,7 +48,7 @@ release-x64:
   script:
     - mkdir -p bld/release
     - cd bld/release
-    - meson --buildtype=release -Dtext-shaping=enabled  -Dtest-text-shaping=true ../../
+    - meson --buildtype=release -Dtext-shaping=enabled  -Dtest-text-shaping=true -Dexamples=true ../../
     - ninja -v -k0
     - ninja -v test
   artifacts:
@@ -61,7 +61,7 @@ debug-x86:
   script:
     - mkdir -p bld/debug
     - cd bld/debug
-    - meson --buildtype=debug -Dtext-shaping=enabled  -Dtest-text-shaping=true ../../
+    - meson --buildtype=debug -Dtext-shaping=enabled  -Dtest-text-shaping=true -Dexamples=true ../../
     - ninja -v -k0
     - ninja -v test
   artifacts:
@@ -74,7 +74,7 @@ release-x86:
   script:
     - mkdir -p bld/release
     - cd bld/release
-    - meson --buildtype=release -Dtext-shaping=enabled  -Dtest-text-shaping=true ../../
+    - meson --buildtype=release -Dtext-shaping=enabled  -Dtest-text-shaping=true -Dexamples=true ../../
     - ninja -v -k0
     - ninja -v test
   artifacts:

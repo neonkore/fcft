@@ -28,8 +28,9 @@ is_debug_build = get_option('buildtype').startswith('debug')
 cc = meson.get_compiler('c')
 
 add_project_arguments(
-  ['-D_POSIX_C_SOURCE=200809L', '-D_XOPEN_SOURCE=700'] +
-  (is_debug_build ? ['-D_DEBUG'] : []),
+  ['-D_GNU_SOURCE=200809L'] +
+  (is_debug_build ? ['-D_DEBUG'] : []) +
+  (cc.has_function('memfd_create') ? ['-DMEMFD_CREATE'] : []),
   language: 'c')
 
 # Compute the relative path used by compiler invocations.
@@ -99,6 +100,10 @@ fcft_lib = build_target(
 fcft = declare_dependency(
   include_directories: '.', link_with: fcft_lib, dependencies: [pixman])
 meson.override_dependency('fcft', fcft)
+
+if get_option('examples')
+  subdir('example')
+endif
 
 check = dependency('check', required: false)
 if check.found()
