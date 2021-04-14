@@ -1,4 +1,4 @@
-fcft_set_scaling_filter(3) "2.3.2" "fcft"
+fcft_set_scaling_filter(3) "2.3.3" "fcft"
 
 # NAME
 
