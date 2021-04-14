@@ -1,6 +1,7 @@
 # Changelog
 
-* [Unreleased](#Unreleased)
+* [Unreleased](#unreleased)
+* [2.3.3](#2-3-3)
 * [2.3.2](#2-3-2)
 * [2.3.1](#2-3-1)
 * [2.3.0](#2-3-0)
@@ -21,6 +22,7 @@
 
 
 ## Unreleased
+
 ### Added
 
 * Example program. Very simple bare bones Wayland program that renders
@@ -33,11 +35,15 @@
 ### Deprecated
 ### Removed
 ### Fixed
+### Security
+### Contributors
+
+
+## 2.3.3
+
+### Fixed
 
 * Cloned fonts not being properly freed in library destructor.
-
-
-### Security
 
 
 ## 2.3.2
