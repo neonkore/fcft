@@ -11,34 +11,59 @@
 
 #include <syslog.h>
 
+#include <fcft/fcft.h>
+
 static bool colorize = false;
+static bool do_syslog = false;
+static enum fcft_log_class log_level = FCFT_LOG_CLASS_NONE;
 
 void
-fcft_log_init(enum fcft_log_facility syslog_facility)
+fcft_log_init(enum fcft_log_colorize _colorize, bool _do_syslog,
+              enum fcft_log_facility syslog_facility,
+              enum fcft_log_class _log_level)
 {
     static const int facility_map[] = {
         [FCFT_LOG_FACILITY_USER] = LOG_USER,
         [FCFT_LOG_FACILITY_DAEMON] = LOG_DAEMON,
     };
 
-    colorize = isatty(STDOUT_FILENO);
-    openlog(NULL, /*LOG_PID*/0, facility_map[syslog_facility]);
-    setlogmask(LOG_UPTO(LOG_WARNING));
+    static const int level_map[] = {
+        [FCFT_LOG_CLASS_ERROR] = LOG_ERR,
+        [FCFT_LOG_CLASS_WARNING] = LOG_WARNING,
+        [FCFT_LOG_CLASS_INFO] = LOG_INFO,
+        [FCFT_LOG_CLASS_DEBUG] = LOG_DEBUG,
+    };
+
+    colorize = _colorize == FCFT_LOG_COLORIZE_NEVER ? false
+        : _colorize == FCFT_LOG_COLORIZE_ALWAYS ? true
+        : isatty(STDERR_FILENO);
+    do_syslog = _do_syslog;
+    log_level = _log_level;
+
+    if (do_syslog) {
+        openlog(NULL, /*LOG_PID*/0, facility_map[syslog_facility]);
+        setlogmask(LOG_UPTO(level_map[_log_level]));
+    }
 }
 
 void
 fcft_log_deinit(void)
 {
-    closelog();
+    if (do_syslog)
+        closelog();
 }
 
 static void
 _log(enum fcft_log_class log_class, const char *module, const char *file, int lineno,
      const char *fmt, int sys_errno, va_list va)
 {
+    if (log_class > log_level)
+        return;
+
     const char *class = "abcd";
     int class_clr = 0;
     switch (log_class) {
+    case FCFT_LOG_CLASS_NONE:     assert(false); class = "none"; class_clr = 31; break;
     case FCFT_LOG_CLASS_ERROR:    class = " err"; class_clr = 31; break;
     case FCFT_LOG_CLASS_WARNING:  class = "warn"; class_clr = 33; break;
     case FCFT_LOG_CLASS_INFO:     class = "info"; class_clr = 97; break;
@@ -69,9 +94,13 @@ _sys_log(enum fcft_log_class log_class, const char *module,
          int lineno __attribute__((unused)),
          const char *fmt, int sys_errno, va_list va)
 {
+    if (!do_syslog)
+        return;
+
     /* Map our log level to syslog's level */
     int level = -1;
     switch (log_class) {
+    case FCFT_LOG_CLASS_NONE:     assert(false); level = LOG_ERR; break;
     case FCFT_LOG_CLASS_ERROR:    level = LOG_ERR; break;
     case FCFT_LOG_CLASS_WARNING:  level = LOG_WARNING; break;
     case FCFT_LOG_CLASS_INFO:     level = LOG_INFO; break;

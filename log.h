@@ -1,10 +1,6 @@
 #pragma once
 
-enum fcft_log_facility { FCFT_LOG_FACILITY_USER, FCFT_LOG_FACILITY_DAEMON };
-enum fcft_log_class { FCFT_LOG_CLASS_ERROR, FCFT_LOG_CLASS_WARNING, FCFT_LOG_CLASS_INFO, FCFT_LOG_CLASS_DEBUG };
-
-void fcft_log_init(enum fcft_log_facility syslog_facility);
-void fcft_log_deinit(void);
+#include <fcft/fcft.h>
 
 void fcft_log_msg(enum fcft_log_class log_class, const char *module,
                   const char *file, int lineno,
