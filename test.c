@@ -215,11 +215,16 @@ main(int argc, char *const *argv)
         }
     }
 
+    fcft_log_init(
+        FCFT_LOG_COLORIZE_AUTO, false, FCFT_LOG_FACILITY_USER, FCFT_LOG_CLASS_DEBUG);
+
     Suite *suite = fcft_suite(run_text_shaping_tests);
     SRunner *runner = srunner_create(suite);
 
     srunner_run_all(runner, CK_NORMAL);
     int failed = srunner_ntests_failed(runner);
+
+    fcft_log_deinit();
 
     srunner_free(runner);
     return failed;
