@@ -30,7 +30,8 @@ cc = meson.get_compiler('c')
 add_project_arguments(
   ['-D_GNU_SOURCE=200809L'] +
   (is_debug_build ? ['-D_DEBUG'] : []) +
-  (cc.has_function('memfd_create') ? ['-DMEMFD_CREATE'] : []),
+  (cc.has_function('memfd_create') ? ['-DMEMFD_CREATE'] : []) +
+  (cc.has_argument('-fvisibility=default') ? ['-DFCFT_EXPORT=__attribute__((visibility("default")))'] : ['-DFCFT_EXPORT=""']),
   language: 'c')
 
 # Compute the relative path used by compiler invocations.
@@ -95,6 +96,7 @@ fcft_lib = build_target(
   target_type: meson.is_subproject() ? 'static_library' : 'library',
   version: '.'.join(so_version),
   dependencies: [math, threads, fontconfig, freetype, harfbuzz, pixman, tllist, stdthreads],
+  gnu_symbol_visibility: 'hidden',
   install: not meson.is_subproject())
 
 fcft = declare_dependency(

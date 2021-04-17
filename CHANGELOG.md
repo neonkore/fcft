@@ -32,9 +32,18 @@
 
 
 ### Changed
+
+* Internal logging functions are no longer exported by the shared library.
+
+
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Internal logging functions have been renamed, from generic `log_*`
+  names to fcft specific `fcft_log_` names.
+
+
 ### Security
 ### Contributors
 
