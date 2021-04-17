@@ -21,9 +21,6 @@
 #include <tllist.h>
 #include <fcft/fcft.h>
 
-#define LOG_MODULE "example"
-#define LOG_ENABLE_DBG 0
-#include "log.h"
 #include "shm.h"
 
 static struct wl_display *display;
@@ -257,7 +254,9 @@ xdg_toplevel_decoration_configure(
 {
     switch (mode) {
     case ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE:
-        LOG_WARN("compositor refuses to use server side decorations");
+        fprintf(
+            stderr,
+            "warning: compositor refuses to use server side decorations\n");
         break;
     }
 }
@@ -272,8 +271,11 @@ verify_iface_version(const char *iface, uint32_t version, uint32_t wanted)
     if (version >= wanted)
         return true;
 
-    LOG_ERR("%s: need interface version %u, but compositor only implements %u",
-            iface, wanted, version);
+    fprintf(
+        stderr,
+        "error: %s: "
+        "need interface version %u, but compositor only implements %u\n",
+        iface, wanted, version);
     return false;
 }
 
@@ -531,7 +533,9 @@ main(int argc, char *const *argv)
         zxdg_toplevel_decoration_v1_set_mode(
             deco, ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
     } else
-        LOG_WARN("compositor does not implement server side decorations");
+        fprintf(
+            stderr,
+            "warning: compositor does not implement server side decorations\n");
 
     wl_surface_commit(surf);
 
@@ -567,13 +571,13 @@ main(int argc, char *const *argv)
                 continue;
             }
 
-            LOG_ERRNO("failed to poll");
+            fprintf(stderr, "error: failed to poll: %s\n", strerror(errno));
             exit_code = EXIT_FAILURE;
             break;
         }
 
         if (fds[0].revents & POLLHUP) {
-            LOG_WARN("disconnected by compositor");
+            fprintf(stderr, "warning: disconnected by compositor\n");
             exit_code = EXIT_FAILURE;
             break;
         }
