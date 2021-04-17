@@ -14,11 +14,11 @@
 static bool colorize = false;
 
 void
-log_init(enum log_facility syslog_facility)
+fcft_log_init(enum fcft_log_facility syslog_facility)
 {
     static const int facility_map[] = {
-        [LOG_FACILITY_USER] = LOG_USER,
-        [LOG_FACILITY_DAEMON] = LOG_DAEMON,
+        [FCFT_LOG_FACILITY_USER] = LOG_USER,
+        [FCFT_LOG_FACILITY_DAEMON] = LOG_DAEMON,
     };
 
     colorize = isatty(STDOUT_FILENO);
@@ -27,22 +27,22 @@ log_init(enum log_facility syslog_facility)
 }
 
 void
-log_deinit(void)
+fcft_log_deinit(void)
 {
     closelog();
 }
 
 static void
-_log(enum log_class log_class, const char *module, const char *file, int lineno,
+_log(enum fcft_log_class log_class, const char *module, const char *file, int lineno,
      const char *fmt, int sys_errno, va_list va)
 {
     const char *class = "abcd";
     int class_clr = 0;
     switch (log_class) {
-    case LOG_CLASS_ERROR:    class = " err"; class_clr = 31; break;
-    case LOG_CLASS_WARNING:  class = "warn"; class_clr = 33; break;
-    case LOG_CLASS_INFO:     class = "info"; class_clr = 97; break;
-    case LOG_CLASS_DEBUG:    class = " dbg"; class_clr = 36; break;
+    case FCFT_LOG_CLASS_ERROR:    class = " err"; class_clr = 31; break;
+    case FCFT_LOG_CLASS_WARNING:  class = "warn"; class_clr = 33; break;
+    case FCFT_LOG_CLASS_INFO:     class = "info"; class_clr = 97; break;
+    case FCFT_LOG_CLASS_DEBUG:    class = " dbg"; class_clr = 36; break;
     }
 
     char clr[16];
@@ -64,7 +64,7 @@ _log(enum log_class log_class, const char *module, const char *file, int lineno,
 }
 
 static void
-_sys_log(enum log_class log_class, const char *module,
+_sys_log(enum fcft_log_class log_class, const char *module,
          const char *file __attribute__((unused)),
          int lineno __attribute__((unused)),
          const char *fmt, int sys_errno, va_list va)
@@ -72,10 +72,10 @@ _sys_log(enum log_class log_class, const char *module,
     /* Map our log level to syslog's level */
     int level = -1;
     switch (log_class) {
-    case LOG_CLASS_ERROR:    level = LOG_ERR; break;
-    case LOG_CLASS_WARNING:  level = LOG_WARNING; break;
-    case LOG_CLASS_INFO:     level = LOG_INFO; break;
-    case LOG_CLASS_DEBUG:    level = LOG_DEBUG; break;
+    case FCFT_LOG_CLASS_ERROR:    level = LOG_ERR; break;
+    case FCFT_LOG_CLASS_WARNING:  level = LOG_WARNING; break;
+    case FCFT_LOG_CLASS_INFO:     level = LOG_INFO; break;
+    case FCFT_LOG_CLASS_DEBUG:    level = LOG_DEBUG; break;
     }
 
     assert(level != -1);
@@ -110,7 +110,7 @@ _sys_log(enum log_class log_class, const char *module,
 }
 
 void
-log_msg(enum log_class log_class, const char *module,
+fcft_log_msg(enum fcft_log_class log_class, const char *module,
         const char *file, int lineno, const char *fmt, ...)
 {
     va_list ap1, ap2;
@@ -122,9 +122,9 @@ log_msg(enum log_class log_class, const char *module,
     va_end(ap2);
 }
 
-void log_errno(enum log_class log_class, const char *module,
-               const char *file, int lineno,
-               const char *fmt, ...)
+void fcft_log_errno(enum fcft_log_class log_class, const char *module,
+                    const char *file, int lineno,
+                    const char *fmt, ...)
 {
     va_list ap1, ap2;
     va_start(ap1, fmt);
@@ -135,9 +135,9 @@ void log_errno(enum log_class log_class, const char *module,
     va_end(ap2);
 }
 
-void log_errno_provided(enum log_class log_class, const char *module,
-                        const char *file, int lineno, int _errno,
-                        const char *fmt, ...)
+void fcft_log_errno_provided(enum fcft_log_class log_class, const char *module,
+                             const char *file, int lineno, int _errno,
+                             const char *fmt, ...)
 {
     va_list ap1, ap2;
     va_start(ap1, fmt);
