@@ -39,17 +39,17 @@ enum fcft_capabilities {
     FCFT_CAPABILITY_GRAPHEME_SHAPING = 0x1,
 };
 
-FCFT_EXPORT enum fcft_capabilities fcft_capabilities(void);
+enum fcft_capabilities fcft_capabilities(void);
 
 /* First entry is the main/primary font, the remaining (if any) are
  * custom fallback fonts */
-FCFT_EXPORT struct fcft_font *fcft_from_name(
+struct fcft_font *fcft_from_name(
     size_t count, const char *names[static count], const char *attributes);
-FCFT_EXPORT struct fcft_font *fcft_clone(const struct fcft_font *font);
-FCFT_EXPORT void fcft_destroy(struct fcft_font *font);
+struct fcft_font *fcft_clone(const struct fcft_font *font);
+void fcft_destroy(struct fcft_font *font);
 
 /* Returns a *new* font instance */
-FCFT_EXPORT struct fcft_font *fcft_size_adjust(const struct fcft_font *font, double amount) __attribute__((deprecated));
+struct fcft_font *fcft_size_adjust(const struct fcft_font *font, double amount) __attribute__((deprecated));
 
 /*
  * Defines the subpixel order to use.
@@ -84,7 +84,7 @@ struct fcft_glyph {
 
 /* Rasterize 'wc' using 'font'. Use the defined subpixel mode *if*
  * antialiasing is enabled for this font */
-FCFT_EXPORT const struct fcft_glyph *fcft_glyph_rasterize(
+const struct fcft_glyph *fcft_glyph_rasterize(
     struct fcft_font *font, wchar_t wc, enum fcft_subpixel subpixel);
 
 struct fcft_grapheme {
@@ -99,17 +99,17 @@ struct fcft_layout_tag {
     unsigned value;
 };
 
-FCFT_EXPORT const struct fcft_grapheme *fcft_grapheme_rasterize(
+const struct fcft_grapheme *fcft_grapheme_rasterize(
     struct fcft_font *font,
     size_t len, const wchar_t grapheme_cluster[static len],
     size_t tag_count, const struct fcft_layout_tag *tags,
     enum fcft_subpixel subpixel);
 
-FCFT_EXPORT bool fcft_kerning(
+bool fcft_kerning(
     struct fcft_font *font, wchar_t left, wchar_t right,
     long *restrict x, long *restrict y);
 
-FCFT_EXPORT wchar_t fcft_precompose(const struct fcft_font *font,
+wchar_t fcft_precompose(const struct fcft_font *font,
                                     wchar_t base, wchar_t comb,
                                     bool *base_is_from_primary,
                                     bool *comb_is_from_primary,
@@ -123,4 +123,33 @@ enum fcft_scaling_filter {
     FCFT_SCALING_FILTER_LANCZOS3,
 };
 
-FCFT_EXPORT bool fcft_set_scaling_filter(enum fcft_scaling_filter filter);
+bool fcft_set_scaling_filter(enum fcft_scaling_filter filter);
+
+/*
+ * Logging
+ *
+ * By default, fcft does not log anything at all. This can be changed
+ * by calling fcft_log_init() (typically at program start).
+ *
+ * Note that fcft_log_init() does *not* call openlog(3), even when
+ * do_syslog==true.
+ */
+enum fcft_log_colorize {
+    FCFT_LOG_COLORIZE_NEVER,
+    FCFT_LOG_COLORIZE_ALWAYS,
+    FCFT_LOG_COLORIZE_AUTO
+};
+
+/* Which log messages to show. If you enable e.g. FCFT_LOG_CLASS_INFO,
+ * then WARNINGs and ERRORs will also be shown. */
+enum fcft_log_class {
+    FCFT_LOG_CLASS_NONE,
+    FCFT_LOG_CLASS_ERROR,
+    FCFT_LOG_CLASS_WARNING,
+    FCFT_LOG_CLASS_INFO,
+    FCFT_LOG_CLASS_DEBUG
+};
+
+void fcft_log_init(
+    enum fcft_log_colorize colorize, bool do_syslog,
+    enum fcft_log_class log_level);

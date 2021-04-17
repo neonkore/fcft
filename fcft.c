@@ -138,7 +138,7 @@ struct fcft_font_cache_entry {
 static tll(struct fcft_font_cache_entry) font_cache = tll_init();
 static mtx_t font_cache_lock;
 
-enum fcft_capabilities
+FCFT_EXPORT enum fcft_capabilities
 fcft_capabilities(void)
 {
     enum fcft_capabilities ret = 0;
@@ -275,7 +275,7 @@ log_version_information(void)
 
 }
 
-bool
+FCFT_EXPORT bool
 fcft_set_scaling_filter(enum fcft_scaling_filter filter)
 {
     switch (filter) {
@@ -760,7 +760,7 @@ font_hash(size_t count, const char *names[static count], const char *attributes)
     return hash;
 }
 
-struct fcft_font *
+FCFT_EXPORT struct fcft_font *
 fcft_from_name(size_t count, const char *names[static count],
                const char *attributes)
 {
@@ -1044,7 +1044,7 @@ fcft_from_name(size_t count, const char *names[static count],
     return font != NULL ? &font->public : NULL;
 }
 
-struct fcft_font *
+FCFT_EXPORT struct fcft_font *
 fcft_clone(const struct fcft_font *_font)
 {
     if (_font == NULL)
@@ -1062,7 +1062,7 @@ fcft_clone(const struct fcft_font *_font)
     return &font->public;
 }
 
-struct fcft_font *
+FCFT_EXPORT struct fcft_font *
 fcft_size_adjust(const struct fcft_font *_font, double amount)
 {
     struct font_priv *new = calloc(1, sizeof(*new));
@@ -1593,7 +1593,7 @@ glyph_cache_resize(struct font_priv *font)
     return true;
 }
 
-const struct fcft_glyph *
+FCFT_EXPORT const struct fcft_glyph *
 fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
                      enum fcft_subpixel subpixel)
 {
@@ -1776,7 +1776,7 @@ grapheme_cache_resize(struct font_priv *font)
     return true;
 }
 
-const struct fcft_grapheme *
+FCFT_EXPORT const struct fcft_grapheme *
 fcft_grapheme_rasterize(struct fcft_font *_font,
                         size_t len, const wchar_t cluster[static len],
                         size_t tag_count, const struct fcft_layout_tag *tags,
@@ -2005,7 +2005,7 @@ err:
 
 #else /* !FCFT_HAVE_HARFBUZZ */
 
-const struct fcft_grapheme *
+FCFT_EXPORT const struct fcft_grapheme *
 fcft_grapheme_rasterize(struct fcft_font *_font,
                         size_t len, const wchar_t cluster[static len],
                         size_t tag_count, const struct fcft_layout_tag *tags,
@@ -2015,7 +2015,7 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
 }
 #endif /* !FCFT_HAVE_HARFBUZZ */
 
-void
+FCFT_EXPORT void
 fcft_destroy(struct fcft_font *_font)
 {
     if (_font == NULL)
@@ -2114,7 +2114,7 @@ fcft_destroy(struct fcft_font *_font)
     free(font);
 }
 
-bool
+FCFT_EXPORT bool
 fcft_kerning(struct fcft_font *_font, wchar_t left, wchar_t right,
              long *restrict x, long *restrict y)
 {
@@ -2169,7 +2169,7 @@ err:
     return false;
 }
 
-wchar_t
+FCFT_EXPORT wchar_t
 fcft_precompose(const struct fcft_font *_font, wchar_t base, wchar_t comb,
                 bool *base_is_from_primary,
                 bool *comb_is_from_primary,

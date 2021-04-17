@@ -29,10 +29,12 @@
   a user provided string with user configurable fonts and colors. No
   proper error checking etc. To build, configure meson with
   `-Dexamples=true`.
+* `fcft_log_init()`. This function enables, and configures logging in fcft.
 
 
 ### Changed
 
+* fcft logging must now be enabled explicitly (see `fcft_log_init()`).
 * Internal logging functions are no longer exported by the shared library.
 
 
