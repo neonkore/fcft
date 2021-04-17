@@ -18,9 +18,7 @@ fcft_log_init - configure logging in fcft
 By default, fcft does not log anything; use *fcft_log_init*(3) to
 enable, and configure logging in fcft.
 
-*fcft_log_init*(3) is typically called early, at program startup. If
-it is used, *log_deinit*(3) should be called once you are done with
-fcft, to cleanup.
+*fcft_log_init*(3) is typically called early, at program startup.
 
 _colorize_ is one of:
 
@@ -61,9 +59,3 @@ enum fcft_log_class {
 
 Note that this is not a bitmask; setting *FCFT_LOG_CLASS_INFO*, also
 enables *FCFT_LOG_CLASS_WARNING* and *FCFT_LOG_CLASS_ERROR*.
-
-
-
-# SEE ALSO
-
-*fcft_log_deinit*(3)

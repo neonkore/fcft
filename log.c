@@ -19,38 +19,13 @@ static enum fcft_log_class log_level = FCFT_LOG_CLASS_NONE;
 
 void
 fcft_log_init(enum fcft_log_colorize _colorize, bool _do_syslog,
-              enum fcft_log_facility syslog_facility,
               enum fcft_log_class _log_level)
 {
-    static const int facility_map[] = {
-        [FCFT_LOG_FACILITY_USER] = LOG_USER,
-        [FCFT_LOG_FACILITY_DAEMON] = LOG_DAEMON,
-    };
-
-    static const int level_map[] = {
-        [FCFT_LOG_CLASS_ERROR] = LOG_ERR,
-        [FCFT_LOG_CLASS_WARNING] = LOG_WARNING,
-        [FCFT_LOG_CLASS_INFO] = LOG_INFO,
-        [FCFT_LOG_CLASS_DEBUG] = LOG_DEBUG,
-    };
-
     colorize = _colorize == FCFT_LOG_COLORIZE_NEVER ? false
         : _colorize == FCFT_LOG_COLORIZE_ALWAYS ? true
         : isatty(STDERR_FILENO);
     do_syslog = _do_syslog;
     log_level = _log_level;
-
-    if (do_syslog) {
-        openlog(NULL, /*LOG_PID*/0, facility_map[syslog_facility]);
-        setlogmask(LOG_UPTO(level_map[_log_level]));
-    }
-}
-
-void
-fcft_log_deinit(void)
-{
-    if (do_syslog)
-        closelog();
 }
 
 static void

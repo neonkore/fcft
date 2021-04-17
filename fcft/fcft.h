@@ -129,20 +129,15 @@ FCFT_EXPORT bool fcft_set_scaling_filter(enum fcft_scaling_filter filter);
  * Logging
  *
  * By default, fcft does not log anything at all. This can be changed
- * by calling fcft_log_init() (typically at program start). If you do
- * call fcft_log_init(), you should also call fcft_log_deinit() when
- * cleaning up.
+ * by calling fcft_log_init() (typically at program start).
+ *
+ * Note that fcft_log_init() does *not* call openlog(3), even when
+ * do_syslog==true.
  */
 enum fcft_log_colorize {
     FCFT_LOG_COLORIZE_NEVER,
     FCFT_LOG_COLORIZE_ALWAYS,
     FCFT_LOG_COLORIZE_AUTO
-};
-
-/* Affects syslogs only */
-enum fcft_log_facility {
-    FCFT_LOG_FACILITY_USER,
-    FCFT_LOG_FACILITY_DAEMON
 };
 
 /* Which log messages to show. If you enable e.g. FCFT_LOG_CLASS_INFO,
@@ -155,7 +150,6 @@ enum fcft_log_class {
     FCFT_LOG_CLASS_DEBUG
 };
 
-FCFT_EXPORT void fcft_log_init(enum fcft_log_colorize colorize, bool do_syslog,
-                               enum fcft_log_facility syslog_facility,
-                               enum fcft_log_class log_level);
-FCFT_EXPORT void fcft_log_deinit(void);
+FCFT_EXPORT void fcft_log_init(
+    enum fcft_log_colorize colorize, bool do_syslog,
+    enum fcft_log_class log_level);

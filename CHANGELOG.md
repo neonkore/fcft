@@ -30,13 +30,11 @@
   proper error checking etc. To build, configure meson with
   `-Dexamples=true`.
 * `fcft_log_init()`. This function enables, and configures logging in fcft.
-* `fcft_log_deinit()`. Cleanup of fcft’s logging facility.
 
 
 ### Changed
 
-* fcft logging must now be enabled explicitly (see `fcft_log_init()`
-  and `fcft_log_deinit()`).
+* fcft logging must now be enabled explicitly (see `fcft_log_init()`).
 * Internal logging functions are no longer exported by the shared library.
 
 
