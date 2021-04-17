@@ -10,7 +10,6 @@ fcft_log_init - configure logging in fcft
 
 *void fcft_log_init(
 	enum fcft_log_colorize* _colorize_*, bool* _do\_syslog_*,
-	enum fcft_log_facility* _syslog\_facility_*,
 	enum fcft_log_class* _log\_level_*);*
 
 # DESCRIPTION
@@ -35,15 +34,11 @@ enum fcft_log_colorize {
 if _do\_syslog_ is set, fcft will log to syslog, in addition to the
 regular logging on stderr.
 
-_syslog\_facility_ sets the facility, and corresponds to the
-_facility_ argument in *openlog*(3). Possible values are:
+Note that fcft does not call *openlog*(3), even if _do\_syslog_ is
+set. Do this from the calling application. Before, or after calling
+*fcft_log_init*(3) does not matter, as long as it is done before
+calling any other fcft API functions.
 
-```
-enum fcft_log_facility {
-    FCFT_LOG_FACILITY_USER,
-    FCFT_LOG_FACILITY_DAEMON
-};
-```
 
 Finally, _log\_level_ configures which types of log messages that will be shown.
 ```
