@@ -48,8 +48,8 @@ The intention is to enable programs to use per-monitor subpixel
 modes. Incidentally, *enum fcft_subpixel* matches *enum
 wl_output_subpixel*, the enum used in Wayland.
 
-Note: you probably do not want anything by *FCFT_SUBPIXEL_NONE* if
-blending with a transparent background.
+Note: you probably do not want to use anything other than
+*FCFT_SUBPIXEL_NONE* if blending with a transparent background.
 
 # RETURN VALUE
 
