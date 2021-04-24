@@ -85,6 +85,7 @@ struct instance {
     FT_LcdFilter lcd_filter;
 
     double pixel_size_fixup; /* Scale factor - should only be used with ARGB32 glyphs */
+    bool pixel_fixup_estimated;
     bool bgr;  /* True for FC_RGBA_BGR and FC_RGBA_VBGR */
 
     struct fcft_font metrics;
@@ -482,6 +483,7 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
         outline = FcTrue;
 
     double pixel_fixup = 1.;
+    bool fixup_estimated = false;
     if (FcPatternGetDouble(pattern, "pixelsizefixupfactor", 0, &pixel_fixup) != FcResultMatch) {
         /*
          * Force a fixup factor on scalable bitmap fonts (typically
@@ -493,6 +495,7 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
                 req_px_size = req_pt_size * dpi / 72.;
 
             pixel_fixup = req_px_size / ft_face->size->metrics.y_ppem;
+            fixup_estimated = true;
             LOG_DBG("estimated pixel fixup factor to %f (from pixel size: %f)",
                     pixel_fixup, req_px_size);
         } else
@@ -620,6 +623,7 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
     font->render_flags_normal = render_flags_normal;
     font->render_flags_subpixel = render_flags_subpixel;
     font->pixel_size_fixup = pixel_fixup;
+    font->pixel_fixup_estimated = fixup_estimated;
     font->bgr = fc_rgba == FC_RGBA_BGR || fc_rgba == FC_RGBA_VBGR;
 
     /* For logging: e.g. "+ss01 -dlig" */
@@ -695,9 +699,11 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
             FT_GlyphSlot_Embolden(font->face->glyph);
 
         font->metrics.space_advance.x = ceil(
-            font->face->glyph->advance.x / 64. * font->pixel_size_fixup);
+            font->face->glyph->advance.x / 64. *
+            (font->pixel_fixup_estimated ? font->pixel_size_fixup : 1.));
         font->metrics.space_advance.y = ceil(
-            font->face->glyph->advance.y / 64. * font->pixel_size_fixup);
+            font->face->glyph->advance.y / 64. *
+            (font->pixel_fixup_estimated ? font->pixel_size_fixup : 1.));
     } else {
         font->metrics.space_advance.x = -1;
         font->metrics.space_advance.y = -1;
@@ -1456,8 +1462,10 @@ glyph_for_index(const struct instance *inst, uint32_t index,
             .x = x,
             .y = y,
             .advance = {
-                .x = inst->face->glyph->advance.x / 64.,
-                .y = inst->face->glyph->advance.y / 64.,
+                .x = (inst->face->glyph->advance.x / 64. *
+                      (inst->pixel_fixup_estimated ? inst->pixel_size_fixup : 1.)),
+                .y = (inst->face->glyph->advance.y / 64. *
+                      (inst->pixel_fixup_estimated ? inst->pixel_size_fixup : 1.)),
             },
             .width = width,
             .height = rows,

@@ -44,6 +44,9 @@
 
 * Internal logging functions have been renamed, from generic `log_*`
   names to fcft specific `fcft_log_` names.
+* Apply pixel-size fixup to glyphs’ advance width/height, but **only**
+  if we estimated the fixup ourselves (otherwise the advance
+  width/height is already scaled).
 
 
 ### Security
