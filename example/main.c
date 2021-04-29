@@ -173,6 +173,9 @@ render_graphemes(struct buffer *buf, int y, pixman_image_t *color)
     int x = (buf->width - text_width) / 2;
 
     for (size_t i = 0; i < grapheme_count; i++) {
+        if (graphs[i] == NULL)
+            continue;
+
         render_glyphs(
             buf, &x, &y, color, graphs[i]->count, graphs[i]->glyphs, NULL);
     }
@@ -183,6 +186,9 @@ render_shaped(struct buffer *buf, int y, pixman_image_t *color)
 {
     struct fcft_text_run *run = fcft_text_run_rasterize(
         font, text_len, text, subpixel_mode);
+
+    if (run == NULL)
+        return;
 
     int text_width = 0;
     for (size_t i = 0; i < run->count; i++)
