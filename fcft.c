@@ -146,6 +146,7 @@ fcft_capabilities(void)
 
 #if defined(FCFT_HAVE_HARFBUZZ)
     ret |= FCFT_CAPABILITY_GRAPHEME_SHAPING;
+    ret |= FCFT_CAPABILITY_TEXT_RUN_SHAPING;
 #endif
 
     return ret;
@@ -258,7 +259,9 @@ log_version_information(void)
     static char caps_str[256];
     snprintf(
         caps_str, sizeof(caps_str),
-        "%cgraphemes", caps & FCFT_CAPABILITY_GRAPHEME_SHAPING ? '+' : '-');
+        "%cgraphemes %cruns",
+        caps & FCFT_CAPABILITY_GRAPHEME_SHAPING ? '+' : '-',
+        caps & FCFT_CAPABILITY_TEXT_RUN_SHAPING ? '+' : '-');
 
     LOG_INFO("fcft: %s %s", FCFT_VERSION, caps_str);
 
