@@ -23,6 +23,8 @@
 
 #include "shm.h"
 
+#define ALEN(v) (sizeof(v) / sizeof((v)[0]))
+
 static struct wl_display *display;
 static struct wl_registry *registry;
 static struct wl_compositor *compositor;
@@ -129,7 +131,8 @@ render_glyphs(struct buffer *buf, int *x, const int *y, pixman_image_t *color,
 }
 
 static void
-render_chars(struct buffer *buf, int y, pixman_image_t *color)
+render_chars(const wchar_t *text, size_t text_len,
+             struct buffer *buf, int y, pixman_image_t *color)
 {
     const struct fcft_glyph *glyphs[text_len];
     long kern[text_len];
@@ -155,6 +158,13 @@ render_chars(struct buffer *buf, int y, pixman_image_t *color)
 static void
 render_graphemes(struct buffer *buf, int y, pixman_image_t *color)
 {
+    if (!(fcft_capabilities() & FCFT_CAPABILITY_GRAPHEME_SHAPING)) {
+        static const wchar_t unsupported[] =
+            L"fcft compiled without grapheme shaping support";
+        render_chars(unsupported, ALEN(unsupported), buf, y, color);
+        return;
+    }
+
     const struct fcft_grapheme *graphs[grapheme_count];
     int text_width = 0;
 
@@ -184,6 +194,13 @@ render_graphemes(struct buffer *buf, int y, pixman_image_t *color)
 static void
 render_shaped(struct buffer *buf, int y, pixman_image_t *color)
 {
+    if (!(fcft_capabilities() & FCFT_CAPABILITY_TEXT_RUN_SHAPING)) {
+        static const wchar_t unsupported[] =
+            L"fcft compiled without text-run shaping support";
+        render_chars(unsupported, ALEN(unsupported), buf, y, color);
+        return;
+    }
+
     struct fcft_text_run *run = fcft_text_run_rasterize(
         font, text_len, text, subpixel_mode);
 
@@ -231,7 +248,7 @@ xdg_surface_configure(void *data, struct xdg_surface *xdg_surface,
 
     /* Center 2 lines, using a 1.5x line height */
     int y = (h - 2 * (3 * font->height / 2)) / 2;
-    render_chars(buf, y, clr_pix);
+    render_chars(text, text_len, buf, y, clr_pix);
 
     /* 1.5x line height */
     y += 3 * font->height / 2;
