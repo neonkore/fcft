@@ -19,13 +19,21 @@ The API is documented as man pages. These are built and installed when
 fcft is built as a standalone project, but **not** when built as a
 subproject.
 
+Starting with 2.3.0, fcft gained the ability to do text shaping using
+HarfBuzz (an **optional** dependency). Initially, only individual
+grapheme clusters could be shaped. With 2.4.0, the ability to shape
+whole text-runs where added. It should be noted however, that fcft
+does _not_ aim to compete with e.g. Pango, and that the text shaping
+support may not be (and perhaps never will be) sufficient for
+“professional” text layout.
+
 
 ## Requirements
 
 * fontconfig
 * freetype
 * pixman
-* harfbuzz (optional)
+* harfbuzz (optional, for text shaping support)
 * [tllist](https://codeberg.org/dnkl/tllist), _unless_ built as a subproject
 
 
@@ -38,6 +46,7 @@ subproject.
 * Font caching
 * Glyph caching
 * Kerning[^1]
+* Basic text shaping if compiled with HarfBuzz support
 
 [^1]: only basic kerning supported (i.e. the old 'kern' tables, not
     the new 'GPOS' tables)
@@ -100,7 +109,7 @@ Run-time dependencies:
 * fontconfig
 * freetype2
 * pixman
-* harfbuzz (_optional_)
+* harfbuzz (_optional_, for text shaping support)
 * utf8proc[^2]
 * wayland[^2]
 * wayland-protocols[^2]
