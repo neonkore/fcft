@@ -14,6 +14,7 @@ foreach man_src : ['fcft_capabilities.3.scd',
                    'fcft_precompose.3.scd',
                    'fcft_set_scaling_filter.3.scd',
                    'fcft_size_adjust.3.scd',
+                   'fcft_text_run_destroy.3.scd',
                    'fcft_text_run_rasterize.3.scd']
   parts = man_src.split('.')
   name = parts[-3]
