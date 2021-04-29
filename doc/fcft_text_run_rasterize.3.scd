@@ -1,4 +1,4 @@
-fcft_text_run_rasterize(3) "2.3.90" "fcft"
+fcft_text_run_rasterize(3) "2.3.91" "fcft"
 
 # NAME
 
