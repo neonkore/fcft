@@ -161,7 +161,7 @@ render_graphemes(struct buffer *buf, int y, pixman_image_t *color)
     if (!(fcft_capabilities() & FCFT_CAPABILITY_GRAPHEME_SHAPING)) {
         static const wchar_t unsupported[] =
             L"fcft compiled without grapheme shaping support";
-        render_chars(unsupported, ALEN(unsupported), buf, y, color);
+        render_chars(unsupported, ALEN(unsupported) - 1, buf, y, color);
         return;
     }
 
@@ -197,7 +197,7 @@ render_shaped(struct buffer *buf, int y, pixman_image_t *color)
     if (!(fcft_capabilities() & FCFT_CAPABILITY_TEXT_RUN_SHAPING)) {
         static const wchar_t unsupported[] =
             L"fcft compiled without text-run shaping support";
-        render_chars(unsupported, ALEN(unsupported), buf, y, color);
+        render_chars(unsupported, ALEN(unsupported) - 1, buf, y, color);
         return;
     }
 
