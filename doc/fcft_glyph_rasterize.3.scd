@@ -19,7 +19,7 @@ primary font, or one of the fallback fonts, in _font_.
 
 _wc_ is first searched for in the primary font. If not found, the
 fallback fonts are searched (in the order they were specified in
-*fcft_from_name*(3)). If not found in any of the fallback fonts, the
+*fcft_from_name*()). If not found in any of the fallback fonts, the
 FontConfig fallback list for the primary font is searched.
 
 _subpixel_ allows you to specify which subpixel mode to use. It is one of:
@@ -62,7 +62,7 @@ themselves).
 
 The glyph object is managed by _font_. There is no need to explicitly
 free it; it is freed when _font_ is destroyed (with
-*fcft_destroy*(3)).
+*fcft_destroy*()).
 
 ```
 struct fcft_glyph {
@@ -126,8 +126,8 @@ vertical layout.
 
 # EXAMPLE
 
-See *fcft_from_name*(3)
+See *fcft_from_name*()
 
 # SEE ALSO
 
-*fcft_destroy*(3), *fcft_kerning*(3)
+*fcft_destroy*(), *fcft_kerning*()

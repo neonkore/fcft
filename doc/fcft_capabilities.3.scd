@@ -24,8 +24,8 @@ enum fcft_capabilities {
 # FCFT_CAPABILITY_GRAPHEME_SHAPING
 
 fcft can do grapheme shaping (using HarfBuzz), and
-*fcft_glyph_rasterize_grapheme*(3) can be expected to return non-NULL.
+*fcft_glyph_rasterize_grapheme*() can be expected to return non-NULL.
 
 # SEE ALSO
 
-*fcft_glyph_rasterize_grapheme*(3)
+*fcft_glyph_rasterize_grapheme*()

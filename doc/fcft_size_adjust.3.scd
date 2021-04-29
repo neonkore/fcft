@@ -13,6 +13,8 @@ fcft_size_adjust - increase or decrease a font's point size
 
 # DESCRIPTION
 
+*DEPRECATED*
+
 *fcft_size_adjust*() returns a clone of _font_, with its point size
 adjusted by _amount_ points. _amount_ can be either positive or
 negative.
@@ -24,4 +26,4 @@ NULL is returned.
 
 # SEE ALSO
 
-*fcft_from_name*(3), *fcft_clone*(3), *fcft_destroy*(3)
+*fcft_from_name*(), *fcft_clone*(), *fcft_destroy*()

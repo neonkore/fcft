@@ -14,10 +14,10 @@ fcft_log_init - configure logging in fcft
 
 # DESCRIPTION
 
-By default, fcft does not log anything; use *fcft_log_init*(3) to
+By default, fcft does not log anything; use *fcft_log_init*() to
 enable, and configure logging in fcft.
 
-*fcft_log_init*(3) is typically called early, at program startup.
+*fcft_log_init*() is typically called early, at program startup.
 
 _colorize_ is one of:
 
@@ -34,9 +34,9 @@ enum fcft_log_colorize {
 if _do\_syslog_ is set, fcft will log to syslog, in addition to the
 regular logging on stderr.
 
-Note that fcft does not call *openlog*(3), even if _do\_syslog_ is
+Note that fcft does not call *openlog*(), even if _do\_syslog_ is
 set. Do this from the calling application. Before, or after calling
-*fcft_log_init*(3) does not matter, as long as it is done before
+*fcft_log_init*() does not matter, as long as it is done before
 calling any other fcft API functions.
 
 

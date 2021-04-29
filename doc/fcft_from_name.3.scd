@@ -207,5 +207,5 @@ main(void)
 
 # SEE ALSO
 
-*fcft_clone*(3), *fcft_destroy*(3), *fcft_glyph_rasterize*(3),
-*fcft_kerning*(3), *fcft_size_adjust*(3)
+*fcft_clone*(), *fcft_destroy*(), *fcft_glyph_rasterize*(),
+*fcft_kerning*(), *fcft_size_adjust*()

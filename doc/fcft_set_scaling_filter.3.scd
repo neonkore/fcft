@@ -17,7 +17,7 @@ downscaling bitmap fonts (typically emoji fonts). The setting affects
 *all* font instances.
 
 This function does *not* clear the glyph caches and should therefore be
-called before any calls to *fcft_glyph_rasterize*(3).
+called before any calls to *fcft_glyph_rasterize*().
 
 Possible values for _filter_ are:
 
@@ -44,9 +44,9 @@ If this function is not called, fcft defaults to
 
 # RETURN VALUE
 
-On success, *fcft_set_scaling_filter*() returns true. On error,
-false is returned.
+On success, *fcft_set_scaling_filter*() returns true. On error, false
+is returned.
 
 # EXAMPLE
 
-See *fcft_from_name*(3)
+See *fcft_from_name*()

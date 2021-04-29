@@ -39,4 +39,4 @@ On error, false is returned. This may happen for several reasons:
 
 # EXAMPLE
 
-See *fcft_from_name*(3)
+See *fcft_from_name*()
