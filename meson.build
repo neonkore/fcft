@@ -1,5 +1,5 @@
 project('fcft', 'c',
-        version: '2.3.90',  # Don't forget to update version in man pages
+        version: '2.3.91',  # Don't forget to update version in man pages
         license: 'MIT',
         meson_version: '>=0.54.0',
         default_options: [
