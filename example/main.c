@@ -138,7 +138,7 @@ render_chars(const wchar_t *text, size_t text_len,
     long kern[text_len];
     int text_width = 0;
 
-    for (size_t i = 0; i < wcslen(text); i++) {
+    for (size_t i = 0; i < text_len; i++) {
         glyphs[i] = fcft_glyph_rasterize(font, text[i], subpixel_mode);
 
         kern[i] = 0;
