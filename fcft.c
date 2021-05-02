@@ -468,7 +468,7 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
         return false;
     }
 
-    if ((ft_err = FT_Set_Pixel_Sizes(ft_face, 0, pixel_size)) != 0) {
+    if ((ft_err = FT_Set_Pixel_Sizes(ft_face, 0, round(pixel_size))) != 0) {
         LOG_ERR("%s: failed to set character size: %s",
                 face_file, ft_error_string(ft_err));
         goto err_done_face;
@@ -721,7 +721,7 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
             features);
 #else
     LOG_INFO("%s: size=%.2fpt/%dpx, dpi=%.2f%s",
-             font->path, size, (int)pixel_size, dpi, features);
+             font->path, size, (int)round(pixel_size), dpi, features);
 #endif
 
     return true;
