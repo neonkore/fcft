@@ -36,6 +36,8 @@
 
 * fcft logging must now be enabled explicitly (see `fcft_log_init()`).
 * Internal logging functions are no longer exported by the shared library.
+* The pixel size passed from FontConfig to FreeType is now rounded
+  instead of truncated (https://codeberg.org/dnkl/foot/issues/456).
 
 
 ### Deprecated
