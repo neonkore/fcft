@@ -21,10 +21,9 @@
 #include <tllist.h>
 #include <fcft/fcft.h>
 
-#define LOG_MODULE "example"
-#define LOG_ENABLE_DBG 0
-#include "log.h"
 #include "shm.h"
+
+#define ALEN(v) (sizeof(v) / sizeof((v)[0]))
 
 static struct wl_display *display;
 static struct wl_registry *registry;
@@ -132,13 +131,14 @@ render_glyphs(struct buffer *buf, int *x, const int *y, pixman_image_t *color,
 }
 
 static void
-render_chars(struct buffer *buf, int y, pixman_image_t *color)
+render_chars(const wchar_t *text, size_t text_len,
+             struct buffer *buf, int y, pixman_image_t *color)
 {
     const struct fcft_glyph *glyphs[text_len];
     long kern[text_len];
     int text_width = 0;
 
-    for (size_t i = 0; i < wcslen(text); i++) {
+    for (size_t i = 0; i < text_len; i++) {
         glyphs[i] = fcft_glyph_rasterize(font, text[i], subpixel_mode);
 
         kern[i] = 0;
@@ -158,6 +158,13 @@ render_chars(struct buffer *buf, int y, pixman_image_t *color)
 static void
 render_graphemes(struct buffer *buf, int y, pixman_image_t *color)
 {
+    if (!(fcft_capabilities() & FCFT_CAPABILITY_GRAPHEME_SHAPING)) {
+        static const wchar_t unsupported[] =
+            L"fcft compiled without grapheme shaping support";
+        render_chars(unsupported, ALEN(unsupported) - 1, buf, y, color);
+        return;
+    }
+
     const struct fcft_grapheme *graphs[grapheme_count];
     int text_width = 0;
 
@@ -176,9 +183,36 @@ render_graphemes(struct buffer *buf, int y, pixman_image_t *color)
     int x = (buf->width - text_width) / 2;
 
     for (size_t i = 0; i < grapheme_count; i++) {
+        if (graphs[i] == NULL)
+            continue;
+
         render_glyphs(
             buf, &x, &y, color, graphs[i]->count, graphs[i]->glyphs, NULL);
     }
+}
+
+static void
+render_shaped(struct buffer *buf, int y, pixman_image_t *color)
+{
+    if (!(fcft_capabilities() & FCFT_CAPABILITY_TEXT_RUN_SHAPING)) {
+        static const wchar_t unsupported[] =
+            L"fcft compiled without text-run shaping support";
+        render_chars(unsupported, ALEN(unsupported) - 1, buf, y, color);
+        return;
+    }
+
+    struct fcft_text_run *run = fcft_text_run_rasterize(
+        font, text_len, text, subpixel_mode);
+
+    if (run == NULL)
+        return;
+
+    int text_width = 0;
+    for (size_t i = 0; i < run->count; i++)
+        text_width += run->glyphs[i]->advance.x;
+    int x = (buf->width - text_width) / 2;
+    render_glyphs(buf, &x, &y, color, run->count, run->glyphs, NULL);
+    fcft_text_run_destroy(run);
 }
 
 static void
@@ -214,11 +248,15 @@ xdg_surface_configure(void *data, struct xdg_surface *xdg_surface,
 
     /* Center 2 lines, using a 1.5x line height */
     int y = (h - 2 * (3 * font->height / 2)) / 2;
-    render_chars(buf, y, clr_pix);
+    render_chars(text, text_len, buf, y, clr_pix);
 
     /* 1.5x line height */
     y += 3 * font->height / 2;
     render_graphemes(buf, y, clr_pix);
+
+    /* 1.5x line height */
+    y += 3 * font->height / 2;
+    render_shaped(buf, y, clr_pix);
 
     pixman_image_unref(clr_pix);
 
@@ -239,7 +277,9 @@ xdg_toplevel_decoration_configure(
 {
     switch (mode) {
     case ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE:
-        LOG_WARN("compositor refuses to use server side decorations");
+        fprintf(
+            stderr,
+            "warning: compositor refuses to use server side decorations\n");
         break;
     }
 }
@@ -254,8 +294,11 @@ verify_iface_version(const char *iface, uint32_t version, uint32_t wanted)
     if (version >= wanted)
         return true;
 
-    LOG_ERR("%s: need interface version %u, but compositor only implements %u",
-            iface, wanted, version);
+    fprintf(
+        stderr,
+        "error: %s: "
+        "need interface version %u, but compositor only implements %u\n",
+        iface, wanted, version);
     return false;
 }
 
@@ -331,6 +374,7 @@ int
 main(int argc, char *const *argv)
 {
     setlocale(LC_CTYPE, "");
+    fcft_log_init(FCFT_LOG_COLORIZE_AUTO, false, FCFT_LOG_CLASS_DEBUG);
 
     const char *prog_name = argv[0];
 
@@ -342,7 +386,7 @@ main(int argc, char *const *argv)
         {NULL,         no_argument,       NULL, '\0'},
     };
 
-    const char *user_text = "hello world 🇸🇪";
+    const char *user_text = "hello world <<<🇸🇪 👨‍👩‍👧‍👦 👩🏿>>>";
     const char *font_list = "serif:size=24";
 
     while (true) {
@@ -513,7 +557,9 @@ main(int argc, char *const *argv)
         zxdg_toplevel_decoration_v1_set_mode(
             deco, ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
     } else
-        LOG_WARN("compositor does not implement server side decorations");
+        fprintf(
+            stderr,
+            "warning: compositor does not implement server side decorations\n");
 
     wl_surface_commit(surf);
 
@@ -549,13 +595,13 @@ main(int argc, char *const *argv)
                 continue;
             }
 
-            LOG_ERRNO("failed to poll");
+            fprintf(stderr, "error: failed to poll: %s\n", strerror(errno));
             exit_code = EXIT_FAILURE;
             break;
         }
 
         if (fds[0].revents & POLLHUP) {
-            LOG_WARN("disconnected by compositor");
+            fprintf(stderr, "warning: disconnected by compositor\n");
             exit_code = EXIT_FAILURE;
             break;
         }

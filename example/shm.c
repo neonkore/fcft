@@ -1,16 +1,17 @@
 #include "shm.h"
 
+#include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <errno.h>
 
 #include <sys/types.h>
 #include <sys/mman.h>
 
 #include <tllist.h>
 
-#define LOG_MODULE "shm"
-#include "log.h"
 #include "stride.h"
 
 static void
@@ -69,26 +70,34 @@ shm_get_buffer(struct wl_shm *shm, int width, int height, unsigned long cookie)
     const uint32_t stride = stride_for_format_and_width(PIXMAN_x8r8g8b8, width);
     size = stride * height;
     if (ftruncate(pool_fd, size) == -1) {
-        LOG_ERRNO("failed to truncate SHM pool");
+        fprintf(
+            stderr,
+            "error: failed to truncate SHM pool: %s\n", strerror(errno));
         goto err;
     }
 
     mmapped = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, pool_fd, 0);
     if (mmapped == MAP_FAILED) {
-        LOG_ERR("failed to mmap SHM backing memory file");
+        fprintf(
+            stderr,
+            "error: failed to mmap SHM backing memory file: %s\n",
+            strerror(errno));
         goto err;
     }
 
     pool = wl_shm_create_pool(shm, pool_fd, size);
     if (pool == NULL) {
-        LOG_ERR("failed to create SHM pool");
+        fprintf(
+            stderr, "error: failed to create SHM pool: %s\n", strerror(errno));
         goto err;
     }
 
     buf = wl_shm_pool_create_buffer(
         pool, 0, width, height, stride, WL_SHM_FORMAT_ARGB8888);
     if (buf == NULL) {
-        LOG_ERR("failed to create SHM buffer");
+        fprintf(
+            stderr,
+            "error: failed to create SHM buffer: %s\n", strerror(errno));
         goto err;
     }
 
@@ -99,7 +108,7 @@ shm_get_buffer(struct wl_shm *shm, int width, int height, unsigned long cookie)
     pix = pixman_image_create_bits_no_clear(
         PIXMAN_a8r8g8b8, width, height, mmapped, stride);
     if (pix == NULL) {
-        LOG_ERR("failed to create pixman image");
+        fprintf(stderr, "error: failed to create pixman image\n");
         goto err;
     }
 

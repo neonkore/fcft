@@ -1,4 +1,4 @@
-fcft_kerning(3) "2.3.90" "fcft"
+fcft_kerning(3) "2.3.91" "fcft"
 
 # NAME
 
@@ -39,4 +39,4 @@ On error, false is returned. This may happen for several reasons:
 
 # EXAMPLE
 
-See *fcft_from_name*(3)
+See *fcft_from_name*()

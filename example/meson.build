@@ -37,7 +37,6 @@ executable(
   'example',
   'main.c',
   'shm.c', 'shm.h',
-  '../log.c', '../log.h',
   'stride.h',
   wl_proto_src, wl_proto_headers,
   dependencies: [fcft, tllist, libepoll, pixman, utf8proc, wayland_protocols, wayland_client]

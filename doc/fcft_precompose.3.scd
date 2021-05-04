@@ -1,4 +1,4 @@
-fcft_precompose(3) "2.3.90" "fcft"
+fcft_precompose(3) "2.3.91" "fcft"
 
 # NAME
 
@@ -18,12 +18,12 @@ fcft_precompose - pre-compose two wide characters into one
 # DESCRIPTION
 
 *fcft_precompose*() composes the _base_ and _comb_ wide characters
-into a single wide character. For example, *L'a'* + *L'\\u0301'* can be
-combined to *L'á'*.
+into a single wide character. For example, *L'a'* + *L'\\u0301'* can
+be combined to *L'á'*.
 
 If _\*\_is\_from\_primary_ are non-NULL, they will be *true* if the
 corresponding wide character exists in the primary font. If *false*,
-it does not exist in the primary font and *fcft_glyph_rasterize*(3)
+it does not exist in the primary font and *fcft_glyph_rasterize*()
 will pick the glyph from one of the fallback fonts.
 
 # RETURN VALUE
@@ -33,4 +33,4 @@ error, *(wchar_t)-1* is returned.
 
 # SEE ALSO
 
-*fcft_glyph_rasterize*(3), *fcft_kerning*(3)
+*fcft_glyph_rasterize*(), *fcft_kerning*()

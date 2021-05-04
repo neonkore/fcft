@@ -30,6 +30,12 @@
   proper error checking etc. To build, configure meson with
   `-Dexamples=true`.
 * `fcft_log_init()`. This function enables, and configures logging in fcft.
+* `fcft_text_run_rasterize()`: new API that uses HarfBuzz to shape a
+  text run (i.e. a whole string). Note that HarfBuzz is (still) an
+  **optional** dependency, see
+  [README](README.md#user-content-building).
+* `fcft_text_run_destroy()`: new API that frees a rasterized text-run.
+* `FCFT_CAPABILITY_TEXT_RUN_SHAPING` added to `fcft_capabilities()`.
 
 
 ### Changed

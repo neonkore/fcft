@@ -1,4 +1,4 @@
-fcft_grapheme_rasterize(3) "2.3.90" "fcft"
+fcft_grapheme_rasterize(3) "2.3.91" "fcft"
 
 # NAME
 
@@ -34,7 +34,7 @@ struct fcft_layout_tag {
 ```
 
 _subpixel_ allows you to specify which subpixel mode to use. See
-*fcft_glyph_rasterize*(3) for details.
+*fcft_glyph_rasterize*() for details.
 
 # RETURN VALUE
 
@@ -47,7 +47,7 @@ glyphs by themselves).
 
 The grapheme object is managed by _font_. There is no need to
 explicitly free it; it is freed when _font_ is destroyed (with
-*fcft_destroy*(3)).
+*fcft_destroy*()).
 
 ```
 struct fcft_grapheme {
@@ -65,8 +65,8 @@ _cols_ is the number of "columns" the glyph occupies (effectively,
 *wcswidth*(_cluster_*)*).
 
 _glyphs_ is an array of rasterized glyphs. See
-*fcft_glyph_rasterize*(3) for a description of *struct fcft_glyph*.
+*fcft_glyph_rasterize*() for a description of *struct fcft_glyph*.
 
 # SEE ALSO
 
-*fcft_destroy*(3), *fcft_glyph_rasterize*(3)
+*fcft_destroy*(), *fcft_glyph_rasterize*()

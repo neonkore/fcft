@@ -36,7 +36,8 @@ struct fcft_font {
 
 /* Bitmask of optional capabilities */
 enum fcft_capabilities {
-    FCFT_CAPABILITY_GRAPHEME_SHAPING = 0x1,
+    FCFT_CAPABILITY_GRAPHEME_SHAPING = 0x1,  /* Since 2.3.0 */
+    FCFT_CAPABILITY_TEXT_RUN_SHAPING = 0x2,  /* Since 2.4.0 */
 };
 
 enum fcft_capabilities fcft_capabilities(void);
@@ -104,6 +105,18 @@ const struct fcft_grapheme *fcft_grapheme_rasterize(
     size_t len, const wchar_t grapheme_cluster[static len],
     size_t tag_count, const struct fcft_layout_tag *tags,
     enum fcft_subpixel subpixel);
+
+struct fcft_text_run {
+    const struct fcft_glyph **glyphs;
+    int *cluster;
+    size_t count;
+};
+
+struct fcft_text_run *fcft_text_run_rasterize(
+    struct fcft_font *font, size_t len, const wchar_t text[static len],
+    enum fcft_subpixel subpixel);
+
+void fcft_text_run_destroy(struct fcft_text_run *run);
 
 bool fcft_kerning(
     struct fcft_font *font, wchar_t left, wchar_t right,
