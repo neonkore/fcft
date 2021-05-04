@@ -5,6 +5,20 @@
 
 #include <pixman.h>
 
+/*
+ * Defines the subpixel order to use.
+ *
+ * Note that this is *ignored* if antialiasing has been disabled.
+ */
+enum fcft_subpixel {
+    FCFT_SUBPIXEL_DEFAULT,          /* Use subpixel order from FontConfig */
+    FCFT_SUBPIXEL_NONE,             /* Disable subpixel antialiasing (use grayscale antialiasing) */
+    FCFT_SUBPIXEL_HORIZONTAL_RGB,
+    FCFT_SUBPIXEL_HORIZONTAL_BGR,
+    FCFT_SUBPIXEL_VERTICAL_RGB,
+    FCFT_SUBPIXEL_VERTICAL_BGR,
+};
+
 struct fcft_font {
     /* font extents */
     int height;
@@ -32,6 +46,12 @@ struct fcft_font {
         int position;
         int thickness;
     } strikeout;
+
+    bool antialias;
+
+    /* Mode used if a) antialias==true, and b) rasterize is called
+     * with FCFT_SUBPIXEL_DEFAULT */
+    enum fcft_subpixel subpixel;
 };
 
 /* Bitmask of optional capabilities */
@@ -51,20 +71,6 @@ void fcft_destroy(struct fcft_font *font);
 
 /* Returns a *new* font instance */
 struct fcft_font *fcft_size_adjust(const struct fcft_font *font, double amount) __attribute__((deprecated));
-
-/*
- * Defines the subpixel order to use.
- *
- * Note that this is *ignored* if antialiasing has been disabled.
- */
-enum fcft_subpixel {
-    FCFT_SUBPIXEL_DEFAULT,          /* Use subpixel order from FontConfig */
-    FCFT_SUBPIXEL_NONE,             /* Disable subpixel antialiasing (use grayscale antialiasing) */
-    FCFT_SUBPIXEL_HORIZONTAL_RGB,
-    FCFT_SUBPIXEL_HORIZONTAL_BGR,
-    FCFT_SUBPIXEL_VERTICAL_RGB,
-    FCFT_SUBPIXEL_VERTICAL_BGR,
-};
 
 struct fcft_glyph {
     wchar_t wc;
