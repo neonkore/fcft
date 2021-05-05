@@ -36,6 +36,7 @@
   [README](README.md#user-content-building).
 * `fcft_text_run_destroy()`: new API that frees a rasterized text-run.
 * `FCFT_CAPABILITY_TEXT_RUN_SHAPING` added to `fcft_capabilities()`.
+* `antialias` and `subpixel` members to `struct fcft_font`.
 
 
 ### Changed

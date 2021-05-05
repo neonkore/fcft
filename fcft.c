@@ -708,6 +708,14 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
     font->metrics.ascent = ceil(ascent * font->pixel_size_fixup);
     font->metrics.max_advance.x = ceil(max_x_advance * font->pixel_size_fixup);
     font->metrics.max_advance.y = ceil(max_y_advance * font->pixel_size_fixup);
+    font->metrics.antialias = fc_antialias;
+    font->metrics.subpixel = !fc_antialias
+        ? FCFT_SUBPIXEL_NONE
+        : (fc_rgba == FC_RGBA_RGB ? FCFT_SUBPIXEL_HORIZONTAL_RGB :
+           fc_rgba == FC_RGBA_BGR ? FCFT_SUBPIXEL_HORIZONTAL_BGR :
+           fc_rgba == FC_RGBA_VRGB ? FCFT_SUBPIXEL_VERTICAL_RGB :
+           fc_rgba == FC_RGBA_VBGR ? FCFT_SUBPIXEL_VERTICAL_BGR :
+           FCFT_SUBPIXEL_NONE);
 
     /*
      * Some fonts (Noto Sans Mono, for example) provides bad

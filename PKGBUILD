@@ -1,5 +1,5 @@
 pkgname=fcft
-pkgver=2.3.91
+pkgver=2.3.92
 pkgrel=1
 pkgdesc="Simple font loading and glyph rasterization library"
 changelog=CHANGELOG.md
