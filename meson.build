@@ -19,8 +19,8 @@ project('fcft', 'c',
 # SONAME, and thus actual linking.
 so_version = [
   '3',      # MAJOR: increment on non-backward compatible ABI changes
-  '3',      # MINOR: increment with backward compatible ABI changes
-  '1',      # PATCH: increment with non-ABI affecting changes
+  '4',      # MINOR: increment with backward compatible ABI changes
+  '0',      # PATCH: increment with non-ABI affecting changes
 ]
 
 is_debug_build = get_option('buildtype').startswith('debug')
