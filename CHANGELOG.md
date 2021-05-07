@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [2.4.0](#2-4-0)
 * [2.3.3](#2-3-3)
 * [2.3.2](#2-3-2)
 * [2.3.1](#2-3-1)
@@ -21,7 +21,7 @@
 * [1.1.7](#1-1-7)
 
 
-## Unreleased
+## 2.4.0
 
 ### Added
 
@@ -47,8 +47,6 @@
   instead of truncated (https://codeberg.org/dnkl/foot/issues/456).
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * Internal logging functions have been renamed, from generic `log_*`
@@ -56,10 +54,6 @@
 * Apply pixel-size fixup to glyphs’ advance width/height, but **only**
   if we estimated the fixup ourselves (otherwise the advance
   width/height is already scaled).
-
-
-### Security
-### Contributors
 
 
 ## 2.3.3
