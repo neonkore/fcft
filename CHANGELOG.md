@@ -25,11 +25,16 @@
 ## Unreleased
 ### Added
 ### Changed
+
+* Log messages are now printed to stderr instead of stdout.
+
 ### Deprecated
 ### Removed
 ### Fixed
 ### Security
 ### Contributors
+
+* [emersion](https://codeberg.org/emersion)
 
 
 ## 2.4.0

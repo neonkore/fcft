@@ -47,20 +47,20 @@ _log(enum fcft_log_class log_class, const char *module, const char *file, int li
 
     char clr[16];
     snprintf(clr, sizeof(clr), "\033[%dm", class_clr);
-    printf("%s%s%s: ", colorize ? clr : "", class, colorize ? "\033[0m" : "");
+    fprintf(stderr, "%s%s%s: ", colorize ? clr : "", class, colorize ? "\033[0m" : "");
 
     if (colorize)
-        printf("\033[2m");
-    printf("%s:%d: ", file, lineno);
+        fprintf(stderr, "\033[2m");
+    fprintf(stderr, "%s:%d: ", file, lineno);
     if (colorize)
-        printf("\033[0m");
+        fprintf(stderr, "\033[0m");
 
-    vprintf(fmt, va);
+    vfprintf(stderr, fmt, va);
 
     if (sys_errno != 0)
-        printf(": %s", strerror(sys_errno));
+        fprintf(stderr, ": %s", strerror(sys_errno));
 
-    printf("\n");
+    fprintf(stderr, "\n");
 }
 
 static void
