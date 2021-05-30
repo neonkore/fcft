@@ -27,6 +27,10 @@
 ### Changed
 
 * Log messages are now printed to stderr instead of stdout.
+* `fcft_grapheme_rasterize()` now sets a minimum grapheme column count
+  of 2 when the cluster ends with an Emoji variant selector (codepoint
+  0xFE0F).
+
 
 ### Deprecated
 ### Removed
