@@ -35,10 +35,15 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Compilation error when fallback definition for `FCFT_EXPORT` was used
+  in `meson.build`.
+
 ### Security
 ### Contributors
 
 * [emersion](https://codeberg.org/emersion)
+* [craigbarnes](https://codeberg.org/craigbarnes)
 
 
 ## 2.4.0
