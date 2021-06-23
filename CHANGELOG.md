@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [2.4.1](#2-4-1)
 * [2.4.0](#2-4-0)
 * [2.3.3](#2-3-3)
 * [2.3.2](#2-3-2)
@@ -22,8 +22,8 @@
 * [1.1.7](#1-1-7)
 
 
-## Unreleased
-### Added
+## 2.4.1
+
 ### Changed
 
 * Log messages are now printed to stderr instead of stdout.
@@ -32,14 +32,12 @@
   0xFE0F).
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * Compilation error when fallback definition for `FCFT_EXPORT` was used
   in `meson.build`.
 
-### Security
+
 ### Contributors
 
 * [emersion](https://codeberg.org/emersion)
