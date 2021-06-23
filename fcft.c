@@ -1948,7 +1948,14 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
     unsigned count = hb_buffer_get_length(inst->hb_buf);
     const hb_glyph_info_t *info = hb_buffer_get_glyph_infos(inst->hb_buf, NULL);
     const hb_glyph_position_t *pos = hb_buffer_get_glyph_positions(inst->hb_buf, NULL);
-    const int width = max(0, wcswidth(cluster, len));
+
+    int grapheme_width = 0;
+    int min_grapheme_width = 0;
+    for (size_t i = 0; i < len; i++) {
+        if (cluster[i] == 0xfe0f)
+            min_grapheme_width = 2;
+        grapheme_width += wcwidth(cluster[i]);
+    }
 
     LOG_DBG("length: %u", hb_buffer_get_length(inst->hb_buf));
     LOG_DBG("infos: %u", count);
@@ -1970,7 +1977,7 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
     grapheme->len = len;
     grapheme->cluster = cluster_copy;
     grapheme->subpixel = subpixel;
-    grapheme->public.cols = width;
+    grapheme->public.cols = max(grapheme_width, min_grapheme_width);
     grapheme->public.glyphs = (const struct fcft_glyph **)glyphs;
 
     size_t glyph_idx = 0;
@@ -1994,7 +2001,7 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
         assert(glyph->valid);
 
         glyph->public.wc = info[i].codepoint;
-        glyph->public.cols = width;
+        glyph->public.cols = wcwidth(info[i].codepoint);
 
 #if 0
         LOG_DBG("grapheme: x: advance: %d -> %d, offset: %d -> %d",

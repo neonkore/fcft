@@ -31,7 +31,7 @@ add_project_arguments(
   ['-D_GNU_SOURCE=200809L'] +
   (is_debug_build ? ['-D_DEBUG'] : []) +
   (cc.has_function('memfd_create') ? ['-DMEMFD_CREATE'] : []) +
-  (cc.has_argument('-fvisibility=default') ? ['-DFCFT_EXPORT=__attribute__((visibility("default")))'] : ['-DFCFT_EXPORT=""']),
+  (cc.has_argument('-fvisibility=default') ? ['-DFCFT_EXPORT=__attribute__((visibility("default")))'] : ['-DFCFT_EXPORT=']),
   language: 'c')
 
 # Compute the relative path used by compiler invocations.
