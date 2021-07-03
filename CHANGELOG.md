@@ -29,6 +29,11 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Rare crash when one thread was doing a glyph cache lookup, while
+  another was resizing the cache.
+
+
 ### Security
 ### Contributors
 
