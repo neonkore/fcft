@@ -1620,7 +1620,6 @@ glyph_cache_resize(struct font_priv *font)
 
         assert(table[idx] == NULL);
         table[idx] = entry;
-        font->glyph_cache.table[i] = NULL;
     }
 
     pthread_rwlock_wrlock(&font->glyph_cache_lock);
@@ -1803,7 +1802,6 @@ grapheme_cache_resize(struct font_priv *font)
 
         assert(table[idx] == NULL);
         table[idx] = entry;
-        font->grapheme_cache.table[i] = NULL;
     }
 
     pthread_rwlock_wrlock(&font->grapheme_cache_lock);

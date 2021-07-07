@@ -1,4 +1,4 @@
-fcft_text_run_rasterize(3) "2.4.0" "fcft"
+fcft_text_run_rasterize(3) "2.4.1" "fcft"
 
 # NAME
 
@@ -14,9 +14,9 @@ fcft_text_run_rasterize - rasterize a series of glyphs for a text string
 
 # DESCRIPTION
 
-*fcft_text_run_rasterize*() rasterizes the string _text_ into a series
-of glyphs using the primary font, and possibly one or more fallback
-fonts, in _font_.
+*fcft_text_run_rasterize*() shapes and rasterizes the string _text_
+into a series of glyphs using the primary font, and possibly one or
+more fallback fonts, in _font_.
 
 _subpixel_ allows you to specify which subpixel mode to use. See
 *fcft_glyph_rasterize*() for details.
@@ -30,15 +30,15 @@ shape the rest of the string. This continues until the entire string
 has been shaped.
 
 There is limited support for right-to-left
-scripts. *hb_buffer_guess_segment_properties*() is used guess whether
-to use left-to-right, or right-to-left logic, and this is done each
-time we try to shape a part of the string.
+scripts. *hb_buffer_guess_segment_properties*() is used to guess
+whether to use left-to-right, or right-to-left, logic, and this is
+done each time we try to shape a part of the string.
 
 As a consequence, the result of mixed LTR and RTL strings depends on
 the font; if the font has glyphs for all characters in the string,
 *hb_buffer_guess_segment_properties*() is only called once, on the
-entire string. Meaning the entire string is either subject to either
-LTR, or RTL logic, but not both.
+entire string. Meaning the entire string is subject to either LTR, or
+RTL logic, but not both.
 
 If the (primary) font does not have glyphs for all characters, then
 *hb_buffer_guess_segment_properties*() will be called for each segment

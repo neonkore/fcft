@@ -1,5 +1,6 @@
 # Changelog
 
+* [Unreleased](#unreleased)
 * [2.4.1](#2-4-1)
 * [2.4.0](#2-4-0)
 * [2.3.3](#2-3-3)
@@ -20,6 +21,21 @@
 * [2.1.0](#2-1-0)
 * [2.0.0](#2-0-0)
 * [1.1.7](#1-1-7)
+
+
+## Unreleased
+### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+
+* Rare crash when one thread was doing a glyph cache lookup, while
+  another was resizing the cache.
+
+
+### Security
+### Contributors
 
 
 ## 2.4.1
