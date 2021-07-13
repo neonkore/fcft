@@ -116,7 +116,7 @@ render_glyphs(struct buffer *buf, int *x, const int *y, pixman_image_t *color,
         if (kern != NULL)
             *x += kern[i];
 
-        if (pixman_image_get_format(g->pix) == PIXMAN_a8r8g8b8) {
+        if (PIXMAN_FORMAT_BPP(pixman_image_get_format(g->pix)) == 32) {
             pixman_image_composite32(
                 PIXMAN_OP_OVER, g->pix, NULL, buf->pix, 0, 0, 0, 0,
                 *x + g->x, *y + font->ascent - g->y, g->width, g->height);
