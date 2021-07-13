@@ -1331,20 +1331,34 @@ glyph_for_index(const struct instance *inst, uint32_t index,
 
     /* Convert FT bitmap to pixman image */
     switch (bitmap->pixel_mode) {
-    case FT_PIXEL_MODE_MONO:
+    case FT_PIXEL_MODE_MONO:  /* PIXMAN_a1 */
+        /*
+         * FreeType: left-most pixel is stored in MSB  ABCDEFGH IJKLMNOP
+         * Pixman: LE: left-most pixel in LSB          HGFEDCBA PONMLKJI
+         *         BE: left-most pixel in MSB          ABCDEFGH IJKLMNOP
+         *
+         * Thus, we need to reverse each byte on little-endian systems.
+         */
         for (size_t r = 0; r < bitmap->rows; r++) {
             for (size_t c = 0; c < (bitmap->width + 7) / 8; c++) {
                 uint8_t v = bitmap->buffer[r * bitmap->pitch + c];
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
                 uint8_t reversed = 0;
                 for (size_t i = 0; i < min(8, bitmap->width - c * 8); i++)
                     reversed |= ((v >> (7 - i)) & 1) << i;
 
                 data[r * stride + c] = reversed;
+#else
+                data[r * stride + c] = v;
+#endif
             }
         }
         break;
 
-    case FT_PIXEL_MODE_GRAY:
+    case FT_PIXEL_MODE_GRAY: /* PIXMAN_a8 */
+        /*
+         * One pixel, one byte. No endianness to worry about
+         */
         if (stride == bitmap->pitch) {
             if (bitmap->buffer != NULL)
                 memcpy(data, bitmap->buffer, rows * stride);
@@ -1356,13 +1370,39 @@ glyph_for_index(const struct instance *inst, uint32_t index,
         }
         break;
 
-    case FT_PIXEL_MODE_BGRA:
+    case FT_PIXEL_MODE_BGRA: /* PIXMAN_a8r8g8b8 */
+        /*
+         * FreeType: blue comes *first* in memory
+         * Pixman: LE: blue comes *first* in memory
+         *         BE: alpha comes *first* in memory
+         *
+         * Pixman is ARGB *when loaded into a register*, assuming
+         * machine native 32-bit loads. Thus, it’s in-memory layout
+         * depends on the host’s endianness.
+         */
         assert(stride == bitmap->pitch);
-        if (bitmap->buffer != NULL)
-            memcpy(data, bitmap->buffer, bitmap->rows * bitmap->pitch);
+        for (size_t r = 0; r < bitmap->rows; r++) {
+            for (size_t c = 0; c < bitmap->width * 4; c += 4) {
+                unsigned char _b = bitmap->buffer[r * bitmap->pitch + c + 0];
+                unsigned char _g = bitmap->buffer[r * bitmap->pitch + c + 1];
+                unsigned char _r = bitmap->buffer[r * bitmap->pitch + c + 2];
+                unsigned char _a = bitmap->buffer[r * bitmap->pitch + c + 3];
+
+                uint32_t *p = (uint32_t *)&data[r * stride + c];
+                *p = (uint32_t)_a << 24 | _r << 16 | _g << 8 | _b;
+            }
+        }
         break;
 
-    case FT_PIXEL_MODE_LCD:
+    case FT_PIXEL_MODE_LCD: /* PIXMAN_x8r8g8b8 */
+        /*
+         * FreeType: red comes *first* in memory
+         * Pixman: LE: blue comes *first* in memory
+         *         BE: x comes *first* in memory
+         *
+         * Same as above, except that the FreeType data is now RGBx
+         * instead of BGRA.
+         */
         for (size_t r = 0; r < bitmap->rows; r++) {
             for (size_t c = 0; c < bitmap->width; c += 3) {
                 unsigned char _r = bitmap->buffer[r * bitmap->pitch + c + (bgr ? 2 : 0)];
@@ -1375,7 +1415,15 @@ glyph_for_index(const struct instance *inst, uint32_t index,
         }
         break;
 
-    case FT_PIXEL_MODE_LCD_V:
+    case FT_PIXEL_MODE_LCD_V: /* PIXMAN_x8r8g8b8 */
+        /*
+         * FreeType: red comes *first* in memory
+         * Pixman: LE: blue comes *first* in memory
+         *         BE: x comes *first* in memory
+         *
+         * Same as above, except that the FreeType data is now RGBx
+         * instead of BGRA.
+         */
         for (size_t r = 0; r < bitmap->rows; r += 3) {
             for (size_t c = 0; c < bitmap->width; c++) {
                 unsigned char _r = bitmap->buffer[(r + (bgr ? 2 : 0)) * bitmap->pitch + c];
