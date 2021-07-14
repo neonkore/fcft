@@ -42,6 +42,8 @@
   another was resizing the cache.
 * Bitmap font glyphs being mirrored on big-endian architectures.
 * Color font glyphs having wrong colors on big-endian architectures.
+* Crash when destroying a font that failed to load (typically happens
+  when there are no fonts available at all).
 
 
 ## 2.4.1

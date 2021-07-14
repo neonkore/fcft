@@ -227,7 +227,8 @@ fini(void)
     while (tll_length(font_cache) > 0) {
         if (tll_front(font_cache).font == NULL)
             tll_pop_front(font_cache);
-        fcft_destroy(&tll_front(font_cache).font->public);
+        else
+            fcft_destroy(&tll_front(font_cache).font->public);
     }
 
     assert(tll_length(font_cache) == 0);
