@@ -40,6 +40,8 @@
 
 * Rare crash when one thread was doing a glyph cache lookup, while
   another was resizing the cache.
+* Bitmap font glyphs being mirrored on big-endian architectures.
+* Color font glyphs having wrong colors on big-endian architectures.
 
 
 ## 2.4.1
