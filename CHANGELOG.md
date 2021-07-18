@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [2.4.3](#2-4-3)
 * [2.4.2](#2-4-2)
 * [2.4.1](#2-4-1)
 * [2.4.0](#2-4-0)
@@ -24,11 +24,8 @@
 * [1.1.7](#1-1-7)
 
 
-## Unreleased
-### Added
-### Changed
-### Deprecated
-### Removed
+## 2.4.3
+
 ### Fixed
 
 * Bitmap/aliased font glyphs being mirrored on big-endian
@@ -36,10 +33,6 @@
 * Color font glyphs having wrong colors on big-endian architectures.
 * Crash when destroying a font that failed to load (typically happens
   when there are no fonts available at all).
-
-
-### Security
-### Contributors
 
 
 ## 2.4.2
