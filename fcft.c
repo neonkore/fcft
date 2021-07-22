@@ -1265,11 +1265,14 @@ glyph_for_index(const struct instance *inst, uint32_t index,
         }
     }
 
-    if ((err = FT_Render_Glyph(inst->face->glyph, render_flags)) != 0) {
-        LOG_ERR("%s: failed to render glyph: %s", inst->path, ft_error_string(err));
-        if (unlock_ft_lock)
-            mtx_unlock(&ft_lock);
-        goto err;
+    if (inst->face->glyph->format != FT_GLYPH_FORMAT_BITMAP) {
+        if ((err = FT_Render_Glyph(inst->face->glyph, render_flags)) != 0) {
+            LOG_ERR("%s: failed to render glyph: %s",
+                    inst->path, ft_error_string(err));
+            if (unlock_ft_lock)
+                mtx_unlock(&ft_lock);
+            goto err;
+        }
     }
 
     if (unlock_ft_lock)
