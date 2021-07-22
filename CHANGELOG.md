@@ -31,6 +31,11 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Rendering of bitmap fonts with Freetype >= 2.11
+  (https://codeberg.org/dnkl/fcft/issues/29).
+
+
 ### Security
 ### Contributors
 
