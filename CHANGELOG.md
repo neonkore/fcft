@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [2.4.4](#2-4-4)
 * [2.4.3](#2-4-3)
 * [2.4.2](#2-4-2)
 * [2.4.1](#2-4-1)
@@ -25,19 +25,12 @@
 * [1.1.7](#1-1-7)
 
 
-## Unreleased
-### Added
-### Changed
-### Deprecated
-### Removed
+## 2.4.4
+
 ### Fixed
 
 * Rendering of bitmap fonts with Freetype >= 2.11
   (https://codeberg.org/dnkl/fcft/issues/29).
-
-
-### Security
-### Contributors
 
 
 ## 2.4.3
