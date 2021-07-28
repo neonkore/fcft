@@ -27,6 +27,8 @@ does _not_ aim to compete with e.g. Pango, and that the text shaping
 support may not be (and perhaps never will be) sufficient for
 “professional” text layout.
 
+![screenshot](screenshot.png "Screenshot showing the three rasterization methods")
+
 
 ## Requirements
 
