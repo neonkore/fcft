@@ -29,6 +29,9 @@ support may not be (and perhaps never will be) sufficient for
 
 ![screenshot](screenshot.png "Screenshot showing the three rasterization methods")
 
+_Top: `fcft_glyph_rasterize()`, middle: `fcft_grapheme_rasterize()`,
+bottom: `fcft_text_run_rasterize()`_
+
 
 ## Requirements
 
