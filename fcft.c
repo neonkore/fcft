@@ -2327,6 +2327,11 @@ fcft_text_run_rasterize(
         }
 
         tll_foreach(font->fallbacks, it) {
+            if (!FcCharSetHasChar(it->item.charset, text[ctx.ofs])) {
+                ctx.state = TEXT_RUN_FALLBACK;
+                continue;
+            }
+
             struct instance *inst = it->item.font;
 
             if (inst == NULL) {
