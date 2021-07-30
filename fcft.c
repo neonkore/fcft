@@ -2160,7 +2160,7 @@ text_run_reverse_rtl(struct text_run_context *ctx)
 
 static enum text_run_state
 text_run_rasterize_partial(
-    struct instance *inst, enum fcft_subpixel subpixel,
+    FcCharSet *charset, struct instance *inst, enum fcft_subpixel subpixel,
     struct text_run_context *ctx)
 {
     hb_buffer_add_utf32(
@@ -2210,7 +2210,10 @@ text_run_rasterize_partial(
             return TEXT_RUN_PRIMARY;
         }
 
-        if (info->codepoint == 0 && ctx->state != TEXT_RUN_PRIMARY_FORCE) {
+        if ((info->codepoint == 0 ||
+             !FcCharSetHasChar(charset, ctx->text[info->cluster]))
+            && ctx->state != TEXT_RUN_PRIMARY_FORCE)
+        {
             ctx->ofs = info->cluster;
             for (ssize_t j = ctx->glyphs.count - 1; j >= 0; j--) {
                 if (ctx->glyphs.cluster[j] != info->cluster) {
@@ -2327,14 +2330,16 @@ fcft_text_run_rasterize(
         }
 
         tll_foreach(font->fallbacks, it) {
+            struct instance *inst = it->item.font;
+            FcCharSet *charset = it->item.charset;
+
             if (ctx.state != TEXT_RUN_PRIMARY_FORCE &&
-                !FcCharSetHasChar(it->item.charset, text[ctx.ofs]))
+                !FcCharSetHasChar(charset, text[ctx.ofs]))
             {
                 ctx.state = TEXT_RUN_FALLBACK;
                 continue;
             }
 
-            struct instance *inst = it->item.font;
 
             if (inst == NULL) {
                 inst = malloc(sizeof(*inst));
@@ -2357,7 +2362,7 @@ fcft_text_run_rasterize(
                 it->item.font = inst;
             }
 
-            ctx.state = text_run_rasterize_partial(inst, subpixel, &ctx);
+            ctx.state = text_run_rasterize_partial(charset, inst, subpixel, &ctx);
             hb_buffer_clear_contents(inst->hb_buf);
 
             if (ctx.state == TEXT_RUN_PRIMARY) {
