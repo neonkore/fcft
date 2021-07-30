@@ -32,6 +32,12 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* `fcft_text_run_rasterize()` not checking if codepoint is in the
+  font’s charset before attempting shaping
+  (https://codeberg.org/dnkl/fcft/issues/30).
+
+
 ### Security
 ### Contributors
 
