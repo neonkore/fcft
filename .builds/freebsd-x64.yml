@@ -24,6 +24,9 @@ sources:
 #     condition: failure
 #     to: <committer>
 
+environment:
+  LC_CTYPE: en_US.UTF-8
+
 tasks:
   - subprojects: |
       mkdir fcft/subprojects
