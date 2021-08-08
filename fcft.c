@@ -34,6 +34,10 @@
 #include "unicode-compose-table.h"
 #include "version.h"
 
+#ifndef __STDC_ISO_10646__
+#error "wchar_t is not wide enough for Unicode"
+#endif
+
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
 #define ALEN(v) (sizeof(v) / sizeof((v)[0]))
