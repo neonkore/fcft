@@ -34,9 +34,7 @@
 #include "unicode-compose-table.h"
 #include "version.h"
 
-#ifndef __STDC_ISO_10646__
-#error "wchar_t is not wide enough for Unicode"
-#endif
+static_assert(sizeof(wchar_t) >= 4, "wchar_t is not wide enough for Unicode");
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
