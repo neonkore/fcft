@@ -1860,7 +1860,7 @@ grapheme_cache_resize(struct font_priv *font)
     {
         free(font->grapheme_cache.table);
 
-        LOG_DBG("resized grapheme cache from %zu to %zu", font->grapheme_cache.size, size);
+        LOG_DBG("resized grapheme cache from %zu to %zu (count: %zu)", font->grapheme_cache.size, size, font->grapheme_cache.count);
         font->grapheme_cache.table = table;
         font->grapheme_cache.size = size;
     }
@@ -2105,6 +2105,8 @@ err:
 
     assert(*entry == NULL);
     assert(!grapheme->valid);
+    grapheme->public.count = 0;
+    grapheme->public.glyphs = NULL;
     *entry = grapheme;
     mtx_unlock(&font->lock);
     return NULL;
