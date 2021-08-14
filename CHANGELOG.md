@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [2.4.5](#2-4-5)
 * [2.4.4](#2-4-4)
 * [2.4.3](#2-4-3)
 * [2.4.2](#2-4-2)
@@ -26,11 +26,8 @@
 * [1.1.7](#1-1-7)
 
 
-## Unreleased
-### Added
-### Changed
-### Deprecated
-### Removed
+## 2.4.5
+
 ### Fixed
 
 * `fcft_text_run_rasterize()` not checking if codepoint is in the
@@ -38,10 +35,6 @@
   (https://codeberg.org/dnkl/fcft/issues/30).
 * Crash when destroying a font with a grapheme cache entry
   representing a failed grapheme glyph.
-
-
-### Security
-### Contributors
 
 
 ## 2.4.4
