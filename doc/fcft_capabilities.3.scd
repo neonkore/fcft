@@ -1,4 +1,4 @@
-fcft_capabilities(3) "2.2.7" "fcft"
+fcft_capabilities(3) "2.4.5" "fcft"
 
 # NAME
 
@@ -18,7 +18,7 @@ capabilities:
 ```
 enum fcft_capabilities {
     FCFT_CAPABILITY_GRAPHEME_SHAPING = 0x1,  /* Since 2.3.0 */
-    FCFT_CAPABILITY_TEXT_RUN_SHAPING = 0x2,  /* Since 2.4.4 */
+    FCFT_CAPABILITY_TEXT_RUN_SHAPING = 0x2,  /* Since 2.4.0 */
 };
 ```
 
