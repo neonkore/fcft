@@ -1,6 +1,7 @@
 # Changelog
 
 * [Unreleased](#unreleased)
+* [2.4.5](#2-4-5)
 * [2.4.4](#2-4-4)
 * [2.4.3](#2-4-3)
 * [2.4.2](#2-4-2)
@@ -32,16 +33,19 @@
 ### Deprecated
 ### Removed
 ### Fixed
+### Security
+### Contributors
+
+
+## 2.4.5
+
+### Fixed
 
 * `fcft_text_run_rasterize()` not checking if codepoint is in the
   font’s charset before attempting shaping
   (https://codeberg.org/dnkl/fcft/issues/30).
 * Crash when destroying a font with a grapheme cache entry
   representing a failed grapheme glyph.
-
-
-### Security
-### Contributors
 
 
 ## 2.4.4
