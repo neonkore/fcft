@@ -1,4 +1,4 @@
-fcft_set_scaling_filter(3) "2.5.1" "fcft"
+fcft_set_scaling_filter(3) "3.0.0" "fcft"
 
 # NAME
 
@@ -17,7 +17,7 @@ downscaling bitmap fonts (typically emoji fonts). The setting affects
 *all* font instances.
 
 This function does *not* clear the glyph caches and should therefore be
-called before any calls to *fcft_glyph_rasterize*().
+called before any calls to *fcft_codepoint_rasterize*().
 
 Possible values for _filter_ are:
 

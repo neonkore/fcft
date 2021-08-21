@@ -1,7 +1,8 @@
 #pragma once
 
 #include <stdbool.h>
-#include <wchar.h>
+#include <stdint.h>
+#include <stddef.h>
 
 #include <pixman.h>
 
@@ -20,6 +21,8 @@ enum fcft_subpixel {
 };
 
 struct fcft_font {
+    const char *name;  /* Primar font name */
+
     /* font extents */
     int height;
     int descent;
@@ -30,12 +33,6 @@ struct fcft_font {
         int x;
         int y;
     } max_advance;
-
-    /* Width/height of space (0x20), if available, -1 otherwise */
-    struct {
-        int x;
-        int y;
-    } space_advance;
 
     struct {
         int position;
@@ -69,13 +66,11 @@ struct fcft_font *fcft_from_name(
 struct fcft_font *fcft_clone(const struct fcft_font *font);
 void fcft_destroy(struct fcft_font *font);
 
-/* Returns a *new* font instance */
-struct fcft_font *fcft_size_adjust(const struct fcft_font *font, double amount) __attribute__((deprecated));
-
 struct fcft_glyph {
-    wchar_t wc;
-    int cols;              /* wcwidth(wc) */
+    uint32_t cp;
+    int cols;              /* wcwidth(cp) */
 
+    const char *font_name;  /* Note: always NULL in text-runs */
     pixman_image_t *pix;
 
     int x;
@@ -89,10 +84,10 @@ struct fcft_glyph {
     } advance;
 };
 
-/* Rasterize 'wc' using 'font'. Use the defined subpixel mode *if*
- * antialiasing is enabled for this font */
-const struct fcft_glyph *fcft_glyph_rasterize(
-    struct fcft_font *font, wchar_t wc, enum fcft_subpixel subpixel);
+/* Rasterize the Unicode codepoint 'cp' using 'font'. Use the defined
+ * subpixel mode *if* antialiasing is enabled for this font */
+const struct fcft_glyph *fcft_codepoint_rasterize(
+    struct fcft_font *font, uint32_t cp, enum fcft_subpixel subpixel);
 
 struct fcft_grapheme {
     int cols;  /* wcswidth(grapheme) */
@@ -101,15 +96,9 @@ struct fcft_grapheme {
     const struct fcft_glyph **glyphs;
 };
 
-struct fcft_layout_tag {
-    char tag[4];
-    unsigned value;
-};
-
 const struct fcft_grapheme *fcft_grapheme_rasterize(
     struct fcft_font *font,
-    size_t len, const wchar_t grapheme_cluster[static len],
-    size_t tag_count, const struct fcft_layout_tag *tags,
+    size_t len, const uint32_t grapheme_cluster[static len],
     enum fcft_subpixel subpixel);
 
 struct fcft_text_run {
@@ -119,20 +108,20 @@ struct fcft_text_run {
 };
 
 struct fcft_text_run *fcft_text_run_rasterize(
-    struct fcft_font *font, size_t len, const wchar_t text[static len],
+    struct fcft_font *font, size_t len, const uint32_t text[static len],
     enum fcft_subpixel subpixel);
 
 void fcft_text_run_destroy(struct fcft_text_run *run);
 
 bool fcft_kerning(
-    struct fcft_font *font, wchar_t left, wchar_t right,
+    struct fcft_font *font, uint32_t left, uint32_t right,
     long *restrict x, long *restrict y);
 
-wchar_t fcft_precompose(const struct fcft_font *font,
-                                    wchar_t base, wchar_t comb,
-                                    bool *base_is_from_primary,
-                                    bool *comb_is_from_primary,
-                                    bool *composed_is_from_primary);
+uint32_t fcft_precompose(const struct fcft_font *font,
+                         uint32_t base, uint32_t comb,
+                         bool *base_is_from_primary,
+                         bool *comb_is_from_primary,
+                         bool *composed_is_from_primary);
 
 enum fcft_scaling_filter {
     FCFT_SCALING_FILTER_NONE,

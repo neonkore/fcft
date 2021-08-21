@@ -1,4 +1,4 @@
-fcft_size_adjust(3) "2.5.1" "fcft"
+fcft_size_adjust(3) "3.0.0" "fcft"
 
 # NAME
 

@@ -32,14 +32,32 @@
 
 ## Unreleased
 ### Added
+
 ### Changed
 
 * meson: default C standard changed from C18 to C11 (fcft does not use
   any C18 features).
+* All `wchar_t` usage replaced with `uint32_t`.
+* layout tags removed from `fcft_grapheme_rasterize()`. These should
+  be set using `fontfeature`s in the font `names` and/or `attributes`
+  arguments in `fcft_from_name()`.
+* `wc` member in `struct glyph` renamed to `cp` (CodePoint).
+* `wc` function arguments renamed to `cp` in all APIs.
+* `fcft_glyph_rasterize()` renamed to `fcft_codepoint_rasterize()`.
+* `name` to `struct fcft_font`. This is the name of the **primary**
+  font (i.e. not any of the fallback fonts).
+* `font_name` to `struct fcft_glyph`. This is the name of the font the
+  glyph was loaded from, and may reference a fallback font. Note that
+  it is **always** NULL in text-run glyphs.
 
 
 ### Deprecated
 ### Removed
+
+* `fcft_size_adjust()`
+* `space_advance` member from `struct fcft_font`.
+
+
 ### Fixed
 
 * Wrong version string generated when building as a subproject.
@@ -120,7 +138,7 @@
 
 ### Fixed
 
-* ‘wc’ field in `struct fcft_glyph` being assigned font index instead
+* ‘cp’ field in `struct fcft_glyph` being assigned font index instead
   of Unicode codepoint in `fcft_grapheme_rasterize()` and
   `fcft_text_run_rasterize()`.
 * Assertion in `glyph_cache_resize()`, triggered by trying to

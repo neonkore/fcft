@@ -1,4 +1,4 @@
-fcft_destroy(3) "2.5.1" "fcft"
+fcft_destroy(3) "3.0.0" "fcft"
 
 # NAME
 
@@ -18,7 +18,7 @@ been created with *fcft_from_name*(), *fcft_clone*(), or
 
 After calling *fcft_destroy*(), _font_ can no longer be used, and all
 references to *fcft_glyph* objects (retrieved with
-*fcft_glyph_rasterize*()) are now invalid.
+*fcft_codepoint_rasterize*()) are now invalid.
 
 _font_ may be NULL, in which case *fcft_destroy*() is a no-op.
 
@@ -29,4 +29,4 @@ None
 # SEE ALSO
 
 *fcft_from_name*(), *fcft_clone*(), *fcft_size_adjust*(),
-*fcft_glyph_rasterize*()
+*fcft_codepoint_rasterize*()

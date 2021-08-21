@@ -1,23 +1,24 @@
-fcft_glyph_rasterize(3) "2.5.1" "fcft"
+fcft_codepoint_rasterize(3) "3.0.0" "fcft"
 
 # NAME
 
-fcft_glyph_rasterize - rasterize a glyph for a wide character
+fcft_codepoint_rasterize - rasterize a glyph for a wide character
 
 # SYNOPSIS
 
 *\#include <fcft/fcft.h>*
 
-*const struct fcft_glyph \*fcft_glyph_rasterize(*
-	*struct fcft_font \**_font_*, wchar_t *_wc_*,
+*const struct fcft_glyph \*fcft_codepoint_rasterize(*
+	*struct fcft_font \**_font_*, uint32_t *_cp_*,
 	enum fcft_subpixel *_subpixel_*);*
 
 # DESCRIPTION
 
-*fcft_glyph_rasterize*() rasterizes the wide character _wc_ using the
-primary font, or one of the fallback fonts, in _font_.
+*fcft_codepoint_rasterize*() rasterizes the UTF-32 encoded Unicode
+codepoint _cp_ using the primary font, or one of the fallback fonts,
+in _font_.
 
-_wc_ is first searched for in the primary font. If not found, the
+_cp_ is first searched for in the primary font. If not found, the
 fallback fonts are searched (in the order they were specified in
 *fcft_from_name*()). If not found in any of the fallback fonts, the
 FontConfig fallback list for the primary font is searched.
@@ -66,7 +67,7 @@ free it; it is freed when _font_ is destroyed (with
 
 ```
 struct fcft_glyph {
-    wchar_t wc;
+    uint32_t cp;
     int cols;
 
     pixman_image_t *pix;
@@ -83,10 +84,11 @@ struct fcft_glyph {
 };
 ```
 
-_wc_ is the same _wc_ from the *fcft_glyph_rasterize*() call.
+_cp_ is the same _cp_ from the *fcft_codepoint_rasterize*() call.
 
 _cols_ is the number of "columns" the glyph occupies (effectively,
-*wcwidth*(_wc_*)*).
+*wcwidth*(_cp_*)*). Note that this value will be incorrect if wide
+characters (*wchar_t*) is not UTF-32 encoded in the current locale.
 
 _pix_ is the rasterized glyph. Its format depends on a number of
 factors, but will be one of *PIXMAN\_a1*, *PIXMAN\_a8*,

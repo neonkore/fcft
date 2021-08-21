@@ -6,12 +6,12 @@ output="${2}"
 cat <<EOF > "${output}"
 #pragma once
 
-#include <wchar.h>
+#include <stdint.h>
 
 static const struct {
-    wchar_t replacement;
-    wchar_t base;
-    wchar_t comb;
+    uint32_t replacement;
+    uint32_t base;
+    uint32_t comb;
 } precompose_table[] = {
 EOF
 

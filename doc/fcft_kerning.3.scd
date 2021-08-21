@@ -1,4 +1,4 @@
-fcft_kerning(3) "2.5.1" "fcft"
+fcft_kerning(3) "3.0.0" "fcft"
 
 # NAME
 
@@ -9,7 +9,7 @@ fcft_kerning - calculate kerning distance between two wide characters
 *\#include <fcft/fcft.h>*
 
 *bool fcft_kerning(*
-	*struct fcft_font \**_font_*, wchar_t *_left_*, wchar_t *_right_*,*
+	*struct fcft_font \**_font_*, uint32_t *_left_*, uint32_t *_right_*,*
 	*long \*restrict *_x_*, long \*restrict *_y_*);*
 
 # DESCRIPTION

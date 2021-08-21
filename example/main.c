@@ -6,7 +6,7 @@
 #include <locale.h>
 #include <poll.h>
 #include <signal.h>
-#include <wchar.h>
+#include <uchar.h>
 #include <assert.h>
 #include <errno.h>
 #include <unistd.h>
@@ -25,6 +25,10 @@
 
 #define ALEN(v) (sizeof(v) / sizeof((v)[0]))
 
+#if !defined(__STDC_UTF_32__) || !__STDC_UTF_32__
+ #error "uint32_t does not use UTF-32"
+#endif
+
 static struct wl_display *display;
 static struct wl_registry *registry;
 static struct wl_compositor *compositor;
@@ -38,7 +42,7 @@ static struct zxdg_toplevel_decoration_v1 *deco;
 
 static bool have_argb8888 = false;
 
-static wchar_t *text;
+static char32_t *text;
 static size_t text_len;
 
 struct grapheme {
@@ -131,7 +135,7 @@ render_glyphs(struct buffer *buf, int *x, const int *y, pixman_image_t *color,
 }
 
 static void
-render_chars(const wchar_t *text, size_t text_len,
+render_chars(const char32_t *text, size_t text_len,
              struct buffer *buf, int y, pixman_image_t *color)
 {
     const struct fcft_glyph *glyphs[text_len];
@@ -139,7 +143,7 @@ render_chars(const wchar_t *text, size_t text_len,
     int text_width = 0;
 
     for (size_t i = 0; i < text_len; i++) {
-        glyphs[i] = fcft_glyph_rasterize(font, text[i], subpixel_mode);
+        glyphs[i] = fcft_codepoint_rasterize(font, text[i], subpixel_mode);
 
         kern[i] = 0;
         if (i > 0) {
@@ -159,8 +163,8 @@ static void
 render_graphemes(struct buffer *buf, int y, pixman_image_t *color)
 {
     if (!(fcft_capabilities() & FCFT_CAPABILITY_GRAPHEME_SHAPING)) {
-        static const wchar_t unsupported[] =
-            L"fcft compiled without grapheme shaping support";
+        static const char32_t unsupported[] =
+            U"fcft compiled without grapheme shaping support";
         render_chars(unsupported, ALEN(unsupported) - 1, buf, y, color);
         return;
     }
@@ -170,8 +174,7 @@ render_graphemes(struct buffer *buf, int y, pixman_image_t *color)
 
     for (size_t i = 0; i < grapheme_count; i++) {
         graphs[i] = fcft_grapheme_rasterize(
-            font, graphemes[i].len, &text[graphemes[i].begin],
-            0, NULL, subpixel_mode);
+            font, graphemes[i].len, &text[graphemes[i].begin], subpixel_mode);
 
         if (graphs[i] == NULL)
             continue;
@@ -195,8 +198,8 @@ static void
 render_shaped(struct buffer *buf, int y, pixman_image_t *color)
 {
     if (!(fcft_capabilities() & FCFT_CAPABILITY_TEXT_RUN_SHAPING)) {
-        static const wchar_t unsupported[] =
-            L"fcft compiled without text-run shaping support";
+        static const char32_t unsupported[] =
+            U"fcft compiled without text-run shaping support";
         render_chars(unsupported, ALEN(unsupported) - 1, buf, y, color);
         return;
     }
@@ -386,7 +389,7 @@ main(int argc, char *const *argv)
         {NULL,         no_argument,       NULL, '\0'},
     };
 
-    const char *user_text = "hello world <<<🇸🇪 👨‍👩‍👧‍👦 👩🏿>>>";
+    const char *user_text = u8"hello world <<<🇸🇪 👨‍👩‍👧‍👦 👩🏿>>>";
     const char *font_list = "serif:size=24";
 
     while (true) {
@@ -439,11 +442,32 @@ main(int argc, char *const *argv)
     }
 
     /* Convert text string to Unicode */
-    text_len = mbstowcs(NULL, user_text, 0);
-    assert(text_len != (size_t)-1);
+    text = calloc(strlen(user_text) + 1, sizeof(text[0]));
+    assert(text != NULL);
 
-    text = malloc((text_len + 1) * sizeof(wchar_t));
-    mbstowcs(text, user_text, text_len + 1);
+    {
+        mbstate_t ps = {0};
+        const char *in = user_text;
+        const char *const end = user_text + strlen(user_text) + 1;
+
+        size_t ret;
+
+        while ((ret = mbrtoc32(&text[text_len], in, end - in, &ps)) != 0) {
+            switch (ret) {
+            case (size_t)-1:
+                break;
+
+            case (size_t)-2:
+                break;
+
+            case (size_t)-3:
+                break;
+            }
+
+            in += ret;
+            text_len++;
+        }
+    }
 
     /* Grapheme segmentation */
     graphemes = malloc(text_len * sizeof(graphemes[0]));

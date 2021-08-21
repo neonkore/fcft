@@ -1,4 +1,4 @@
-fcft_from_name(3) "2.5.1" "fcft"
+fcft_from_name(3) "3.0.0" "fcft"
 
 # NAME
 
@@ -117,7 +117,7 @@ blend them onto a target pixman image.
 
 ```
 #include <stdlib.h>
-#include <wchar.h>
+#include <uchar.h>
 #include <fcft/fcft.h>
 
 int
@@ -144,7 +144,7 @@ main(void)
     pixman_image_t *canvas = ...;
 
     /* String to print */
-    static const wchar_t *const hello = L"hello world";
+    static const char32_t const hello[] = U"hello world";
 
     /*
      * Pen position in canvas. The numbers chosen here are more or less
@@ -166,8 +166,8 @@ main(void)
             .alpha = 0xffff,
         });
 
-    for (size_t i = 0; i < wcslen(hello); i++) {
-        const struct fcft_glyph *glyph = fcft_glyph_rasterize(
+    for (size_t i = 0; i < sizeof(hello) / sizeof(hello[0]) - 1; i++) {
+        const struct fcft_glyph *glyph = fcft_codepoint_rasterize(
             font, hello[i], FCFT_SUBPIXEL_DEFAULT);
 
         if (glyph == NULL)
@@ -209,5 +209,5 @@ main(void)
 
 # SEE ALSO
 
-*fcft_clone*(), *fcft_destroy*(), *fcft_glyph_rasterize*(),
+*fcft_clone*(), *fcft_destroy*(), *fcft_codepoint_rasterize*(),
 *fcft_kerning*(), *fcft_size_adjust*()

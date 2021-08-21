@@ -1,4 +1,4 @@
-fcft_grapheme_rasterize(3) "2.5.1" "fcft"
+fcft_grapheme_rasterize(3) "3.0.0" "fcft"
 
 # NAME
 
@@ -10,8 +10,7 @@ fcft_grapheme_rasterize - rasterize a glyph for a grapheme cluster
 
 *const struct fcft_grapheme \*fcft_grapheme_rasterize(*
 	*struct fcft_font \**_font_*,*
-	*size_t *_len_*, const wchar\_t *_grapheme\_cluster[static len]_*,*
-	*size_t *_tag_count_*, const struct fcft_layout_tag *_tags_*[static tag_count],*
+	*size_t *_len_*, const uint32\_t *_grapheme\_cluster[static len]_*,*
 	*enum fcft_subpixel *_subpixel_*);*
 
 # DESCRIPTION
@@ -19,22 +18,14 @@ fcft_grapheme_rasterize - rasterize a glyph for a grapheme cluster
 *fcft_grapheme_rasterize*() rasterizes the grapheme cluster _cluster_
 using the primary font, or one of the fallback fonts, in _font_.
 
+Each cluster element is an UTF-32 encoded Unicode codepoint.
+
 The fonts are searched for _all_ codepoints in the grapheme cluster,
 starting with the primary font and then the custom fallback fonts, and
 finally the FontConfig provided fallback fonts.
 
-_tags_ is an optional array of OTF tags that will be used when shaping
-the grapheme:
-
-```
-struct fcft_layout_tag {
-    char tag[4];
-    unsigned value;
-};
-```
-
 _subpixel_ allows you to specify which subpixel mode to use. See
-*fcft_glyph_rasterize*() for details.
+*fcft_codepoint_rasterize*() for details.
 
 # RETURN VALUE
 
@@ -59,14 +50,14 @@ struct fcft_grapheme {
 ```
 
 _cols_ is the number of "columns" the grapheme occupised (effectively)
-_wc_ is the same _wc_ from the *fcft_glyph_rasterize*() call.
+_cp_ is the same _cp_ from the *fcft_codepoint_rasterize*() call.
 
 _cols_ is the number of "columns" the glyph occupies (effectively,
 *wcswidth*(_cluster_*)*).
 
 _glyphs_ is an array of rasterized glyphs. See
-*fcft_glyph_rasterize*() for a description of *struct fcft_glyph*.
+*fcft_codepoint_rasterize*() for a description of *struct fcft_glyph*.
 
 # SEE ALSO
 
-*fcft_destroy*(), *fcft_glyph_rasterize*()
+*fcft_destroy*(), *fcft_codepoint_rasterize*()

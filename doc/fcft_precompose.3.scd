@@ -1,4 +1,4 @@
-fcft_precompose(3) "2.5.1" "fcft"
+fcft_precompose(3) "3.0.0" "fcft"
 
 # NAME
 
@@ -10,7 +10,7 @@ fcft_precompose - pre-compose two wide characters into one
 
 *bool fcft_precompose(*
 	*const struct fcft_font \**_font_*,*
-	*wchar_t *_base_*, wchar_t *_comb_*,*
+	*uint32_t *_base_*, uint32_t *_comb_*,*
 	*bool \**_base_is_from_primary_*,*
 	*bool \**_comb_is_from_primary_*,*
 	*bool \**_composed_is_from_primary_*);*
@@ -23,14 +23,14 @@ be combined to *L'á'*.
 
 If _\*\_is\_from\_primary_ are non-NULL, they will be *true* if the
 corresponding wide character exists in the primary font. If *false*,
-it does not exist in the primary font and *fcft_glyph_rasterize*()
+it does not exist in the primary font and *fcft_codepoint_rasterize*()
 will pick the glyph from one of the fallback fonts.
 
 # RETURN VALUE
 
 On success, *fcft_precompose*() returns a composed wide character. On
-error, *(wchar_t)-1* is returned.
+error, *(uint32_t)-1* is returned.
 
 # SEE ALSO
 
-*fcft_glyph_rasterize*(), *fcft_kerning*()
+*fcft_codepoint_rasterize*(), *fcft_kerning*()

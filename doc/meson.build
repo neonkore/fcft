@@ -4,16 +4,15 @@ scdoc_prog = find_program(scdoc.get_pkgconfig_variable('scdoc'), native: true)
 
 foreach man_src : ['fcft_capabilities.3.scd',
                    'fcft_clone.3.scd',
+                   'fcft_codepoint_rasterize.3.scd',
                    'fcft_destroy.3.scd',
                    'fcft_from_name.3.scd',
-                   'fcft_glyph_rasterize.3.scd',
                    'fcft_grapheme_rasterize.3.scd',
                    'fcft_kerning.3.scd',
                    'fcft_log_init.3.scd',
                    'fcft_precompose.3.scd',
                    'fcft_set_emoji_presentation.3.scd',
                    'fcft_set_scaling_filter.3.scd',
-                   'fcft_size_adjust.3.scd',
                    'fcft_text_run_destroy.3.scd',
                    'fcft_text_run_rasterize.3.scd']
   parts = man_src.split('.')

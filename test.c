@@ -5,6 +5,12 @@
 #include <check.h>
 #include <fcft/fcft.h>
 
+#define ALEN(v) (sizeof(v) / sizeof((v)[0]))
+
+#if !defined(__STDC_UTF_32__) || !__STDC_UTF_32__
+ #error "uint32_t does not use UTF-32"
+#endif
+
 static struct fcft_font *font = NULL;
 
 static void
@@ -49,11 +55,11 @@ END_TEST
 
 START_TEST(test_glyph_rasterize)
 {
-    const struct fcft_glyph *glyph = fcft_glyph_rasterize(
-        font, L'A', FCFT_SUBPIXEL_NONE);
+    const struct fcft_glyph *glyph = fcft_codepoint_rasterize(
+        font, U'A', FCFT_SUBPIXEL_NONE);
     ck_assert_ptr_nonnull(glyph);
     ck_assert_ptr_nonnull(glyph->pix);
-    ck_assert_int_eq(glyph->wc, L'A');
+    ck_assert_int_eq(glyph->cp, U'A');
     ck_assert_int_eq(glyph->cols, 1);
     ck_assert_int_gt(glyph->width, 0);
     ck_assert_int_gt(glyph->height, 0);
@@ -61,31 +67,18 @@ START_TEST(test_glyph_rasterize)
 }
 END_TEST
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-START_TEST(test_size_adjust)
-{
-    struct fcft_font *larger = fcft_size_adjust(font, 50.0);
-    ck_assert_ptr_nonnull(larger);
-    ck_assert_int_gt(larger->height, font->height);
-    ck_assert_int_gt(larger->max_advance.x, font->max_advance.x);
-    fcft_destroy(larger);
-}
-END_TEST
-#pragma GCC diagnostic pop
-
 START_TEST(test_precompose)
 {
-    wchar_t ret = fcft_precompose(font, L'a', L'\U00000301', NULL, NULL, NULL);
+    uint32_t ret = fcft_precompose(font, U'a', U'\U00000301', NULL, NULL, NULL);
 
     /* All western fonts _should_ have this pre-composed character */
-    ck_assert_int_eq(ret, L'á');
+    ck_assert_int_eq(ret, U'á');
 
     /* Can't verify *_is_from_primary since we don't know which font
      * we're using */
 
-    ret = fcft_precompose(font, L'X', L'Y', NULL, NULL, NULL);
-    ck_assert_int_eq(ret, (wchar_t)-1);
+    ret = fcft_precompose(font, U'X', U'Y', NULL, NULL, NULL);
+    ck_assert_int_eq(ret, (uint32_t)-1);
 }
 END_TEST
 
@@ -124,15 +117,15 @@ text_shaping_teardown(void)
 
 START_TEST(test_emoji_zwj)
 {
-    const wchar_t *const emoji = L"🤚🏿";
+    const uint32_t emoji[] = U"🤚🏿";
     const struct fcft_grapheme *grapheme = fcft_grapheme_rasterize(
-        emoji_font, wcslen(emoji), emoji, 0, NULL, FCFT_SUBPIXEL_DEFAULT);
+        emoji_font, ALEN(emoji) - 1, emoji, FCFT_SUBPIXEL_DEFAULT);
     ck_assert_ptr_nonnull(grapheme);
     ck_assert_int_eq(grapheme->count, 1);
 
     /* Verify grapheme was cached */
     const struct fcft_grapheme *grapheme2 = fcft_grapheme_rasterize(
-        emoji_font, wcslen(emoji), emoji, 0, NULL, FCFT_SUBPIXEL_DEFAULT);
+        emoji_font, ALEN(emoji) - 1, emoji, FCFT_SUBPIXEL_DEFAULT);
     ck_assert_ptr_eq(grapheme, grapheme2);
 }
 END_TEST
@@ -152,7 +145,6 @@ fcft_suite(bool run_text_shaping_tests)
     tcase_add_test(core, test_capabilities);
     tcase_add_test(core, test_from_name);
     tcase_add_test(core, test_glyph_rasterize);
-    tcase_add_test(core, test_size_adjust);
     tcase_add_test(core, test_precompose);
     tcase_add_test(core, test_set_scaling_filter);
     suite_add_tcase(suite, core);

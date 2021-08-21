@@ -3,11 +3,12 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <wchar.h>
 #include <math.h>
 #include <assert.h>
 #include <threads.h>
 #include <locale.h>
+
+#include <wchar.h>  /* TODO: remove */
 
 #include <pthread.h>
 
@@ -37,8 +38,6 @@
 #include "emoji-data.h"
 #include "unicode-compose-table.h"
 #include "version.h"
-
-static_assert(sizeof(wchar_t) >= 4, "wchar_t is not wide enough for Unicode");
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
@@ -75,13 +74,14 @@ struct grapheme_priv {
     struct fcft_grapheme public;
 
     size_t len;
-    wchar_t *cluster;  /* ‘len’ characters */
+    uint32_t *cluster;  /* ‘len’ characters */
 
     enum fcft_subpixel subpixel;
     bool valid;
 };
 
 struct instance {
+    char *name;
     char *path;
     FT_Face face;
     int load_flags;
@@ -372,6 +372,7 @@ instance_destroy(struct instance *inst)
     mtx_unlock(&ft_lock);
 
     free(inst->path);
+    free(inst->name);
     free(inst);
 }
 
@@ -521,6 +522,10 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
         LOG_WARN("%s: failed to get face index", face_file);
         face_index = 0;
     }
+
+    FcChar8 *full_name = NULL;
+    if (FcPatternGetString(pattern, FC_FULLNAME, 0, &full_name) != FcResultMatch)
+        LOG_WARN("failed to get full font name");
 
     mtx_lock(&ft_lock);
     FT_Face ft_face;
@@ -680,9 +685,13 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
         FT_Set_Transform(ft_face, &m, NULL);
     }
 
+    font->name = strdup((char *)full_name);
     font->path = strdup((char *)face_file);
-    if (font->path == NULL)
+    if (font->name == NULL || font->path == NULL) {
+        free(font->name);
+        free(font->path);
         goto err_done_face;
+    }
 
     font->face = ft_face;
     font->load_flags = load_target | load_flags | FT_LOAD_COLOR;
@@ -759,32 +768,7 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
            fc_rgba == FC_RGBA_VRGB ? FCFT_SUBPIXEL_VERTICAL_RGB :
            fc_rgba == FC_RGBA_VBGR ? FCFT_SUBPIXEL_VERTICAL_BGR :
            FCFT_SUBPIXEL_NONE);
-
-    /*
-     * Some fonts (Noto Sans Mono, for example) provides bad
-     * max_advance values for grid-based applications, like terminal
-     * emulators.
-     *
-     * For this reason we also provide the width of a regular space
-     * character, to help these applications determine the cell size.
-     */
-    FT_UInt idx = FT_Get_Char_Index(font->face, L' ');
-    if (idx != 0 &&
-        (ft_err = FT_Load_Glyph(font->face, idx, font->load_flags | FT_LOAD_BITMAP_METRICS_ONLY)) == 0)
-    {
-        if (fc_embolden && font->face->glyph->format == FT_GLYPH_FORMAT_OUTLINE)
-            FT_GlyphSlot_Embolden(font->face->glyph);
-
-        font->metrics.space_advance.x = ceil(
-            font->face->glyph->advance.x / 64. *
-            (font->pixel_fixup_estimated ? font->pixel_size_fixup : 1.));
-        font->metrics.space_advance.y = ceil(
-            font->face->glyph->advance.y / 64. *
-            (font->pixel_fixup_estimated ? font->pixel_size_fixup : 1.));
-    } else {
-        font->metrics.space_advance.x = -1;
-        font->metrics.space_advance.y = -1;
-    }
+    font->metrics.name = font->name;
 
     underline_strikeout_metrics(ft_face, &font->metrics);
 
@@ -808,6 +792,7 @@ err_hb_font_destroy:
     hb_font_destroy(font->hb_font);
 err_free_path:
     free(font->path);
+    free(font->name);
 #endif
 
 err_done_face:
@@ -1133,94 +1118,6 @@ fcft_clone(const struct fcft_font *_font)
     mtx_unlock(&font->lock);
 
     return &font->public;
-}
-
-FCFT_EXPORT struct fcft_font *
-fcft_size_adjust(const struct fcft_font *_font, double amount)
-{
-    struct font_priv *new = calloc(1, sizeof(*new));
-    if (new == NULL)
-        return NULL;
-
-    struct glyph_priv **cache_table = calloc(glyph_cache_initial_size, sizeof(cache_table[0]));
-    if (cache_table == NULL) {
-        free(new);
-        return NULL;
-    }
-
-    mtx_init(&new->lock, mtx_plain);
-    pthread_rwlock_init(&new->glyph_cache_lock, NULL);
-
-    new->ref_counter = 1;
-    new->glyph_cache.size = glyph_cache_initial_size;
-    new->glyph_cache.count = 0;
-    new->glyph_cache.table = cache_table;
-
-    struct font_priv *font = (struct font_priv *)_font;
-    tll_foreach(font->fallbacks, it) {
-        FcPattern *pat = it->item.pattern;
-        double size = it->item.req_pt_size;
-
-        if (size < 0. &&
-            FcPatternGetDouble(pat, FC_SIZE, 0, &size) != FcResultMatch)
-        {
-            LOG_WARN("failed to get size");
-            goto err;
-        }
-
-        size += amount;
-        if (size < 1.)
-            goto err;
-
-        FcPattern *new_base = FcPatternDuplicate(pat);
-        FcPatternRemove(new_base, FC_SIZE, 0);
-        FcPatternRemove(new_base, FC_PIXEL_SIZE, 0);
-        FcPatternRemove(new_base, FC_WEIGHT, 0);
-        FcPatternRemove(new_base, FC_WIDTH, 0);
-        FcPatternRemove(new_base, FC_FILE, 0);
-        FcPatternRemove(new_base, FC_FT_FACE, 0);
-
-        FcPatternAddDouble(new_base, FC_SIZE, size);
-
-        if (!FcConfigSubstitute(NULL, new_base, FcMatchPattern)) {
-            FcPatternDestroy(new_base);
-            goto err;
-        }
-        FcDefaultSubstitute(new_base);
-
-        FcResult res;
-        FcPattern *new_pat = FcFontMatch(NULL, new_base, &res);
-
-        tll_push_back(new->fallbacks, ((struct fallback){
-                    .pattern = new_pat,
-                    .charset = FcCharSetCopy(it->item.charset),
-                    .langset = it->item.langset != NULL ? FcLangSetCopy(it->item.langset) : NULL,
-                    .req_px_size = -1.,
-                    .req_pt_size = size}));
-
-        FcPatternDestroy(new_base);
-    }
-
-    assert(tll_length(new->fallbacks) > 0);
-    struct fallback *primary = &tll_front(new->fallbacks);
-
-    struct instance *inst = malloc(sizeof(*inst));
-    if (inst == NULL ||
-        !instantiate_pattern(
-            primary->pattern, primary->req_pt_size, primary->req_px_size, inst))
-    {
-        free(inst);
-        goto err;
-    }
-    primary->font = inst;
-
-    new->public = inst->metrics;
-    return &new->public;
-
-err:
-    fcft_destroy(&new->public);
-    return NULL;
-
 }
 
 static bool
@@ -1587,6 +1484,7 @@ glyph_for_index(const struct instance *inst, uint32_t index,
 
     *glyph = (struct glyph_priv){
         .public = {
+            .font_name = inst->name,
             .pix = pix,
             .x = x,
             .y = y,
@@ -1614,8 +1512,8 @@ err:
 }
 
 static bool
-glyph_for_wchar(const struct instance *inst, wchar_t wc,
-                enum fcft_subpixel subpixel, struct glyph_priv *glyph)
+glyph_for_codepoint(const struct instance *inst, uint32_t cp,
+                    enum fcft_subpixel subpixel, struct glyph_priv *glyph)
 {
     FT_UInt idx = -1;
 
@@ -1627,7 +1525,7 @@ glyph_for_wchar(const struct instance *inst, wchar_t wc,
      * API.x
      */
     if (inst->hb_feats_count > 0) {
-        hb_buffer_add_utf32(inst->hb_buf, (const uint32_t *)&wc, 1, 0, 1);
+        hb_buffer_add_utf32(inst->hb_buf, &cp, 1, 0, 1);
         hb_buffer_guess_segment_properties(inst->hb_buf);
         hb_shape(inst->hb_font, inst->hb_buf, inst->hb_feats, inst->hb_feats_count);
 
@@ -1642,11 +1540,11 @@ glyph_for_wchar(const struct instance *inst, wchar_t wc,
 #endif
 
     if (idx == (FT_UInt)-1)
-        idx = FT_Get_Char_Index(inst->face, wc);
+        idx = FT_Get_Char_Index(inst->face, cp);
 
     bool ret = glyph_for_index(inst, idx, subpixel, glyph);
-    glyph->public.wc = wc;
-    glyph->public.cols = wcwidth(wc);
+    glyph->public.cp = cp;
+    glyph->public.cols = wcwidth(cp);
     return ret;
 }
 
@@ -1663,19 +1561,19 @@ glyph_hash_index(const struct font_priv *font, size_t v)
 }
 
 static uint32_t
-hash_value_for_wc(wchar_t wc, enum fcft_subpixel subpixel)
+hash_value_for_cp(uint32_t cp, enum fcft_subpixel subpixel)
 {
-    return subpixel << 29 | wc;
+    return subpixel << 29 | cp;
 }
 
 static struct glyph_priv **
-glyph_cache_lookup(struct font_priv *font, wchar_t wc,
+glyph_cache_lookup(struct font_priv *font, uint32_t cp,
                    enum fcft_subpixel subpixel)
 {
-    size_t idx = glyph_hash_index(font, hash_value_for_wc(wc, subpixel));
+    size_t idx = glyph_hash_index(font, hash_value_for_cp(cp, subpixel));
     struct glyph_priv **glyph = &font->glyph_cache.table[idx];
 
-    while (*glyph != NULL && !((*glyph)->public.wc == wc &&
+    while (*glyph != NULL && !((*glyph)->public.cp == cp &&
                                (*glyph)->subpixel == subpixel))
     {
         idx = (idx + 1) & (font->glyph_cache.size - 1);
@@ -1712,10 +1610,10 @@ glyph_cache_resize(struct font_priv *font)
             continue;
 
         size_t idx = hash_index_for_size(
-            size, hash_value_for_wc(entry->public.wc, entry->subpixel));
+            size, hash_value_for_cp(entry->public.cp, entry->subpixel));
 
         while (table[idx] != NULL) {
-            assert(!(table[idx]->public.wc == entry->public.wc &&
+            assert(!(table[idx]->public.cp == entry->public.cp &&
                      table[idx]->subpixel == entry->subpixel));
             idx = (idx + 1) & (size - 1);
         }
@@ -1778,13 +1676,13 @@ test_emoji_compare(void)
 #endif
 
 FCFT_EXPORT const struct fcft_glyph *
-fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
-                     enum fcft_subpixel subpixel)
+fcft_codepoint_rasterize(struct fcft_font *_font, uint32_t cp,
+                         enum fcft_subpixel subpixel)
 {
     struct font_priv *font = (struct font_priv *)_font;
 
     pthread_rwlock_rdlock(&font->glyph_cache_lock);
-    struct glyph_priv **entry = glyph_cache_lookup(font, wc, subpixel);
+    struct glyph_priv **entry = glyph_cache_lookup(font, cp, subpixel);
 
     if (*entry != NULL) {
         const struct glyph_priv *glyph = *entry;
@@ -1797,7 +1695,7 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
 
     /* Check again - another thread may have resized the cache, or
      * populated the entry while we acquired the write-lock */
-    entry = glyph_cache_lookup(font, wc, subpixel);
+    entry = glyph_cache_lookup(font, cp, subpixel);
     if (*entry != NULL) {
         const struct glyph_priv *glyph = *entry;
         mtx_unlock(&font->lock);
@@ -1806,7 +1704,7 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
 
     if (glyph_cache_resize(font)) {
         /* Entry pointer is invalid if the cache was resized */
-        entry = glyph_cache_lookup(font, wc, subpixel);
+        entry = glyph_cache_lookup(font, cp, subpixel);
     }
 
     struct glyph_priv *glyph = malloc(sizeof(*glyph));
@@ -1815,11 +1713,11 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
         return NULL;
     }
 
-    glyph->public.wc = wc;
+    glyph->public.cp = cp;
     glyph->valid = false;
 
-    const struct emoji *emoji = emoji_lookup(wc);
-    assert(emoji == NULL || (wc >= emoji->cp && wc < emoji->cp + emoji->count));
+    const struct emoji *emoji = emoji_lookup(cp);
+    assert(emoji == NULL || (cp >= emoji->cp && cp < emoji->cp + emoji->count));
 
     bool force_text_presentation = false;
     bool force_emoji_presentation = false;
@@ -1852,7 +1750,7 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
 search_fonts:
 
     tll_foreach(font->fallbacks, it) {
-        if (!FcCharSetHasChar(it->item.charset, wc))
+        if (!FcCharSetHasChar(it->item.charset, cp))
             continue;
 
         static const FcChar8 *const lang_emoji = (const FcChar8 *)"und-zsye";
@@ -1889,7 +1787,7 @@ search_fonts:
         }
 
         assert(it->item.font != NULL);
-        got_glyph = glyph_for_wchar(it->item.font, wc, subpixel, glyph);
+        got_glyph = glyph_for_codepoint(it->item.font, cp, subpixel, glyph);
         no_one = false;
         break;
     }
@@ -1907,7 +1805,7 @@ search_fonts:
         struct instance *inst = tll_front(font->fallbacks).font;
 
         assert(inst != NULL);
-        got_glyph = glyph_for_wchar(inst, wc, subpixel, glyph);
+        got_glyph = glyph_for_codepoint(inst, cp, subpixel, glyph);
     }
 
     assert(*entry == NULL);
@@ -1927,7 +1825,7 @@ grapheme_hash_index(const struct font_priv *font, size_t v)
 }
 
 static uint64_t
-sdbm_hash_wide(const wchar_t *s, size_t len)
+sdbm_hash_wide(const uint32_t *s, size_t len)
 {
     uint64_t hash = 0;
 
@@ -1937,7 +1835,7 @@ sdbm_hash_wide(const wchar_t *s, size_t len)
 }
 
 static uint64_t
-hash_value_for_grapheme(size_t len, const wchar_t grapheme[static len],
+hash_value_for_grapheme(size_t len, const uint32_t grapheme[static len],
                         enum fcft_subpixel subpixel)
 {
     uint64_t hash = sdbm_hash_wide(grapheme, len);
@@ -1947,7 +1845,7 @@ hash_value_for_grapheme(size_t len, const wchar_t grapheme[static len],
 
 static struct grapheme_priv **
 grapheme_cache_lookup(struct font_priv *font,
-                      size_t len, const wchar_t cluster[static len],
+                      size_t len, const uint32_t cluster[static len],
                       enum fcft_subpixel subpixel)
 {
     size_t idx = grapheme_hash_index(
@@ -1956,7 +1854,7 @@ grapheme_cache_lookup(struct font_priv *font,
 
     while (*entry != NULL && !(
                (*entry)->len == len &&
-               wcsncmp((*entry)->cluster, cluster, len) == 0 &&
+               memcmp((*entry)->cluster, cluster, len * sizeof(cluster[0])) == 0 &&
                (*entry)->subpixel == subpixel))
     {
         idx = (idx + 1) & (font->grapheme_cache.size - 1);
@@ -1999,7 +1897,8 @@ grapheme_cache_resize(struct font_priv *font)
         while (table[idx] != NULL) {
             assert(
                 !(table[idx]->len == entry->len &&
-                  wcsncmp(table[idx]->cluster, entry->cluster, entry->len) == 0 &&
+                  memcmp(table[idx]->cluster, entry->cluster,
+                         entry->len * sizeof(entry->cluster[0])) == 0 &&
                   table[idx]->subpixel == entry->subpixel));
             idx = (idx + 1) & (size - 1);
         }
@@ -2023,7 +1922,7 @@ grapheme_cache_resize(struct font_priv *font)
 /* Must only be called while font->lock is held */
 static bool
 font_for_grapheme(struct font_priv *font,
-                  size_t len, const wchar_t cluster[static len],
+                  size_t len, const uint32_t cluster[static len],
                   struct instance **inst, bool enforce_presentation_style)
 {
     static const FcChar8 *const lang_emoji = (const FcChar8 *)"und-zsye";
@@ -2156,8 +2055,7 @@ font_for_grapheme(struct font_priv *font,
 
 FCFT_EXPORT const struct fcft_grapheme *
 fcft_grapheme_rasterize(struct fcft_font *_font,
-                        size_t len, const wchar_t cluster[static len],
-                        size_t tag_count, const struct fcft_layout_tag *tags,
+                        size_t len, const uint32_t cluster[static len],
                         enum fcft_subpixel subpixel)
 {
     struct font_priv *font = (struct font_priv *)_font;
@@ -2191,7 +2089,7 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
     }
 
     struct grapheme_priv *grapheme = malloc(sizeof(*grapheme));
-    wchar_t *cluster_copy = malloc(len * sizeof(cluster_copy[0]));
+    uint32_t *cluster_copy = malloc(len * sizeof(cluster_copy[0]));
     if (grapheme == NULL || cluster_copy == NULL) {
         /* Can’t update cache entry since we can’t store the cluster */
         free(grapheme);
@@ -2201,7 +2099,7 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
     }
 
     size_t glyph_idx = 0;
-    wcsncpy(cluster_copy, cluster, len);
+    memcpy(cluster_copy, cluster, len * sizeof(cluster[0]));
     grapheme->valid = false;
     grapheme->len = len;
     grapheme->cluster = cluster_copy;
@@ -2262,8 +2160,8 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
         assert(glyph->valid);
 
         assert(info[i].cluster < len);
-        glyph->public.wc = cluster[info[i].cluster];
-        glyph->public.cols = wcwidth(glyph->public.wc);
+        glyph->public.cp = cluster[info[i].cluster];
+        glyph->public.cols = wcwidth(glyph->public.cp);
 
 #if 0
         LOG_DBG("grapheme: x: advance: %d -> %d, offset: %d -> %d",
@@ -2326,8 +2224,7 @@ err:
 
 FCFT_EXPORT const struct fcft_grapheme *
 fcft_grapheme_rasterize(struct fcft_font *_font,
-                        size_t len, const wchar_t cluster[static len],
-                        size_t tag_count, const struct fcft_layout_tag *tags,
+                        size_t len, const uint32_t cluster[static len],
                         enum fcft_subpixel subpixel)
 {
     return NULL;
@@ -2385,9 +2282,13 @@ rasterize_partial_run(struct text_run *run, const struct instance *inst,
         }
 
         assert(info->cluster < len);
-        glyph->public.wc = text[info->cluster];
-        glyph->public.cols = wcwidth(glyph->public.wc);
+        glyph->public.cp = text[info->cluster];
+        glyph->public.cols = wcwidth(glyph->public.cp);
 
+        /* TODO: can’t reference font data, since the font may be
+         * free:d before the text-run (and thus all the text-run’s
+         * glyphs) */
+        glyph->public.font_name = NULL;
         glyph->public.x += pos->x_offset / 64. * inst->pixel_size_fixup;
         glyph->public.y += pos->y_offset / 64. * inst->pixel_size_fixup;
         glyph->public.advance.x = pos->x_advance / 64. * inst->pixel_size_fixup;
@@ -2422,7 +2323,7 @@ rasterize_partial_run(struct text_run *run, const struct instance *inst,
 
 FCFT_EXPORT struct fcft_text_run *
 fcft_text_run_rasterize(
-    struct fcft_font *_font, size_t len, const wchar_t text[static len],
+    struct fcft_font *_font, size_t len, const uint32_t text[static len],
     enum fcft_subpixel subpixel)
 {
     struct font_priv *font = (struct font_priv *)_font;
@@ -2613,7 +2514,7 @@ err:
 
 FCFT_EXPORT struct fcft_text_run *
 fcft_text_run_rasterize(
-    struct fcft_font *font, size_t len, const wchar_t text[static len],
+    struct fcft_font *font, size_t len, const uint32_t text[static len],
     enum fcft_subpixel subpixel)
 {
     return NULL;
@@ -2723,7 +2624,7 @@ fcft_destroy(struct fcft_font *_font)
 }
 
 FCFT_EXPORT bool
-fcft_kerning(struct fcft_font *_font, wchar_t left, wchar_t right,
+fcft_kerning(struct fcft_font *_font, uint32_t left, uint32_t right,
              long *restrict x, long *restrict y)
 {
     struct font_priv *font = (struct font_priv *)_font;
@@ -2755,8 +2656,7 @@ fcft_kerning(struct fcft_font *_font, wchar_t left, wchar_t right,
 
     if (err != 0) {
         LOG_WARN("%s: failed to get kerning for %lc -> %lc: %s",
-                 primary->path, (wint_t)left, (wint_t)right,
-                 ft_error_string(err));
+                 primary->path, (int)left, (int)right, ft_error_string(err));
         goto err;
     }
 
@@ -2766,7 +2666,7 @@ fcft_kerning(struct fcft_font *_font, wchar_t left, wchar_t right,
         *y = kerning.y / 64. * primary->pixel_size_fixup;
 
     LOG_DBG("%s: kerning: %lc -> %lc: x=%ld 26.6, y=%ld 26.6",
-            primary->path, (wint_t)left, (wint_t)right,
+            primary->path, (int)left, (int)right,
             kerning.x, kerning.y);
 
     mtx_unlock(&font->lock);
@@ -2781,11 +2681,11 @@ err:
 static void __attribute__((constructor))
 verify_precompose_table_is_sorted(void)
 {
-    wchar_t last_base = 0, last_comb = 0;
+    uint32_t last_base = 0, last_comb = 0;
 
     for (size_t i = 0; i < ALEN(precompose_table); i++) {
-        wchar_t base = precompose_table[i].base;
-        wchar_t comb = precompose_table[i].comb;
+        uint32_t base = precompose_table[i].base;
+        uint32_t comb = precompose_table[i].comb;
 
         assert(base >= last_base);
         if (base != last_base)
@@ -2799,13 +2699,13 @@ verify_precompose_table_is_sorted(void)
 }
 #endif /* _DEBUG */
 
-FCFT_EXPORT wchar_t
-fcft_precompose(const struct fcft_font *_font, wchar_t base, wchar_t comb,
+FCFT_EXPORT uint32_t
+fcft_precompose(const struct fcft_font *_font, uint32_t base, uint32_t comb,
                 bool *base_is_from_primary,
                 bool *comb_is_from_primary,
                 bool *composed_is_from_primary)
 {
-    _Static_assert(2 * sizeof(wchar_t) <= sizeof(uint64_t),
+    _Static_assert(2 * sizeof(uint32_t) <= sizeof(uint64_t),
                   "two wchars does not fit in an uint64_t");
 
     const struct font_priv *font = (const struct font_priv *)_font;
@@ -2836,7 +2736,7 @@ fcft_precompose(const struct fcft_font *_font, wchar_t base, wchar_t comb,
         else if (maybe > match)
             end = middle - 1;
         else {
-            wchar_t composed = precompose_table[middle].replacement;
+            uint32_t composed = precompose_table[middle].replacement;
             if (font != NULL && composed_is_from_primary != NULL) {
                 *composed_is_from_primary = FcCharSetHasChar(
                     primary->charset, composed);
@@ -2847,7 +2747,7 @@ fcft_precompose(const struct fcft_font *_font, wchar_t base, wchar_t comb,
 
     if (composed_is_from_primary != NULL)
         *composed_is_from_primary = false;
-    return (wchar_t)-1;
+    return (uint32_t)-1;
 }
 
 FCFT_EXPORT void
