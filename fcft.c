@@ -2052,8 +2052,9 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
 
         assert(glyph->valid);
 
-        glyph->public.wc = info[i].codepoint;
-        glyph->public.cols = wcwidth(info[i].codepoint);
+        assert(info[i].cluster < len);
+        glyph->public.wc = cluster[info[i].cluster];
+        glyph->public.cols = wcwidth(glyph->public.wc);
 
 #if 0
         LOG_DBG("grapheme: x: advance: %d -> %d, offset: %d -> %d",
@@ -2242,8 +2243,9 @@ text_run_rasterize_partial(
             continue;
         }
 
-        glyph->public.wc = info->codepoint;
-        glyph->public.cols = 1;  /* TODO */
+        assert(info->cluster < ctx->len);
+        glyph->public.wc = ctx->text[info->cluster];
+        glyph->public.cols = wcwidth(glyph->public.wc);
 
 #if 0
         LOG_DBG("text-run: #%zu: x: advance: %d -> %d, offset: %d -> %d",

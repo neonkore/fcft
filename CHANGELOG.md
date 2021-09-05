@@ -33,6 +33,12 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* ‘wc’ field in `struct fcft_glyph` being assigned font index instead
+  of Unicode codepoint in `fcft_grapheme_rasterize()` and
+  `fcft_text_run_rasterize()`.
+
+
 ### Security
 ### Contributors
 
