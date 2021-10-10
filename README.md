@@ -1,3 +1,5 @@
+[![CI status](https://ci.codeberg.org/api/badges/dnkl/fcft/status.svg)](https://ci.codeberg.org/dnkl/fcft)
+
 # fcft
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/fcft.svg)](https://repology.org/project/fcft/versions)
