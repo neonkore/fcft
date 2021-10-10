@@ -5,6 +5,7 @@ clone:
 
 pipeline:
   setup:
+    when: { branch: master }
     image: alpine:latest
     commands:
       - apk add git
@@ -13,6 +14,7 @@ pipeline:
       - cd ..
 
   codespell:
+    when: { branch: master }
     image: alpine:latest
     commands:
       - apk add python3
@@ -21,6 +23,7 @@ pipeline:
       - codespell README.md CHANGELOG.md *.c *.h fcft/*.h doc/*.scd
 
   x64:
+    when: { branch: master }
     group: build
     image: alpine:latest
     commands:
@@ -58,6 +61,7 @@ pipeline:
       - cd ../..
 
   x86:
+    when: { branch: master }
     group: build
     image: i386/alpine:latest
     commands:
