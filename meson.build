@@ -83,6 +83,7 @@ unicode_data = custom_target(
   output: 'unicode-compose-table.h',
   command: [generate_unicode_precompose_sh, '@INPUT@', '@OUTPUT@'])
 
+env = find_program('env', native: true)
 generate_version_sh = files('generate-version.sh')
 version = custom_target(
   'generate_version',
