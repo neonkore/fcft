@@ -29,6 +29,10 @@
 
 ## Unreleased
 ### Added
+
+* UnicodeData updated to 14.0
+
+
 ### Changed
 ### Deprecated
 ### Removed
