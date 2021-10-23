@@ -1792,15 +1792,26 @@ grapheme_hash_index(const struct font_priv *font, size_t v)
     return hash_index_for_size(font->grapheme_cache.size, v);
 }
 
-static uint32_t
+static uint64_t
+sdbm_hash_wide(const wchar_t *s, size_t len)
+{
+    uint64_t hash = 0;
+
+    for (size_t i = 0; i < len; i++, s++) {
+        int c = (int)*s;
+        hash = c + (hash << 6) + (hash << 16) - hash;
+    }
+
+    return hash;
+}
+
+static uint64_t
 hash_value_for_grapheme(size_t len, const wchar_t grapheme[static len],
                         enum fcft_subpixel subpixel)
 {
-    uint32_t res = 0;
-    for (size_t i = 0; i < len; i++)
-        res ^= grapheme[i];
-
-    return subpixel << 29 | res;
+    uint64_t hash = sdbm_hash_wide(grapheme, len);
+    hash &= (1ull << 29) - 1;
+    return subpixel << 29 | hash;
 }
 
 static struct grapheme_priv **

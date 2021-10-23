@@ -44,6 +44,8 @@
 * Assertion in `glyph_cache_resize()`, triggered by trying to
   rasterize, and _failing_, a large amount of code points
   (https://codeberg.org/dnkl/foot/issues/763).
+* Bad performance of grapheme cache when rasterizing many grapheme
+  clusters.
 
 
 ### Security
