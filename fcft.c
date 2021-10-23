@@ -1979,10 +1979,8 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
         if (has_all_code_points) {
             if (it->item.font == NULL) {
                 inst = malloc(sizeof(*inst));
-                if (inst == NULL) {
-                    mtx_unlock(&font->lock);
-                    return NULL;
-                }
+                if (inst == NULL)
+                    goto err;
 
                 if (!instantiate_pattern(
                         it->item.pattern,
@@ -2005,10 +2003,8 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
         }
     }
 
-    if (inst == NULL) {
-        mtx_unlock(&font->lock);
-        return NULL;
-    }
+    if (inst == NULL)
+        goto err;
 
     assert(inst->hb_font != NULL);
 
