@@ -48,7 +48,7 @@
 
 ### Contributors
 
-* Simon Ser <contact@emersion.fr>
+* [emersion](https://codeberg.org/emersion)
 
 
 ## 2.4.5
