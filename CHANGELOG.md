@@ -41,6 +41,9 @@
 * ‘wc’ field in `struct fcft_glyph` being assigned font index instead
   of Unicode codepoint in `fcft_grapheme_rasterize()` and
   `fcft_text_run_rasterize()`.
+* Assertion in `glyph_cache_resize()`, triggered by trying to
+  rasterize, and _failing_, a large amount of code points
+  (https://codeberg.org/dnkl/foot/issues/763).
 
 
 ### Security
