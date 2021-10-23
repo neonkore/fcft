@@ -2113,6 +2113,7 @@ err:
     grapheme->public.count = 0;
     grapheme->public.glyphs = NULL;
     *entry = grapheme;
+    font->grapheme_cache.count++;
     mtx_unlock(&font->lock);
     return NULL;
 }
