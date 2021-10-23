@@ -1822,11 +1822,8 @@ sdbm_hash_wide(const wchar_t *s, size_t len)
 {
     uint64_t hash = 0;
 
-    for (size_t i = 0; i < len; i++, s++) {
-        int c = (int)*s;
-        hash = c + (hash << 6) + (hash << 16) - hash;
-    }
-
+    for (size_t i = 0; i < len; i++, s++)
+        hash = (hash << 4) ^ *s;
     return hash;
 }
 
