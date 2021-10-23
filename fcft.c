@@ -1198,6 +1198,7 @@ glyph_for_index(const struct instance *inst, uint32_t index,
                 enum fcft_subpixel subpixel, struct glyph_priv *glyph)
 {
     glyph->valid = false;
+    glyph->subpixel = subpixel;
 
     pixman_image_t *pix = NULL;
     uint8_t *data = NULL;
