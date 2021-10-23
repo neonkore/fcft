@@ -1,3 +1,5 @@
+[![CI status](https://ci.codeberg.org/api/badges/dnkl/fcft/status.svg)](https://ci.codeberg.org/dnkl/fcft)
+
 # fcft
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/fcft.svg)](https://repology.org/project/fcft/versions)
@@ -22,8 +24,8 @@ subproject.
 Starting with 2.3.0, fcft gained the ability to do text shaping using
 HarfBuzz (an **optional** dependency). Initially, only individual
 grapheme clusters could be shaped. With 2.4.0, the ability to shape
-whole text-runs where added. It should be noted however, that fcft
-does _not_ aim to compete with e.g. Pango, and that the text shaping
+whole text-runs were added. It should be noted however, that fcft does
+_not_ aim to compete with e.g. Pango, and that the text shaping
 support may not be (and perhaps never will be) sufficient for
 “professional” text layout.
 

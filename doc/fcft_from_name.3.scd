@@ -123,6 +123,8 @@ blend them onto a target pixman image.
 int
 main(void)
 {
+    setlocale(LC_CTYPE, "en_US.UTF-8");
+
     if (!fcft_set_scaling_filter(FCFT_SCALING_FILTER_LANCZOS3))
        return EXIT_FAILURE;
 
