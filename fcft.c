@@ -51,6 +51,16 @@ static const size_t glyph_cache_initial_size = 256;
 static const size_t grapheme_cache_initial_size = 256;
 #endif
 
+#if defined(_DEBUG)
+static size_t glyph_cache_lookups = 0;
+static size_t glyph_cache_collisions = 0;
+
+#if defined(FCFT_HAVE_HARFBUZZ)
+static size_t grapheme_cache_lookups = 0;
+static size_t grapheme_cache_collisions = 0;
+#endif
+#endif
+
 struct glyph_priv {
     struct fcft_glyph public;
     enum fcft_subpixel subpixel;
@@ -242,6 +252,14 @@ fini(void)
         FT_Done_FreeType(ft_lib);
 
     FcFini();
+
+    LOG_DBG("glyph cache: lookups=%zu, collisions=%zu",
+            glyph_cache_lookups, glyph_cache_collisions);
+
+#if defined(FCFT_HAVE_HARFBUZZ)
+    LOG_DBG("grapheme cache: lookups=%zu, collisions=%zu",
+            grapheme_cache_lookups, grapheme_cache_collisions);
+#endif
 }
 
 static void
@@ -1640,8 +1658,15 @@ glyph_cache_lookup(struct font_priv *font, wchar_t wc,
     {
         idx = (idx + 1) & (font->glyph_cache.size - 1);
         glyph = &font->glyph_cache.table[idx];
+
+#if defined(_DEBUG)
+        glyph_cache_collisions++;
+#endif
     }
 
+#if defined(_DEBUG)
+    glyph_cache_lookups++;
+#endif
     return glyph;
 }
 
@@ -1830,8 +1855,15 @@ grapheme_cache_lookup(struct font_priv *font,
     {
         idx = (idx + 1) & (font->grapheme_cache.size - 1);
         entry = &font->grapheme_cache.table[idx];
+
+#if defined(_DEBUG)
+        grapheme_cache_collisions++;
+#endif
     }
 
+#if defined(_DEBUG)
+    grapheme_cache_lookups++;
+#endif
     return entry;
 }
 
