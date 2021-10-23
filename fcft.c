@@ -262,6 +262,16 @@ fini(void)
 #endif
 }
 
+static bool
+is_assertions_enabled(void)
+{
+#if defined(NDEBUG)
+    return false;
+#else
+    return true;
+#endif
+}
+
 static void
 log_version_information(void)
 {
@@ -280,7 +290,8 @@ log_version_information(void)
     static char caps_str[256];
     snprintf(
         caps_str, sizeof(caps_str),
-        "%cgraphemes %cruns",
+        "%cassertions %cgraphemes %cruns",
+        is_assertions_enabled() ? '+' : '-',
         caps & FCFT_CAPABILITY_GRAPHEME_SHAPING ? '+' : '-',
         caps & FCFT_CAPABILITY_TEXT_RUN_SHAPING ? '+' : '-');
 
