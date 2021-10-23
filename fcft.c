@@ -290,10 +290,10 @@ log_version_information(void)
     static char caps_str[256];
     snprintf(
         caps_str, sizeof(caps_str),
-        "%cassertions %cgraphemes %cruns",
-        is_assertions_enabled() ? '+' : '-',
+        "%cgraphemes %cruns %cassertions",
         caps & FCFT_CAPABILITY_GRAPHEME_SHAPING ? '+' : '-',
-        caps & FCFT_CAPABILITY_TEXT_RUN_SHAPING ? '+' : '-');
+        caps & FCFT_CAPABILITY_TEXT_RUN_SHAPING ? '+' : '-',
+        is_assertions_enabled() ? '+' : '-');
 
     LOG_INFO("fcft: %s %s", FCFT_VERSION, caps_str);
 
