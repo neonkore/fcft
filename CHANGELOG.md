@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [2.4.6](#2-4-6)
 * [2.4.5](#2-4-5)
 * [2.4.4](#2-4-4)
 * [2.4.3](#2-4-3)
@@ -27,15 +27,13 @@
 * [1.1.7](#1-1-7)
 
 
-## Unreleased
+## 2.4.6
+
 ### Added
 
 * UnicodeData updated to 14.0
 
 
-### Changed
-### Deprecated
-### Removed
 ### Fixed
 
 * ‘wc’ field in `struct fcft_glyph` being assigned font index instead
@@ -48,8 +46,9 @@
   clusters.
 
 
-### Security
 ### Contributors
+
+* [emersion](https://codeberg.org/emersion)
 
 
 ## 2.4.5
