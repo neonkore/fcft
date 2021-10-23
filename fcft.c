@@ -1907,6 +1907,25 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
         entry = grapheme_cache_lookup(font, len, cluster, subpixel);
     }
 
+    struct grapheme_priv *grapheme = malloc(sizeof(*grapheme));
+    wchar_t *cluster_copy = malloc(len * sizeof(cluster_copy[0]));
+    if (grapheme == NULL || cluster_copy == NULL) {
+        /* Can’t update cache entry since we can’t store the cluster */
+        free(grapheme);
+        free(cluster_copy);
+        mtx_unlock(&font->lock);
+        return NULL;
+    }
+
+    size_t glyph_idx = 0;
+    wcsncpy(cluster_copy, cluster, len);
+    grapheme->valid = false;
+    grapheme->len = len;
+    grapheme->cluster = cluster_copy;
+    grapheme->subpixel = subpixel;
+    grapheme->public.glyphs = NULL;
+    grapheme->public.count = 0;
+
     tll_foreach(font->fallbacks, it) {
         bool has_all_code_points = true;
         for (size_t i = 0; i < len && has_all_code_points; i++) {
@@ -2013,27 +2032,13 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
     LOG_DBG("length: %u", hb_buffer_get_length(inst->hb_buf));
     LOG_DBG("infos: %u", count);
 
-    wchar_t *cluster_copy = malloc(len * sizeof(cluster_copy[0]));
-    struct grapheme_priv *grapheme = malloc(sizeof(*grapheme));
     struct fcft_glyph **glyphs = calloc(count, sizeof(glyphs[0]));
+    if (glyphs == NULL)
+        goto err;
 
-    if (cluster_copy == NULL || grapheme == NULL || glyphs == NULL) {
-        free(cluster_copy);
-        free(grapheme);
-        free(glyphs);
-        mtx_unlock(&font->lock);
-        return NULL;
-    }
-
-    wcsncpy(cluster_copy, cluster, len);
-    grapheme->valid = false;
-    grapheme->len = len;
-    grapheme->cluster = cluster_copy;
-    grapheme->subpixel = subpixel;
     grapheme->public.cols = max(grapheme_width, min_grapheme_width);
     grapheme->public.glyphs = (const struct fcft_glyph **)glyphs;
 
-    size_t glyph_idx = 0;
     const unsigned count_from_the_beginning = count;
 
     for (unsigned i = 0; i < count_from_the_beginning; i++) {
