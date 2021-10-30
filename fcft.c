@@ -2229,15 +2229,13 @@ err:
     return NULL;
 }
 
-struct text_run_context {
-    const struct fcft_glyph **glyphs;
-    int *cluster;
+struct text_run {
+    struct fcft_text_run *public;
     size_t size;
-    size_t count;
 };
 
 static bool
-rasterize_partial_run(struct text_run_context *ctx, const struct instance *inst,
+rasterize_partial_run(struct text_run *run, const struct instance *inst,
                       const uint32_t *text, size_t len,
                       size_t run_start, size_t run_len,
                       enum fcft_subpixel subpixel)
@@ -2291,12 +2289,12 @@ rasterize_partial_run(struct text_run_context *ctx, const struct instance *inst,
         glyph->public.advance.x = pos->x_advance / 64. * inst->pixel_size_fixup;
         glyph->public.advance.y = pos->y_advance / 64. * inst->pixel_size_fixup;
 
-        if (ctx->count >= ctx->size) {
-            size_t new_glyphs_size = ctx->size * 2;
+        if (run->public->count >= run->size) {
+            size_t new_glyphs_size = run->size * 2;
             const struct fcft_glyph **new_glyphs = realloc(
-                ctx->glyphs, new_glyphs_size * sizeof(new_glyphs[0]));
+                run->public->glyphs, new_glyphs_size * sizeof(new_glyphs[0]));
             int *new_cluster = realloc(
-                ctx->cluster, new_glyphs_size * sizeof(new_cluster[0]));
+                run->public->cluster, new_glyphs_size * sizeof(new_cluster[0]));
 
             if (new_glyphs == NULL || new_cluster == NULL) {
                 free(new_glyphs);
@@ -2304,15 +2302,15 @@ rasterize_partial_run(struct text_run_context *ctx, const struct instance *inst,
                 return false;
             }
 
-            ctx->glyphs = new_glyphs;
-            ctx->cluster = new_cluster;
-            ctx->size = new_glyphs_size;
+            run->public->glyphs = new_glyphs;
+            run->public->cluster = new_cluster;
+            run->size = new_glyphs_size;
         }
 
-        assert(ctx->count < ctx->size);
-        ctx->cluster[ctx->count] = info->cluster;
-        ctx->glyphs[ctx->count] = &glyph->public;
-        ctx->count++;
+        assert(run->public->count < run->size);
+        run->public->cluster[run->public->count] = info->cluster;
+        run->public->glyphs[run->public->count] = &glyph->public;
+        run->public->count++;
     }
 
     return true;
@@ -2324,22 +2322,25 @@ fcft_text_run_rasterize(
     enum fcft_subpixel subpixel)
 {
     struct font_priv *font = (struct font_priv *)_font;
+    mtx_lock(&font->lock);
 
     LOG_DBG("rasterizing a %zu character text run", len);
 
-    struct text_run_context ctx = {
+    struct text_run run = {
         .size = len,
-        .glyphs = malloc(len * sizeof(ctx.glyphs[0])),
-        .cluster = malloc(len * sizeof(ctx.cluster[0])),
+        .public = malloc(sizeof(*run.public)),
     };
 
-    if (ctx.glyphs == NULL || ctx.cluster == NULL) {
-        free(ctx.glyphs);
-        free(ctx.cluster);
-        return NULL;
-    }
+    if (run.public == NULL)
+        goto err;
 
-    mtx_lock(&font->lock);
+    run.public->glyphs = malloc(len * sizeof(run.public->glyphs[0]));
+    run.public->cluster = malloc(len * sizeof(run.public->cluster[0]));
+    run.public->count = 0;
+
+    if (run.public->glyphs == NULL || run.public->cluster == NULL)
+        goto err;
+
 
     struct partial_run {
         size_t start;
@@ -2452,7 +2453,7 @@ fcft_text_run_rasterize(
         const struct partial_run *prun = &it->item;
 
         bool ret = rasterize_partial_run(
-            &ctx, prun->inst, (const uint32_t *)text, len,
+            &run, prun->inst, (const uint32_t *)text, len,
             prun->start, prun->len, subpixel);
 
         hb_buffer_clear_contents(prun->inst->hb_buf);
@@ -2463,44 +2464,40 @@ fcft_text_run_rasterize(
     /* Re-alloc glyphs/cluster arrays */
     {
         const struct fcft_glyph **final_glyphs = realloc(
-            ctx.glyphs, ctx.count * sizeof(final_glyphs[0]));
+            run.public->glyphs, run.public->count * sizeof(final_glyphs[0]));
         int *final_cluster = realloc(
-            ctx.cluster, ctx.count * sizeof(final_cluster[0]));
+            run.public->cluster, run.public->count * sizeof(final_cluster[0]));
 
-        if ((final_glyphs == NULL || final_cluster == NULL) && ctx.count > 0) {
+        if ((final_glyphs == NULL || final_cluster == NULL) &&
+            run.public->count > 0)
+        {
             free(final_glyphs);
             free(final_cluster);
             goto err;
         }
 
-        ctx.glyphs = final_glyphs;
-        ctx.cluster = final_cluster;
+        run.public->glyphs = final_glyphs;
+        run.public->cluster = final_cluster;
     }
 
-    LOG_DBG("glyph count: %zu", ctx.glyphs.count);
-
-    struct fcft_text_run *ret = malloc(sizeof(*ret));
-    if (ret == NULL)
-        goto err;
-
-    *ret = (struct fcft_text_run){
-        .glyphs = ctx.glyphs,
-        .cluster = ctx.cluster,
-        .count = ctx.count,
-    };
+    LOG_DBG("glyph count: %zu", run.public->count);
 
     tll_free(pruns);
     mtx_unlock(&font->lock);
-    return ret;
+    return run.public;
 
 err:
 
-    for (size_t i = 0; i < ctx.count; i++) {
-        assert(ctx.glyphs[i] != NULL);
-        glyph_destroy(ctx.glyphs[i]);
+    if (run.public != NULL) {
+        for (size_t i = 0; i < run.public->count; i++) {
+            assert(run.public->glyphs[i] != NULL);
+            glyph_destroy(run.public->glyphs[i]);
+        }
+
+        free(run.public->glyphs);
+        free(run.public->cluster);
+        free(run.public);
     }
-    free(ctx.glyphs);
-    free(ctx.cluster);
 
     tll_free(pruns);
     mtx_unlock(&font->lock);
