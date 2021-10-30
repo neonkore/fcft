@@ -30,6 +30,10 @@
 
 ## Unreleased
 ### Added
+
+* Text shaping now requires libutf8proc (in addition to HarfBuzz)
+
+
 ### Changed
 
 * `fcft_glyph_rasterize()` and `fcft_grapheme_rasterize()`: emojis’
