@@ -2323,6 +2323,14 @@ fcft_text_run_rasterize(
 
     LOG_DBG("rasterizing a %zu character text run", len);
 
+    struct partial_run {
+        size_t start;
+        size_t len;
+        struct instance *inst;
+    };
+
+    tll(struct partial_run) pruns = tll_init();
+
     struct text_run run = {
         .size = len,
         .public = malloc(sizeof(*run.public)),
@@ -2339,13 +2347,6 @@ fcft_text_run_rasterize(
         goto err;
 
 
-    struct partial_run {
-        size_t start;
-        size_t len;
-        struct instance *inst;
-    };
-
-    tll(struct partial_run) pruns = tll_init();
     tll_push_back(pruns, ((struct partial_run){.start = 0}));
 
     /* Split run into graphemes */
