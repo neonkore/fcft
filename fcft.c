@@ -1948,61 +1948,12 @@ grapheme_cache_resize(struct font_priv *font)
     return true;
 }
 
-FCFT_EXPORT const struct fcft_grapheme *
-fcft_grapheme_rasterize(struct fcft_font *_font,
-                        size_t len, const wchar_t cluster[static len],
-                        size_t tag_count, const struct fcft_layout_tag *tags,
-                        enum fcft_subpixel subpixel)
+/* Must only be called while font->lock is held */
+static bool
+font_for_grapheme(struct font_priv *font,
+                  size_t len, const wchar_t cluster[static len],
+                  struct instance **inst)
 {
-    struct font_priv *font = (struct font_priv *)_font;
-    struct instance *inst = NULL;
-
-    pthread_rwlock_rdlock(&font->grapheme_cache_lock);
-    struct grapheme_priv **entry = grapheme_cache_lookup(
-        font, len, cluster, subpixel);
-
-    if (*entry != NULL) {
-        const struct grapheme_priv *grapheme = *entry;
-        pthread_rwlock_unlock(&font->grapheme_cache_lock);
-        return grapheme->valid ? &grapheme->public : NULL;
-    }
-
-    pthread_rwlock_unlock(&font->grapheme_cache_lock);
-    mtx_lock(&font->lock);
-
-    /* Check again - another thread may have resized the cache, or
-     * populated the entry while we acquired the write-lock */
-    entry = grapheme_cache_lookup(font, len, cluster, subpixel);
-    if (*entry != NULL) {
-        const struct grapheme_priv *grapheme = *entry;
-        mtx_unlock(&font->lock);
-        return grapheme->valid ? &grapheme->public : NULL;
-    }
-
-    if (grapheme_cache_resize(font)) {
-        /* Entry pointer is invalid if the cache was resized */
-        entry = grapheme_cache_lookup(font, len, cluster, subpixel);
-    }
-
-    struct grapheme_priv *grapheme = malloc(sizeof(*grapheme));
-    wchar_t *cluster_copy = malloc(len * sizeof(cluster_copy[0]));
-    if (grapheme == NULL || cluster_copy == NULL) {
-        /* Can’t update cache entry since we can’t store the cluster */
-        free(grapheme);
-        free(cluster_copy);
-        mtx_unlock(&font->lock);
-        return NULL;
-    }
-
-    size_t glyph_idx = 0;
-    wcsncpy(cluster_copy, cluster, len);
-    grapheme->valid = false;
-    grapheme->len = len;
-    grapheme->cluster = cluster_copy;
-    grapheme->subpixel = subpixel;
-    grapheme->public.glyphs = NULL;
-    grapheme->public.count = 0;
-
     static const FcChar8 *const lang_emoji = (const FcChar8 *)"und-zsye";
 
     tll_foreach(font->fallbacks, it) {
@@ -2078,32 +2029,93 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
 
         if (has_all_code_points) {
             if (it->item.font == NULL) {
-                inst = malloc(sizeof(*inst));
-                if (inst == NULL)
-                    goto err;
+                *inst = malloc(sizeof(**inst));
+                if (*inst == NULL)
+                    return false;
 
                 if (!instantiate_pattern(
                         it->item.pattern,
                         it->item.req_pt_size, it->item.req_px_size,
-                        inst))
+                        *inst))
                 {
                     /* Remove, so that we don't have to keep trying to
                      * instantiate it */
-                    free(inst);
+                    free(*inst);
                     fallback_destroy(&it->item);
                     tll_remove(font->fallbacks, it);
                     continue;
                 }
 
-                it->item.font = inst;
+                it->item.font = *inst;
             } else
-                inst = it->item.font;
+                *inst = it->item.font;
 
-            break;
+            return true;
         }
     }
 
-    if (inst == NULL)
+    /* No font found, use primary font anyway */
+    *inst = tll_front(font->fallbacks).font;
+    return *inst != NULL;
+}
+
+FCFT_EXPORT const struct fcft_grapheme *
+fcft_grapheme_rasterize(struct fcft_font *_font,
+                        size_t len, const wchar_t cluster[static len],
+                        size_t tag_count, const struct fcft_layout_tag *tags,
+                        enum fcft_subpixel subpixel)
+{
+    struct font_priv *font = (struct font_priv *)_font;
+    struct instance *inst = NULL;
+
+    pthread_rwlock_rdlock(&font->grapheme_cache_lock);
+    struct grapheme_priv **entry = grapheme_cache_lookup(
+        font, len, cluster, subpixel);
+
+    if (*entry != NULL) {
+        const struct grapheme_priv *grapheme = *entry;
+        pthread_rwlock_unlock(&font->grapheme_cache_lock);
+        return grapheme->valid ? &grapheme->public : NULL;
+    }
+
+    pthread_rwlock_unlock(&font->grapheme_cache_lock);
+    mtx_lock(&font->lock);
+
+    /* Check again - another thread may have resized the cache, or
+     * populated the entry while we acquired the write-lock */
+    entry = grapheme_cache_lookup(font, len, cluster, subpixel);
+    if (*entry != NULL) {
+        const struct grapheme_priv *grapheme = *entry;
+        mtx_unlock(&font->lock);
+        return grapheme->valid ? &grapheme->public : NULL;
+    }
+
+    if (grapheme_cache_resize(font)) {
+        /* Entry pointer is invalid if the cache was resized */
+        entry = grapheme_cache_lookup(font, len, cluster, subpixel);
+    }
+
+    struct grapheme_priv *grapheme = malloc(sizeof(*grapheme));
+    wchar_t *cluster_copy = malloc(len * sizeof(cluster_copy[0]));
+    if (grapheme == NULL || cluster_copy == NULL) {
+        /* Can’t update cache entry since we can’t store the cluster */
+        free(grapheme);
+        free(cluster_copy);
+        mtx_unlock(&font->lock);
+        return NULL;
+    }
+
+    size_t glyph_idx = 0;
+    wcsncpy(cluster_copy, cluster, len);
+    grapheme->valid = false;
+    grapheme->len = len;
+    grapheme->cluster = cluster_copy;
+    grapheme->subpixel = subpixel;
+    grapheme->public.glyphs = NULL;
+    grapheme->public.count = 0;
+
+    /* Find a font that has all codepoints in the grapheme */
+    if (!font_for_grapheme(font, len, cluster, &inst))
         goto err;
 
     assert(inst->hb_font != NULL);
