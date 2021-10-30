@@ -31,6 +31,15 @@
 ## Unreleased
 ### Added
 ### Changed
+
+* `fcft_glyph_rasterize()` and `fcft_grapheme_rasterize()`: emojis’
+  default presentation is now accounted for when searching for a font
+  containing the emoji codepoint; codepoints whose default
+  presentation is “text” will no longer consider emoji fonts, and
+  codepoints whose default presentation is “emoji” will no longer
+  consider non-emoji fonts.
+
+
 ### Deprecated
 ### Removed
 ### Fixed
