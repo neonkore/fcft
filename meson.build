@@ -73,7 +73,7 @@ stdthreads = cc.find_library('stdthreads', required: false)
 
 tllist = dependency('tllist', version: '>=1.0.1', fallback: 'tllist')
 
-if harfbuzz.found()
+if harfbuzz.found() and utf8proc.found()
   add_project_arguments('-DFCFT_HAVE_HARFBUZZ', language: 'c')
 endif
 
@@ -140,7 +140,7 @@ endif
 
 summary(
   {
-    'Text shaping': harfbuzz.found(),
+    'Text shaping': harfbuzz.found() and utf8proc.found(),
     'Test text shaping': get_option('test-text-shaping'),
   },
   bool_yn: true
