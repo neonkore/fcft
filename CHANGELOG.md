@@ -47,6 +47,11 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* `fcft_text_run_rasterize()`: much improved handling of RTL scripts
+  (in mixed LTR/RTL strings in particular)
+
+
 ### Security
 ### Contributors
 
