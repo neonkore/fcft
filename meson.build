@@ -83,7 +83,7 @@ unicode_data = custom_target(
   output: 'unicode-compose-table.h',
   command: [generate_unicode_precompose_sh, '@INPUT@', '@OUTPUT@'])
 
-python = find_program('python')
+python = find_program('python3')
 generate_emoji_data_py = files('generate-emoji-data.py')
 emoji_data = custom_target(
   'emoji-data',
