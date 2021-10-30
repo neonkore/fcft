@@ -31,6 +31,7 @@
 #include "log.h"
 #include "fcft/stride.h"
 
+#include "emoji-data.h"
 #include "unicode-compose-table.h"
 #include "version.h"
 
@@ -1725,6 +1726,14 @@ glyph_cache_resize(struct font_priv *font)
     return true;
 }
 
+static int
+emoji_compare(const void *_a, const void *_b)
+{
+    const struct emoji *a = _a;
+    const struct emoji *b = _b;
+    return a->cp - b->cp;
+}
+
 FCFT_EXPORT const struct fcft_glyph *
 fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
                      enum fcft_subpixel subpixel)
@@ -1766,6 +1775,11 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
     glyph->public.wc = wc;
     glyph->valid = false;
 
+    const struct emoji *emoji = bsearch(
+        &wc, emojis, ALEN(emojis), sizeof(emojis[0]), &emoji_compare);
+    bool force_text_presentation = emoji != NULL && !emoji->emoji_presentation;
+    bool force_emoji_presentation = emoji != NULL && emoji->emoji_presentation;
+
     assert(tll_length(font->fallbacks) > 0);
 
     bool no_one = true;
@@ -1773,6 +1787,18 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
     tll_foreach(font->fallbacks, it) {
         if (!FcCharSetHasChar(it->item.charset, wc))
             continue;
+
+        static const FcChar8 *const lang_emoji = (const FcChar8 *)"und-zsye";
+
+        if (it->item.langset != NULL) {
+            bool has_lang_emoji =
+                FcLangSetHasLang(it->item.langset, lang_emoji) == FcLangEqual;
+
+            if (force_text_presentation && has_lang_emoji)
+                continue;
+            if (force_emoji_presentation && !has_lang_emoji)
+                continue;
+        }
 
         if (it->item.font == NULL) {
             struct instance *inst = malloc(sizeof(*inst));
