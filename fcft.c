@@ -2262,9 +2262,6 @@ rasterize_partial_run(struct text_run *run, const struct instance *inst,
     const hb_glyph_info_t *infos = hb_buffer_get_glyph_infos(inst->hb_buf, NULL);
     const hb_glyph_position_t *poss = hb_buffer_get_glyph_positions(inst->hb_buf, NULL);
 
-    LOG_DBG("ofs=%zu", ctx->ofs);
-    LOG_DBG("info count: %u", count);
-
     for (int i = 0; i < count; i++) {
         const hb_glyph_info_t *info = &infos[i];
         const hb_glyph_position_t *pos = &poss[i];
