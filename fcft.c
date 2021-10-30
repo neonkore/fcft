@@ -2003,11 +2003,38 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
     grapheme->public.glyphs = NULL;
     grapheme->public.count = 0;
 
+    static const FcChar8 *const lang_emoji = (const FcChar8 *)"und-zsye";
+
     tll_foreach(font->fallbacks, it) {
+        const bool has_lang_emoji = it->item.langset != NULL &&
+            FcLangSetHasLang(it->item.langset, lang_emoji) == FcLangEqual;
+
         bool has_all_code_points = true;
         for (size_t i = 0; i < len && has_all_code_points; i++) {
 
-            const FcChar8 *const emoji = (const FcChar8 *)"und-zsye";
+            const struct emoji *emoji = bsearch(
+                &cluster[i], emojis, ALEN(emojis), sizeof(emojis[0]),
+                &emoji_compare);
+
+            if (emoji != NULL && (i + 1 >= len || (cluster[i + 1] != 0xfe0e &&
+                                                   cluster[i + 1] != 0xfe0f))) {
+                /*
+                 * We have an emoji, that is either the laster
+                 * codepoint in the grapheme, *or* is followed by a
+                 * codepoint that is *not* a presentation selector.
+                 */
+                bool force_text_presentation = !emoji->emoji_presentation;
+                bool force_emoji_presentation = emoji->emoji_presentation;
+
+                if (force_text_presentation && has_lang_emoji) {
+                    has_all_code_points = false;
+                    continue;
+                }
+                if (force_emoji_presentation && !has_lang_emoji) {
+                    has_all_code_points = false;
+                    continue;
+                }
+            }
 
             if (cluster[i] == 0x200d) {
                 /* ZWJ */
@@ -2024,10 +2051,7 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
                     has_all_code_points = false;
                 }
 #endif
-
-                if (it->item.langset != NULL &&
-                    FcLangSetHasLang(it->item.langset, emoji) != FcLangEqual)
-                {
+                if (!has_lang_emoji) {
                     /* Skip font if it isn't an emoji font */
                     has_all_code_points = false;
                 }
@@ -2037,9 +2061,8 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
 
             else if (cluster[i] == 0xfe0e) {
                 /* Explicit text selector */
-                if (it->item.langset != NULL &&
-                    FcLangSetHasLang(it->item.langset, emoji) == FcLangEqual)
-                {
+
+                if (has_lang_emoji) {
                     /* Skip font if it is an emoji font */
                     has_all_code_points = false;
                 }
