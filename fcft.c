@@ -22,6 +22,7 @@
 #if defined(FCFT_HAVE_HARFBUZZ)
  #include <harfbuzz/hb.h>
  #include <harfbuzz/hb-ft.h>
+ #include <utf8proc.h>
 #endif
 
 #include <tllist.h>
@@ -2183,8 +2184,6 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
                 (int)(pos[i].y_offset / 64. * inst->pixel_size_fixup));
 #endif
 
-        /* TODO: figure out what’s up with the ‘y’ offset (and are we
-         * really handling ‘x’ correctly?) */
         glyph->public.x += pos[i].x_offset / 64. * inst->pixel_size_fixup;
         glyph->public.y += pos[i].y_offset / 64. * inst->pixel_size_fixup;
         glyph->public.advance.x = pos[i].x_advance / 64. * inst->pixel_size_fixup;
@@ -2231,60 +2230,19 @@ err:
 }
 
 struct text_run_context {
-    enum text_run_state {
-        TEXT_RUN_PRIMARY,
-        TEXT_RUN_PRIMARY_FORCE,
-        TEXT_RUN_FALLBACK,
-        TEXT_RUN_DONE,
-        TEXT_RUN_ERROR,
-    } state;
-
-    const uint32_t *const text;
-    const size_t len;
-    size_t ofs;
-
-    struct {
-        const struct fcft_glyph **items;
-        int *cluster;
-        size_t size;
-        size_t count;
-    } glyphs;
-
-    struct {
-        hb_direction_t dir;
-        size_t since;
-    } direction;
+    const struct fcft_glyph **glyphs;
+    int *cluster;
+    size_t size;
+    size_t count;
 };
 
-static void
-text_run_reverse_rtl(struct text_run_context *ctx)
+static bool
+rasterize_partial_run(struct text_run_context *ctx, const struct instance *inst,
+                      const uint32_t *text, size_t len,
+                      size_t run_start, size_t run_len,
+                      enum fcft_subpixel subpixel)
 {
-    assert(ctx->direction.dir == HB_DIRECTION_RTL);
-
-    /* Reverse all RTL glyphs we’ve emitted so far */
-    size_t start = ctx->direction.since;
-    size_t end = ctx->glyphs.count;
-    size_t middle = start + (end - start) / 2;
-
-    LOG_DBG("reversing %zu glyphs (%zu-%zu, middle=%zu)",
-            end - start, start, end, middle);
-
-    for (size_t i = start; i < middle; i++) {
-        LOG_DBG("  swapping %zu with %zu", i, end - (i - start) - 1);
-
-        const struct fcft_glyph *tmp = ctx->glyphs.items[i];
-        ctx->glyphs.items[i] = ctx->glyphs.items[end - (i - start) - 1];
-        ctx->glyphs.items[end - (i - start) - 1] = tmp;
-    }
-}
-
-static enum text_run_state
-text_run_rasterize_partial(
-    FcCharSet *charset, struct instance *inst, enum fcft_subpixel subpixel,
-    struct text_run_context *ctx)
-{
-    hb_buffer_add_utf32(
-        inst->hb_buf, ctx->text, ctx->len, ctx->ofs, ctx->len - ctx->ofs);
+    hb_buffer_add_utf32(inst->hb_buf, text, len, run_start, run_len);
     hb_buffer_guess_segment_properties(inst->hb_buf);
 
     hb_segment_properties_t props;
@@ -2297,18 +2255,8 @@ text_run_rasterize_partial(
         props.direction != HB_DIRECTION_RTL)
     {
         LOG_ERR("unimplemented: hb_direction=%d", props.direction);
-        return TEXT_RUN_ERROR;
+        return false;
     }
-
-    if (props.direction != ctx->direction.dir) {
-        if (ctx->direction.dir == HB_DIRECTION_RTL)
-            text_run_reverse_rtl(ctx);
-
-        ctx->direction.dir = props.direction;
-        ctx->direction.since = ctx->glyphs.count;
-    }
-
-    const bool rtl = props.direction == HB_DIRECTION_RTL;
 
     hb_shape(inst->hb_font, inst->hb_buf, inst->hb_feats, inst->hb_feats_count);
 
@@ -2320,94 +2268,54 @@ text_run_rasterize_partial(
     LOG_DBG("info count: %u", count);
 
     for (int i = 0; i < count; i++) {
-        const hb_glyph_info_t *info = &infos[rtl ? count - i - 1 : i];
-        const hb_glyph_position_t *pos = &poss[rtl ? count - i - 1 : i];
+        const hb_glyph_info_t *info = &infos[i];
+        const hb_glyph_position_t *pos = &poss[i];
 
         LOG_DBG("#%u: codepoint=%04x, cluster=%d", i, info->codepoint, info->cluster);
 
-        if (ctx->state == TEXT_RUN_FALLBACK && info->cluster != ctx->ofs) {
-            ctx->ofs = info->cluster;
-            return TEXT_RUN_PRIMARY;
-        }
-
-        if ((info->codepoint == 0 ||
-             !FcCharSetHasChar(charset, ctx->text[info->cluster]))
-            && ctx->state != TEXT_RUN_PRIMARY_FORCE)
-        {
-            ctx->ofs = info->cluster;
-            for (ssize_t j = ctx->glyphs.count - 1; j >= 0; j--) {
-                if (ctx->glyphs.cluster[j] != info->cluster) {
-                    /* Assume they are sorted */
-                    break;
-                }
-
-                glyph_destroy(ctx->glyphs.items[j]);
-                ctx->glyphs.count--;
-            }
-            return TEXT_RUN_FALLBACK;
-        }
-
-        assert(info->codepoint != 0 || ctx->state == TEXT_RUN_PRIMARY_FORCE);
-
         struct glyph_priv *glyph = malloc(sizeof(*glyph));
         if (glyph == NULL)
-            return TEXT_RUN_ERROR;
+            return false;
 
         if (!glyph_for_index(inst, info->codepoint, subpixel, glyph)) {
             free(glyph);
             continue;
         }
 
-        assert(info->cluster < ctx->len);
-        glyph->public.wc = ctx->text[info->cluster];
+        assert(info->cluster < len);
+        glyph->public.wc = text[info->cluster];
         glyph->public.cols = wcwidth(glyph->public.wc);
 
-#if 0
-        LOG_DBG("text-run: #%zu: x: advance: %d -> %d, offset: %d -> %d",
-                ctx->ofs, glyph->public.advance.x,
-                (int)(pos->x_advance / 64. * inst->pixel_size_fixup),
-                glyph->public.x,
-                (int)(pos->x_offset / 64. * inst->pixel_size_fixup));
-        LOG_DBG("text-run: #%zu: y: advance: %d -> %d, offset: %d -> %d",
-                ctx->ofs, glyph->public.advance.y,
-                (int)(pos->y_advance / 64. * inst->pixel_size_fixup),
-                glyph->public.y,
-                (int)(pos->y_offset / 64. * inst->pixel_size_fixup));
-#endif
-
-        /* TODO: figure out what’s up with the ‘y’ offset (and are we
-         * really handling ‘x’ correctly?) */
         glyph->public.x += pos->x_offset / 64. * inst->pixel_size_fixup;
         glyph->public.y += pos->y_offset / 64. * inst->pixel_size_fixup;
         glyph->public.advance.x = pos->x_advance / 64. * inst->pixel_size_fixup;
         glyph->public.advance.y = pos->y_advance / 64. * inst->pixel_size_fixup;
 
-        if (ctx->glyphs.count >= ctx->glyphs.size) {
-            size_t new_glyphs_size = ctx->glyphs.size * 2;
+        if (ctx->count >= ctx->size) {
+            size_t new_glyphs_size = ctx->size * 2;
             const struct fcft_glyph **new_glyphs = realloc(
-                ctx->glyphs.items, new_glyphs_size * sizeof(new_glyphs[0]));
+                ctx->glyphs, new_glyphs_size * sizeof(new_glyphs[0]));
             int *new_cluster = realloc(
-                ctx->glyphs.cluster, new_glyphs_size * sizeof(new_cluster[0]));
+                ctx->cluster, new_glyphs_size * sizeof(new_cluster[0]));
 
             if (new_glyphs == NULL || new_cluster == NULL) {
                 free(new_glyphs);
                 free(new_cluster);
-                return TEXT_RUN_ERROR;
+                return false;
             }
 
-            ctx->glyphs.items = new_glyphs;
-            ctx->glyphs.cluster = new_cluster;
-            ctx->glyphs.size = new_glyphs_size;
+            ctx->glyphs = new_glyphs;
+            ctx->cluster = new_cluster;
+            ctx->size = new_glyphs_size;
         }
 
-        assert(ctx->glyphs.count < ctx->glyphs.size);
-        ctx->glyphs.cluster[ctx->glyphs.count] = info->cluster;
-        ctx->glyphs.items[ctx->glyphs.count] = &glyph->public;
-        ctx->glyphs.count++;
+        assert(ctx->count < ctx->size);
+        ctx->cluster[ctx->count] = info->cluster;
+        ctx->glyphs[ctx->count] = &glyph->public;
+        ctx->count++;
     }
 
-    ctx->ofs = ctx->len;
-    return TEXT_RUN_DONE;
+    return true;
 }
 
 FCFT_EXPORT struct fcft_text_run *
@@ -2420,106 +2328,153 @@ fcft_text_run_rasterize(
     LOG_DBG("rasterizing a %zu character text run", len);
 
     struct text_run_context ctx = {
-        .state = TEXT_RUN_PRIMARY,
-        .text = (const uint32_t *)text,
-        .len = len,
-
-        .glyphs = {
-            .size = len,
-            .items = malloc(len * sizeof(ctx.glyphs.items[0])),
-            .cluster = malloc(len * sizeof(ctx.glyphs.cluster[0])),
-        },
-
-        .direction = {
-            .dir = HB_DIRECTION_INVALID,
-            .since = 0,
-        },
+        .size = len,
+        .glyphs = malloc(len * sizeof(ctx.glyphs[0])),
+        .cluster = malloc(len * sizeof(ctx.cluster[0])),
     };
 
-    if (ctx.glyphs.items == NULL || ctx.glyphs.cluster == NULL) {
-        free(ctx.glyphs.items);
-        free(ctx.glyphs.cluster);
+    if (ctx.glyphs == NULL || ctx.cluster == NULL) {
+        free(ctx.glyphs);
+        free(ctx.cluster);
         return NULL;
     }
 
     mtx_lock(&font->lock);
 
-    while (ctx.state != TEXT_RUN_DONE) {
-        if (ctx.state == TEXT_RUN_FALLBACK) {
-            /* We ran out of fallback fonts, force using the primary */
-            ctx.state = TEXT_RUN_PRIMARY_FORCE;
-        }
+    struct partial_run {
+        size_t start;
+        size_t len;
+        struct instance *inst;
+    };
 
-        tll_foreach(font->fallbacks, it) {
-            struct instance *inst = it->item.font;
-            FcCharSet *charset = it->item.charset;
+    tll(struct partial_run) pruns = tll_init();
+    tll_push_back(pruns, ((struct partial_run){.start = 0}));
 
-            if (ctx.state != TEXT_RUN_PRIMARY_FORCE &&
-                !FcCharSetHasChar(charset, text[ctx.ofs]))
+    /* Split run into graphemes */
+    utf8proc_int32_t state;
+    for (size_t i = 1; i < len; i++) {
+        if (utf8proc_grapheme_break_stateful(text[i - 1], text[i], &state)) {
+            state = 0;
+
+            struct partial_run *prun = &tll_back(pruns);
+
+            assert(i > prun->start);
+            prun->len = i - prun->start;
+
+            if (!font_for_grapheme(
+                    font, prun->len, &text[prun->start], &prun->inst))
             {
-                ctx.state = TEXT_RUN_FALLBACK;
-                continue;
-            }
-
-
-            if (inst == NULL) {
-                inst = malloc(sizeof(*inst));
-                if (inst == NULL)
-                    goto err;
-
-                if (!instantiate_pattern(
-                        it->item.pattern,
-                        it->item.req_pt_size, it->item.req_px_size,
-                        inst))
-                {
-                    /* Remove, so that we don't have to keep trying to
-                     * instantiate it */
-                    free(inst);
-                    fallback_destroy(&it->item);
-                    tll_remove(font->fallbacks, it);
-                    continue;
-                }
-
-                it->item.font = inst;
-            }
-
-            ctx.state = text_run_rasterize_partial(charset, inst, subpixel, &ctx);
-            hb_buffer_clear_contents(inst->hb_buf);
-
-            if (ctx.state == TEXT_RUN_PRIMARY) {
-                LOG_DBG("switching (back) to primary font at offset %zu/%zu",
-                        ctx.ofs, ctx.len);
-                break;
-            } else if (ctx.state == TEXT_RUN_FALLBACK) {
-                LOG_DBG("switching to next fallback font at offset %zu/%zu",
-                        ctx.ofs, ctx.len);
-                /* continue; */
-            } else if (ctx.state == TEXT_RUN_DONE) {
-                break;
-            } else if (ctx.state == TEXT_RUN_ERROR) {
                 goto err;
             }
+
+            tll_push_back(pruns, ((struct partial_run){.start = i}));
         }
     }
 
-    if (ctx.direction.dir == HB_DIRECTION_RTL)
-        text_run_reverse_rtl(&ctx);
+    /* “Close” that last run */
+    {
+        struct partial_run *prun = &tll_back(pruns);
 
+        assert(prun->len == 0);
+        prun->len = len - prun->start;
+
+        if (!font_for_grapheme(
+                font, prun->len, &text[prun->start], &prun->inst))
+        {
+            goto err;
+        }
+    }
+
+#if defined(_DEBUG) && LOG_ENABLE_DBG
+    LOG_DBG("%zu partial runs (before merge):", tll_length(pruns));
+    tll_foreach(pruns, it) {
+        const struct partial_run *prun = &it->item;
+        LOG_DBG("  %.*ls (start=%zu, %zu chars), inst=%p",
+                (int)prun->len, &text[prun->start], prun->start,
+                prun->len, prun->inst);
+    }
+#endif
+
+    /*
+     * Merge consecutive graphemes if:
+     *  - they belong to the same script (“language”)
+     *  - they have the same font instance
+     */
+    {
+        hb_buffer_t *hb_buf = hb_buffer_create();
+        if (hb_buf == NULL)
+            goto err;
+
+        struct partial_run *prev = NULL;
+        hb_script_t prev_script = HB_SCRIPT_INVALID;
+
+        tll_foreach(pruns, it) {
+            struct partial_run *prun = &it->item;
+
+            /* Get script (“language”) of grapheme */
+            hb_buffer_add_utf32(
+                hb_buf, (const uint32_t *)text, len, prun->start, prun->len);
+            hb_buffer_guess_segment_properties(hb_buf);
+
+            hb_script_t script = hb_buffer_get_script(hb_buf);
+            hb_buffer_clear_contents(hb_buf);
+
+            if (prev == NULL) {
+                prev = prun;
+                prev_script = script;
+                continue;
+            }
+
+            if (prev->inst == prun->inst && prev_script == script) {
+                prev->len += prun->len;
+                tll_remove(pruns, it);
+            } else {
+                prev = prun;
+                prev_script = script;
+            }
+        }
+
+        hb_buffer_destroy(hb_buf);
+    }
+
+#if defined(_DEBUG) && LOG_ENABLE_DBG
+    LOG_DBG("%zu partial runs (after merge):", tll_length(pruns));
+    tll_foreach(pruns, it) {
+        const struct partial_run *prun = &it->item;
+        LOG_DBG("  %.*ls (start=%zu, %zu chars), inst=%p",
+                (int)prun->len, &text[prun->start], prun->start,
+                prun->len, prun->inst);
+    }
+#endif
+
+    /* Shape each partial run */
+    tll_foreach(pruns, it) {
+        const struct partial_run *prun = &it->item;
+
+        bool ret = rasterize_partial_run(
+            &ctx, prun->inst, (const uint32_t *)text, len,
+            prun->start, prun->len, subpixel);
+
+        hb_buffer_clear_contents(prun->inst->hb_buf);
+        if (!ret)
+            goto err;
+    }
+
+    /* Re-alloc glyphs/cluster arrays */
     {
         const struct fcft_glyph **final_glyphs = realloc(
-            ctx.glyphs.items, ctx.glyphs.count * sizeof(final_glyphs[0]));
+            ctx.glyphs, ctx.count * sizeof(final_glyphs[0]));
         int *final_cluster = realloc(
-            ctx.glyphs.cluster, ctx.glyphs.count * sizeof(final_cluster[0]));
-        if ((final_glyphs == NULL || final_cluster == NULL) &&
-            ctx.glyphs.count > 0)
-        {
+            ctx.cluster, ctx.count * sizeof(final_cluster[0]));
+
+        if ((final_glyphs == NULL || final_cluster == NULL) && ctx.count > 0) {
             free(final_glyphs);
             free(final_cluster);
             goto err;
         }
 
-        ctx.glyphs.items = final_glyphs;
-        ctx.glyphs.cluster = final_cluster;
+        ctx.glyphs = final_glyphs;
+        ctx.cluster = final_cluster;
     }
 
     LOG_DBG("glyph count: %zu", ctx.glyphs.count);
@@ -2529,22 +2484,25 @@ fcft_text_run_rasterize(
         goto err;
 
     *ret = (struct fcft_text_run){
-        .glyphs = ctx.glyphs.items,
-        .cluster = ctx.glyphs.cluster,
-        .count = ctx.glyphs.count,
+        .glyphs = ctx.glyphs,
+        .cluster = ctx.cluster,
+        .count = ctx.count,
     };
 
+    tll_free(pruns);
     mtx_unlock(&font->lock);
     return ret;
 
 err:
-    for (size_t i = 0; i < ctx.glyphs.count; i++) {
-        assert(ctx.glyphs.items[i] != NULL);
-        glyph_destroy(ctx.glyphs.items[i]);
-    }
-    free(ctx.glyphs.items);
-    free(ctx.glyphs.cluster);
 
+    for (size_t i = 0; i < ctx.count; i++) {
+        assert(ctx.glyphs[i] != NULL);
+        glyph_destroy(ctx.glyphs[i]);
+    }
+    free(ctx.glyphs);
+    free(ctx.cluster);
+
+    tll_free(pruns);
     mtx_unlock(&font->lock);
     return NULL;
 }

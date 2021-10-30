@@ -67,6 +67,7 @@ threads = dependency('threads')
 fontconfig = dependency('fontconfig')
 freetype = dependency('freetype2')
 harfbuzz = dependency('harfbuzz', required: get_option('text-shaping'))
+utf8proc = dependency('libutf8proc', required: get_option('text-shaping'))
 pixman = dependency('pixman-1')
 stdthreads = cc.find_library('stdthreads', required: false)
 
@@ -104,7 +105,7 @@ fcft_lib = build_target(
   unicode_data, emoji_data, version,
   target_type: meson.is_subproject() ? 'static_library' : 'library',
   version: '.'.join(so_version),
-  dependencies: [math, threads, fontconfig, freetype, harfbuzz, pixman, tllist, stdthreads],
+  dependencies: [math, threads, fontconfig, freetype, harfbuzz, utf8proc, pixman, tllist, stdthreads],
   gnu_symbol_visibility: 'hidden',
   install: not meson.is_subproject())
 
