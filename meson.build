@@ -83,6 +83,14 @@ unicode_data = custom_target(
   output: 'unicode-compose-table.h',
   command: [generate_unicode_precompose_sh, '@INPUT@', '@OUTPUT@'])
 
+python = find_program('python')
+generate_emoji_data_py = files('generate-emoji-data.py')
+emoji_data = custom_target(
+  'emoji-data',
+  input: 'unicode/emoji-data.txt',
+  output: 'emoji-data.h',
+  command: [python, generate_emoji_data_py, '@INPUT@', '@OUTPUT@'])
+
 env = find_program('env', native: true)
 generate_version_sh = files('generate-version.sh')
 version = custom_target(
@@ -93,7 +101,7 @@ version = custom_target(
 
 fcft_lib = build_target(
   'fcft', 'fcft.c', 'fcft/fcft.h', 'fcft/stride.h', 'log.c', 'log.h',
-  unicode_data, version,
+  unicode_data, emoji_data, version,
   target_type: meson.is_subproject() ? 'static_library' : 'library',
   version: '.'.join(so_version),
   dependencies: [math, threads, fontconfig, freetype, harfbuzz, pixman, tllist, stdthreads],
