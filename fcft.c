@@ -1971,9 +1971,9 @@ font_for_grapheme(struct font_priv *font,
             if (emoji != NULL && (i + 1 >= len || (cluster[i + 1] != 0xfe0e &&
                                                    cluster[i + 1] != 0xfe0f))) {
                 /*
-                 * We have an emoji, that is either the laster
-                 * codepoint in the grapheme, *or* is followed by a
-                 * codepoint that is *not* a presentation selector.
+                 * We have an emoji, that is either the last codepoint
+                 * in the grapheme, *or* is followed by a codepoint
+                 * that is *not* a presentation selector.
                  */
                 bool force_text_presentation = !emoji->emoji_presentation;
                 bool force_emoji_presentation = emoji->emoji_presentation;
@@ -1982,6 +1982,7 @@ font_for_grapheme(struct font_priv *font,
                     has_all_code_points = false;
                     continue;
                 }
+
                 if (force_emoji_presentation && !has_lang_emoji) {
                     has_all_code_points = false;
                     continue;
