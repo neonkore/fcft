@@ -1984,7 +1984,7 @@ grapheme_cache_resize(struct font_priv *font)
 static bool
 font_for_grapheme(struct font_priv *font,
                   size_t len, const wchar_t cluster[static len],
-                  struct instance **inst)
+                  struct instance **inst, bool enforce_presentation_style)
 {
     static const FcChar8 *const lang_emoji = (const FcChar8 *)"und-zsye";
 
@@ -1999,8 +1999,10 @@ font_for_grapheme(struct font_priv *font,
                 &cluster[i], emojis, ALEN(emojis), sizeof(emojis[0]),
                 &emoji_compare);
 
-            if (emoji != NULL && (i + 1 >= len || (cluster[i + 1] != 0xfe0e &&
-                                                   cluster[i + 1] != 0xfe0f))) {
+            if (enforce_presentation_style &&
+                emoji != NULL &&
+                (i + 1 >= len || (cluster[i + 1] != 0xfe0e &&
+                                  cluster[i + 1] != 0xfe0f))) {
                 /*
                  * We have an emoji, that is either the last codepoint
                  * in the grapheme, *or* is followed by a codepoint
@@ -2104,6 +2106,9 @@ font_for_grapheme(struct font_priv *font,
         }
     }
 
+    if (enforce_presentation_style)
+        return font_for_grapheme(font, len, cluster, inst, false);
+
     /* No font found, use primary font anyway */
     *inst = tll_front(font->fallbacks).font;
     return *inst != NULL;
@@ -2165,7 +2170,7 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
     grapheme->public.count = 0;
 
     /* Find a font that has all codepoints in the grapheme */
-    if (!font_for_grapheme(font, len, cluster, &inst))
+    if (!font_for_grapheme(font, len, cluster, &inst, true))
         goto err;
 
     assert(inst->hb_font != NULL);
@@ -2410,7 +2415,7 @@ fcft_text_run_rasterize(
             prun->len = i - prun->start;
 
             if (!font_for_grapheme(
-                    font, prun->len, &text[prun->start], &prun->inst))
+                    font, prun->len, &text[prun->start], &prun->inst, true))
             {
                 goto err;
             }
@@ -2427,7 +2432,7 @@ fcft_text_run_rasterize(
         prun->len = len - prun->start;
 
         if (!font_for_grapheme(
-                font, prun->len, &text[prun->start], &prun->inst))
+                font, prun->len, &text[prun->start], &prun->inst, true))
         {
             goto err;
         }
