@@ -1778,8 +1778,11 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
     glyph->public.wc = wc;
     glyph->valid = false;
 
+    const struct emoji key = {.cp = wc};
     const struct emoji *emoji = bsearch(
-        &wc, emojis, ALEN(emojis), sizeof(emojis[0]), &emoji_compare);
+        &key, emojis, ALEN(emojis), sizeof(emojis[0]), &emoji_compare);
+
+    assert(emoji == NULL || emoji->cp == wc);
 
     bool force_text_presentation = false;
     bool force_emoji_presentation = false;
