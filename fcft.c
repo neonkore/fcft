@@ -1742,6 +1742,27 @@ emoji_compare(const void *_key, const void *_emoji)
     return 0;
 }
 
+#if defined(_DEBUG)
+static void __attribute__((constructor))
+test_emoji_compare(void)
+{
+    /* WHITE SMILING FACE */
+    const struct emoji *e = bsearch(
+        &(uint32_t){0x263a}, emojis, ALEN(emojis), sizeof(emojis[0]), &emoji_compare);
+
+    assert(e != NULL);
+    assert(0x263a >= e->cp);
+    assert(0x263a < e->cp + e->count);
+    assert(!e->emoji_presentation);
+
+    e = bsearch(
+        &(uint32_t){'a'}, emojis, ALEN(emojis), sizeof(emojis[0]), &emoji_compare);
+
+    assert(e == NULL);
+
+}
+#endif
+
 FCFT_EXPORT const struct fcft_glyph *
 fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
                      enum fcft_subpixel subpixel)
