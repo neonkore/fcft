@@ -1734,7 +1734,7 @@ emoji_compare(const void *_a, const void *_b)
 {
     const struct emoji *a = _a;
     const struct emoji *b = _b;
-    return a->cp - b->cp;
+    return (int32_t)a->cp - (int32_t)b->cp;
 }
 
 FCFT_EXPORT const struct fcft_glyph *
