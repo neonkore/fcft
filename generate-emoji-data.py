@@ -40,6 +40,9 @@ for line in opts.input:
     if len(codepoint_range) == 1:
         codepoint_range = codepoint_range[0], codepoint_range[0]
 
+    for cp in range(codepoint_range[0], codepoint_range[1] + 1):
+        assert cp < (1 << 24), f'codepoint is outside range: 0x{cp:x}'
+
     if props == 'Emoji':
         for cp in range(codepoint_range[0], codepoint_range[1] + 1):
             assert cp not in emojis
