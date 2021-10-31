@@ -1746,6 +1746,7 @@ emoji_compare(const void *_key, const void *_emoji)
 static void __attribute__((constructor))
 test_emoji_compare(void)
 {
+#if defined(FCFT_HAVE_HARFBUZZ)
     /* WHITE SMILING FACE */
     const struct emoji *e = bsearch(
         &(uint32_t){0x263a}, emojis, ALEN(emojis), sizeof(emojis[0]), &emoji_compare);
@@ -1759,7 +1760,9 @@ test_emoji_compare(void)
         &(uint32_t){'a'}, emojis, ALEN(emojis), sizeof(emojis[0]), &emoji_compare);
 
     assert(e == NULL);
-
+#else
+    assert(ALEN(emojis) == 0);
+#endif
 }
 #endif
 
