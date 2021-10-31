@@ -186,7 +186,7 @@ void fcft_log_init(
  * presentation forms. Nor does it affect emoji codepoints followed by
  * an explicit presentation selector (0xfe0e or 0xfe0f).
  *
- * Note that this setting is always applied (for emojis with multple
+ * Note that this setting is always applied (for emojis with multiple
  * presentation forms, that is) in fcft_glyph_rasterize(), since it
  * only sees a single codepoint.
  *
