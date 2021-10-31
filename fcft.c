@@ -233,7 +233,6 @@ init(void)
 
     mtx_init(&ft_lock, mtx_plain);
     mtx_init(&font_cache_lock, mtx_plain);
-
 }
 
 static void __attribute__((destructor))
@@ -1730,11 +1729,17 @@ glyph_cache_resize(struct font_priv *font)
 }
 
 static int
-emoji_compare(const void *_a, const void *_b)
+emoji_compare(const void *_key, const void *_emoji)
 {
-    const struct emoji *a = _a;
-    const struct emoji *b = _b;
-    return (int32_t)a->cp - (int32_t)b->cp;
+    const uint32_t key = *(const uint32_t *)_key;
+    const struct emoji *emoji = _emoji;
+
+    if (key < emoji->cp)
+        return -1;
+    if (key >= emoji->cp + emoji->count)
+        return 1;
+    assert(key >= emoji->cp && key < emoji->cp + emoji->count);
+    return 0;
 }
 
 FCFT_EXPORT const struct fcft_glyph *
@@ -1778,11 +1783,10 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
     glyph->public.wc = wc;
     glyph->valid = false;
 
-    const struct emoji key = {.cp = wc};
     const struct emoji *emoji = bsearch(
-        &key, emojis, ALEN(emojis), sizeof(emojis[0]), &emoji_compare);
+        &wc, emojis, ALEN(emojis), sizeof(emojis[0]), &emoji_compare);
 
-    assert(emoji == NULL || emoji->cp == wc);
+    assert(emoji == NULL || (wc >= emoji->cp && wc < emoji->cp + emoji->count));
 
     bool force_text_presentation = false;
     bool force_emoji_presentation = false;
@@ -1998,10 +2002,11 @@ font_for_grapheme(struct font_priv *font,
         bool has_all_code_points = true;
         for (size_t i = 0; i < len && has_all_code_points; i++) {
 
-            const struct emoji key = {.cp = cluster[i]};
             const struct emoji *emoji = bsearch(
-                &key, emojis, ALEN(emojis), sizeof(emojis[0]), &emoji_compare);
-            assert(emoji == NULL || emoji->cp == cluster[i]);
+                &cluster[i], emojis, ALEN(emojis), sizeof(emojis[0]), &emoji_compare);
+
+            assert(emoji == NULL || (cluster[i] >= emoji->cp &&
+                                     cluster[i] < emoji->cp + emoji->count));
 
             if (enforce_presentation_style &&
                 emoji != NULL &&
