@@ -142,6 +142,8 @@ enum fcft_scaling_filter {
     FCFT_SCALING_FILTER_LANCZOS3,
 };
 
+/* Note: this function does not clear any caches - call *before*
+ * rasterizing any glyphs! */
 bool fcft_set_scaling_filter(enum fcft_scaling_filter filter);
 
 /*
@@ -172,3 +174,30 @@ enum fcft_log_class {
 void fcft_log_init(
     enum fcft_log_colorize colorize, bool do_syslog,
     enum fcft_log_class log_level);
+
+/*
+ * Emoji presentation
+ *
+ * This API allows you to configure which emoji presentation to use
+ * for emojis that have both a “text” and an “emoji” presentation,
+ * when no explicit presentation selector is present.
+ *
+ * This setting does *not* affect emojis that does not have multiple
+ * presentation forms. Nor does it affect emoji codepoints followed by
+ * an explicit presentation selector (0xfe0e or 0xfe0f).
+ *
+ * Note that this setting is always applied (for emojis with multple
+ * presentation forms, that is) in fcft_glyph_rasterize(), since it
+ * only sees a single codepoint.
+ *
+ * Note: this function does *not* clear the glyph or grapheme caches -
+ * call *before* rasterizing any glyphs!
+ */
+enum fcft_emoji_presentation {
+    FCFT_EMOJI_PRESENTATION_DEFAULT,
+    FCFT_EMOJI_PRESENTATION_TEXT,
+    FCFT_EMOJI_PRESENTATION_EMOJI,
+};
+
+void fcft_set_emoji_presentation(
+    struct fcft_font *font, enum fcft_emoji_presentation presentation);

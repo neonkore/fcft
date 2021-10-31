@@ -139,6 +139,7 @@ struct font_priv {
 #endif
 
     tll(struct fallback) fallbacks;
+    enum fcft_emoji_presentation emoji_presentation;
     size_t ref_counter;
 };
 
@@ -1033,6 +1034,7 @@ fcft_from_name(size_t count, const char *names[static count],
             font->glyph_cache.size = glyph_cache_initial_size;
             font->glyph_cache.count = 0;
             font->glyph_cache.table = glyph_cache_table;
+            font->emoji_presentation = FCFT_EMOJI_PRESENTATION_DEFAULT;
             font->public = primary->metrics;
 
 #if defined(FCFT_HAVE_HARFBUZZ)
@@ -1776,10 +1778,30 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
     glyph->public.wc = wc;
     glyph->valid = false;
 
+    bool force_text_presentation = false;
+    bool force_emoji_presentation = false;
+
     const struct emoji *emoji = bsearch(
         &wc, emojis, ALEN(emojis), sizeof(emojis[0]), &emoji_compare);
-    bool force_text_presentation = emoji != NULL && !emoji->emoji_presentation;
-    bool force_emoji_presentation = emoji != NULL && emoji->emoji_presentation;
+
+    if (emoji != NULL) {
+        switch (font->emoji_presentation) {
+        case FCFT_EMOJI_PRESENTATION_TEXT:
+            force_text_presentation = true;
+            force_emoji_presentation = false;
+            break;
+
+        case FCFT_EMOJI_PRESENTATION_EMOJI:
+            force_text_presentation = false;
+            force_emoji_presentation = true;
+            break;
+
+        case FCFT_EMOJI_PRESENTATION_DEFAULT:
+            force_text_presentation = !emoji->emoji_presentation;
+            force_emoji_presentation = emoji->emoji_presentation;
+            break;
+        }
+    }
 
     assert(tll_length(font->fallbacks) > 0);
 
@@ -1975,8 +1997,25 @@ font_for_grapheme(struct font_priv *font,
                  * in the grapheme, *or* is followed by a codepoint
                  * that is *not* a presentation selector.
                  */
-                bool force_text_presentation = !emoji->emoji_presentation;
-                bool force_emoji_presentation = emoji->emoji_presentation;
+                bool force_text_presentation = false;
+                bool force_emoji_presentation = false;
+
+                switch (font->emoji_presentation) {
+                case FCFT_EMOJI_PRESENTATION_TEXT:
+                    force_text_presentation = true;
+                    force_emoji_presentation = false;
+                    break;
+
+                case FCFT_EMOJI_PRESENTATION_EMOJI:
+                    force_text_presentation = false;
+                    force_emoji_presentation = true;
+                    break;
+
+                case FCFT_EMOJI_PRESENTATION_DEFAULT:
+                    force_text_presentation = !emoji->emoji_presentation;
+                    force_emoji_presentation = emoji->emoji_presentation;
+                    break;
+                }
 
                 if (force_text_presentation && has_lang_emoji) {
                     has_all_code_points = false;
@@ -2729,4 +2768,12 @@ fcft_precompose(const struct fcft_font *_font, wchar_t base, wchar_t comb,
     if (composed_is_from_primary != NULL)
         *composed_is_from_primary = false;
     return (wchar_t)-1;
+}
+
+FCFT_EXPORT void
+fcft_set_emoji_presentation(struct fcft_font *_font,
+                            enum fcft_emoji_presentation presentation)
+{
+    struct font_priv *font = (struct font_priv *)_font;
+    font->emoji_presentation = presentation;
 }

@@ -32,6 +32,7 @@
 ### Added
 
 * Text shaping now requires libutf8proc (in addition to HarfBuzz)
+* `fcft_set_emoji_presentation()`.
 
 
 ### Changed
