@@ -51,3 +51,8 @@ emojis to be rendered in their emoji presentation style.
 
 This function does *not* clear the glyph caches and should therefore be
 called before rasterizing any glyphs.
+
+# SEE ALSO
+
+*fcft_glyph_rasterize*(), *fcft_grapheme_rasterize*(),
+*fcft_text_run_rasterize*()
