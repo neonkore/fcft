@@ -1998,9 +1998,10 @@ font_for_grapheme(struct font_priv *font,
         bool has_all_code_points = true;
         for (size_t i = 0; i < len && has_all_code_points; i++) {
 
+            const struct emoji key = {.cp = cluster[i]};
             const struct emoji *emoji = bsearch(
-                &cluster[i], emojis, ALEN(emojis), sizeof(emojis[0]),
-                &emoji_compare);
+                &key, emojis, ALEN(emojis), sizeof(emojis[0]), &emoji_compare);
+            assert(emoji == NULL || emoji->cp == cluster[i]);
 
             if (enforce_presentation_style &&
                 emoji != NULL &&
