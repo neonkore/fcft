@@ -1778,11 +1778,12 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
     glyph->public.wc = wc;
     glyph->valid = false;
 
-    bool force_text_presentation = false;
-    bool force_emoji_presentation = false;
-
     const struct emoji *emoji = bsearch(
         &wc, emojis, ALEN(emojis), sizeof(emojis[0]), &emoji_compare);
+
+    bool force_text_presentation = false;
+    bool force_emoji_presentation = false;
+    bool enforce_presentation_style = emoji != NULL;
 
     if (emoji != NULL) {
         switch (font->emoji_presentation) {
@@ -1807,13 +1808,16 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
 
     bool no_one = true;
     bool got_glyph = false;
+
+search_fonts:
+
     tll_foreach(font->fallbacks, it) {
         if (!FcCharSetHasChar(it->item.charset, wc))
             continue;
 
         static const FcChar8 *const lang_emoji = (const FcChar8 *)"und-zsye";
 
-        if (it->item.langset != NULL) {
+        if (enforce_presentation_style && it->item.langset != NULL) {
             bool has_lang_emoji =
                 FcLangSetHasLang(it->item.langset, lang_emoji) == FcLangEqual;
 
@@ -1848,6 +1852,11 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
         got_glyph = glyph_for_wchar(it->item.font, wc, subpixel, glyph);
         no_one = false;
         break;
+    }
+
+    if (no_one && enforce_presentation_style) {
+        enforce_presentation_style = false;
+        goto search_fonts;
     }
 
     if (no_one) {
