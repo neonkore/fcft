@@ -40,6 +40,10 @@ for _presentation_ are:
 - *FCFT\_EMOJI\_PRESENTATION\_TEXT*
 - *FCFT\_EMOJI\_PRESENTATION\_EMOJI*
 
+To re-iterate; this setting affects emoji's without an explicit
+variation selector. In other words, it overrides the *default*
+presentation style.
+
 *FCFT\_EMOJI\_PRESENTATION\_DEFAULT* is the default, and causes fcft
 to use the default presentation as defined by Unicode.
 
