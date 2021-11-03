@@ -23,7 +23,7 @@ One example of such an emoji is U+263A - WHITE SMILING FACE:
 - text: ☺︎
 - emoji: ☺️
 
-These emojis can be followed by an (invisible) presentation
+These emojis can be followed by an (invisible) variation
 selector. When they are not followed by a selector, the implementation
 must choose a style.
 
