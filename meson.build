@@ -144,7 +144,7 @@ endif
 
 summary(
   {
-    'Graphenme shaping': harfbuzz1.found() or harfbuzz2.found(),
+    'Grapheme shaping': harfbuzz1.found() or harfbuzz2.found(),
     'Run shaping': harfbuzz2.found() and utf8proc.found(),
     'Test text shaping': get_option('test-text-shaping'),
   },
