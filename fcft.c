@@ -1742,23 +1742,26 @@ emoji_compare(const void *_key, const void *_emoji)
     return 0;
 }
 
+static const struct emoji *
+emoji_lookup(uint32_t cp)
+{
+    return bsearch(&cp, emojis, ALEN(emojis), sizeof(emojis[0]), &emoji_compare);
+}
+
 #if defined(_DEBUG)
 static void __attribute__((constructor))
 test_emoji_compare(void)
 {
 #if defined(FCFT_HAVE_HARFBUZZ)
     /* WHITE SMILING FACE */
-    const struct emoji *e = bsearch(
-        &(uint32_t){0x263a}, emojis, ALEN(emojis), sizeof(emojis[0]), &emoji_compare);
+    const struct emoji *e = emoji_lookup(0x263a);
 
     assert(e != NULL);
     assert(0x263a >= e->cp);
     assert(0x263a < e->cp + e->count);
     assert(!e->emoji_presentation);
 
-    e = bsearch(
-        &(uint32_t){'a'}, emojis, ALEN(emojis), sizeof(emojis[0]), &emoji_compare);
-
+    e = emoji_lookup(L'a');
     assert(e == NULL);
 #else
     assert(ALEN(emojis) == 0);
@@ -1807,9 +1810,7 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
     glyph->public.wc = wc;
     glyph->valid = false;
 
-    const struct emoji *emoji = bsearch(
-        &wc, emojis, ALEN(emojis), sizeof(emojis[0]), &emoji_compare);
-
+    const struct emoji *emoji = emoji_lookup(wc);
     assert(emoji == NULL || (wc >= emoji->cp && wc < emoji->cp + emoji->count));
 
     bool force_text_presentation = false;
@@ -2026,9 +2027,7 @@ font_for_grapheme(struct font_priv *font,
         bool has_all_code_points = true;
         for (size_t i = 0; i < len && has_all_code_points; i++) {
 
-            const struct emoji *emoji = bsearch(
-                &cluster[i], emojis, ALEN(emojis), sizeof(emojis[0]), &emoji_compare);
-
+            const struct emoji *emoji = emoji_lookup(cluster[i]);
             assert(emoji == NULL || (cluster[i] >= emoji->cp &&
                                      cluster[i] < emoji->cp + emoji->count));
 
