@@ -32,17 +32,17 @@
 ### Added
 
 * Text shaping now requires libutf8proc (in addition to HarfBuzz)
-* `fcft_set_emoji_presentation()`.
+* `fcft_set_emoji_presentation()` - can be used to override emojis’
+  **default** presentation style.
 
 
 ### Changed
 
-* `fcft_glyph_rasterize()` and `fcft_grapheme_rasterize()`: emojis’
-  default presentation is now accounted for when searching for a font
-  containing the emoji codepoint; codepoints whose default
-  presentation is “text” will no longer consider emoji fonts, and
-  codepoints whose default presentation is “emoji” will no longer
-  consider non-emoji fonts.
+* `fcft_*_rasterize()`: emojis’ default presentation is now accounted
+  for when searching for a font containing the emoji codepoint;
+  codepoints whose default presentation is “text” will no longer
+  consider emoji fonts, and codepoints whose default presentation is
+  “emoji” will no longer consider non-emoji fonts.
 
 
 ### Deprecated
