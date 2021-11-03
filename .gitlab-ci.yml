@@ -22,7 +22,7 @@ debug-x64:
   script:
     - mkdir -p bld/debug
     - cd bld/debug
-    - meson --buildtype=debug -Dtext-shaping=enabled -Dtest-text-shaping=true -Dexamples=true ../../
+    - meson --buildtype=debug -Drun-shaping=enabled -Dtest-text-shaping=true -Dexamples=true ../../
     - ninja -v -k0
     - ninja -v test
   artifacts:
@@ -36,7 +36,7 @@ debug-x64-no-text-shaping:
     - apk del harfbuzz harfbuzz-dev
     - mkdir -p bld/debug
     - cd bld/debug
-    - meson --buildtype=debug -Dtext-shaping=disabled -Dtest-text-shaping=false ../../
+    - meson --buildtype=debug -Dgrapheme-shaping=disabled -Drun-shaping=disabled -Dtest-text-shaping=false ../../
     - ninja -v -k0
     - ninja -v test
   artifacts:
@@ -49,7 +49,7 @@ release-x64:
   script:
     - mkdir -p bld/release
     - cd bld/release
-    - meson --buildtype=release -Dtext-shaping=enabled  -Dtest-text-shaping=true -Dexamples=true ../../
+    - meson --buildtype=release -Drun-shaping=enabled  -Dtest-text-shaping=true -Dexamples=true ../../
     - ninja -v -k0
     - ninja -v test
   artifacts:
@@ -62,7 +62,7 @@ debug-x86:
   script:
     - mkdir -p bld/debug
     - cd bld/debug
-    - meson --buildtype=debug -Dtext-shaping=enabled  -Dtest-text-shaping=true -Dexamples=true ../../
+    - meson --buildtype=debug -Drun-shaping=enabled  -Dtest-text-shaping=true -Dexamples=true ../../
     - ninja -v -k0
     - ninja -v test
   artifacts:
@@ -75,7 +75,7 @@ release-x86:
   script:
     - mkdir -p bld/release
     - cd bld/release
-    - meson --buildtype=release -Dtext-shaping=enabled  -Dtest-text-shaping=true -Dexamples=true ../../
+    - meson --buildtype=release -Drun-shaping=enabled  -Dtest-text-shaping=true -Dexamples=true ../../
     - ninja -v -k0
     - ninja -v test
   artifacts:
