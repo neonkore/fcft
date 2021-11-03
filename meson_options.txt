@@ -1,4 +1,9 @@
-option('text-shaping', type: 'feature')
+option(
+    'grapheme-shaping', type: 'feature',
+    description: 'enables shaping of individual grapheme clusters')
+option(
+    'run-shaping', type: 'feature',
+    description: 'enables shaping of whole text runs. Imples -Dgrapheme-shaping=enabled')
 
 # Test-related options
 option('test-text-shaping', type: 'boolean', value: false,

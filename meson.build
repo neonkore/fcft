@@ -66,15 +66,19 @@ math = cc.find_library('m')
 threads = dependency('threads')
 fontconfig = dependency('fontconfig')
 freetype = dependency('freetype2')
-harfbuzz = dependency('harfbuzz', required: get_option('text-shaping'))
-utf8proc = dependency('libutf8proc', required: get_option('text-shaping'))
+harfbuzz1 = dependency('harfbuzz', required: get_option('grapheme-shaping'))
+harfbuzz2 = dependency('harfbuzz', required: get_option('run-shaping'))
+utf8proc = dependency('libutf8proc', required: get_option('run-shaping'))
 pixman = dependency('pixman-1')
 stdthreads = cc.find_library('stdthreads', required: false)
 
 tllist = dependency('tllist', version: '>=1.0.1', fallback: 'tllist')
 
-if harfbuzz.found() and utf8proc.found()
+if harfbuzz1.found() or harfbuzz2.found()
   add_project_arguments('-DFCFT_HAVE_HARFBUZZ', language: 'c')
+endif
+if utf8proc.found()
+  add_project_arguments('-DFCFT_HAVE_UTF8PROC', language: 'c')
 endif
 
 generate_unicode_precompose_sh = files('generate-unicode-precompose.sh')
@@ -105,7 +109,7 @@ fcft_lib = build_target(
   unicode_data, emoji_data, version,
   target_type: meson.is_subproject() ? 'static_library' : 'library',
   version: '.'.join(so_version),
-  dependencies: [math, threads, fontconfig, freetype, harfbuzz, utf8proc, pixman, tllist, stdthreads],
+  dependencies: [math, threads, fontconfig, freetype, harfbuzz1, harfbuzz2, utf8proc, pixman, tllist, stdthreads],
   gnu_symbol_visibility: 'hidden',
   install: not meson.is_subproject())
 
@@ -140,7 +144,8 @@ endif
 
 summary(
   {
-    'Text shaping': harfbuzz.found() and utf8proc.found(),
+    'Graphenme shaping': harfbuzz1.found() or harfbuzz2.found(),
+    'Run shaping': harfbuzz2.found() and utf8proc.found(),
     'Test text shaping': get_option('test-text-shaping'),
   },
   bool_yn: true

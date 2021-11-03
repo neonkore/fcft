@@ -22,6 +22,8 @@
 #if defined(FCFT_HAVE_HARFBUZZ)
  #include <harfbuzz/hb.h>
  #include <harfbuzz/hb-ft.h>
+#endif
+#if defined(FCFT_HAVE_UTF8PROC)
  #include <utf8proc.h>
 #endif
 
@@ -161,6 +163,8 @@ fcft_capabilities(void)
 
 #if defined(FCFT_HAVE_HARFBUZZ)
     ret |= FCFT_CAPABILITY_GRAPHEME_SHAPING;
+#endif
+#if defined(FCFT_HAVE_HARFBUZZ) && defined(FCFT_HAVE_UTF8PROC)
     ret |= FCFT_CAPABILITY_TEXT_RUN_SHAPING;
 #endif
 
@@ -2314,7 +2318,20 @@ err:
     mtx_unlock(&font->lock);
     return NULL;
 }
+#else /* !FCFT_HAVE_HARFBUZZ */
 
+FCFT_EXPORT const struct fcft_grapheme *
+fcft_grapheme_rasterize(struct fcft_font *_font,
+                        size_t len, const wchar_t cluster[static len],
+                        size_t tag_count, const struct fcft_layout_tag *tags,
+                        enum fcft_subpixel subpixel)
+{
+    return NULL;
+}
+
+#endif
+
+#if defined(FCFT_HAVE_HARFBUZZ) && defined(FCFT_HAVE_UTF8PROC)
 struct text_run {
     struct fcft_text_run *public;
     size_t size;
@@ -2588,16 +2605,7 @@ err:
     return NULL;
 }
 
-#else /* !FCFT_HAVE_HARFBUZZ */
-
-FCFT_EXPORT const struct fcft_grapheme *
-fcft_grapheme_rasterize(struct fcft_font *_font,
-                        size_t len, const wchar_t cluster[static len],
-                        size_t tag_count, const struct fcft_layout_tag *tags,
-                        enum fcft_subpixel subpixel)
-{
-    return NULL;
-}
+#else /* !FCFT_HAVE_HARFBUZZ || !FCFT_HAVE_UTF8PROC */
 
 FCFT_EXPORT struct fcft_text_run *
 fcft_text_run_rasterize(
