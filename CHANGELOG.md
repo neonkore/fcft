@@ -31,7 +31,8 @@
 ## Unreleased
 ### Added
 
-* Text shaping now requires libutf8proc (in addition to HarfBuzz)
+* Text-run shaping now requires libutf8proc (in addition to
+  HarfBuzz). Grapheme shaping still requires HarfBuzz only.
 
 * `fcft_set_emoji_presentation()` - can be used to override emojis’
   **default** presentation style.
