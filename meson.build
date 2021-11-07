@@ -66,14 +66,19 @@ math = cc.find_library('m')
 threads = dependency('threads')
 fontconfig = dependency('fontconfig')
 freetype = dependency('freetype2')
-harfbuzz = dependency('harfbuzz', required: get_option('text-shaping'))
+harfbuzz1 = dependency('harfbuzz', required: get_option('grapheme-shaping'))
+harfbuzz2 = dependency('harfbuzz', required: get_option('run-shaping'))
+utf8proc = dependency('libutf8proc', required: get_option('run-shaping'))
 pixman = dependency('pixman-1')
 stdthreads = cc.find_library('stdthreads', required: false)
 
 tllist = dependency('tllist', version: '>=1.0.1', fallback: 'tllist')
 
-if harfbuzz.found()
+if harfbuzz1.found() or harfbuzz2.found()
   add_project_arguments('-DFCFT_HAVE_HARFBUZZ', language: 'c')
+endif
+if utf8proc.found()
+  add_project_arguments('-DFCFT_HAVE_UTF8PROC', language: 'c')
 endif
 
 generate_unicode_precompose_sh = files('generate-unicode-precompose.sh')
@@ -82,6 +87,14 @@ unicode_data = custom_target(
   input: 'unicode/UnicodeData.txt',
   output: 'unicode-compose-table.h',
   command: [generate_unicode_precompose_sh, '@INPUT@', '@OUTPUT@'])
+
+python = find_program('python3')
+generate_emoji_data_py = files('generate-emoji-data.py')
+emoji_data = custom_target(
+  'emoji-data',
+  input: 'unicode/emoji-data.txt',
+  output: 'emoji-data.h',
+  command: [python, generate_emoji_data_py, '@INPUT@', '@OUTPUT@'])
 
 env = find_program('env', native: true)
 generate_version_sh = files('generate-version.sh')
@@ -93,10 +106,10 @@ version = custom_target(
 
 fcft_lib = build_target(
   'fcft', 'fcft.c', 'fcft/fcft.h', 'fcft/stride.h', 'log.c', 'log.h',
-  unicode_data, version,
+  unicode_data, emoji_data, version,
   target_type: meson.is_subproject() ? 'static_library' : 'library',
   version: '.'.join(so_version),
-  dependencies: [math, threads, fontconfig, freetype, harfbuzz, pixman, tllist, stdthreads],
+  dependencies: [math, threads, fontconfig, freetype, harfbuzz1, harfbuzz2, utf8proc, pixman, tllist, stdthreads],
   gnu_symbol_visibility: 'hidden',
   install: not meson.is_subproject())
 
@@ -131,7 +144,8 @@ endif
 
 summary(
   {
-    'Text shaping': harfbuzz.found(),
+    'Grapheme shaping': harfbuzz1.found() or harfbuzz2.found(),
+    'Run shaping': harfbuzz2.found() and utf8proc.found(),
     'Test text shaping': get_option('test-text-shaping'),
   },
   bool_yn: true

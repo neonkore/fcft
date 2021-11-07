@@ -30,10 +30,36 @@
 
 ## Unreleased
 ### Added
+
+* Text shaping now requires libutf8proc (in addition to HarfBuzz)
+
+* `fcft_set_emoji_presentation()` - can be used to override emojis’
+  **default** presentation style.
+
+
 ### Changed
+
+* Meson command line option `-Dtext-shaping` have been replaced with
+  `-Dgrapheme-shaping` and `-Drun-shaping`; grapheme shaping requires
+  HarfBuzz only, while run shaping requires HarfBuzz **and**
+  libutf8proc. Thus, enabling run shaping implicitly enables grapheme
+  shaping.
+
+* `fcft_*_rasterize()`: emojis’ default presentation is now accounted
+  for when searching for a font containing the emoji codepoint;
+  codepoints whose default presentation is “text” will no longer
+  consider emoji fonts, and codepoints whose default presentation is
+  “emoji” will no longer consider non-emoji fonts.
+
+
 ### Deprecated
 ### Removed
 ### Fixed
+
+* `fcft_text_run_rasterize()`: much improved handling of RTL scripts
+  (in mixed LTR/RTL strings in particular)
+
+
 ### Security
 ### Contributors
 

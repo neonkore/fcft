@@ -40,7 +40,8 @@ bottom: `fcft_text_run_rasterize()`_
 * fontconfig
 * freetype
 * pixman
-* harfbuzz (optional, for text shaping support)
+* harfbuzz (optional, for grapheme and “run” shaping support)
+* libutf8proc (optional, for “run” shaping support)
 * [tllist](https://codeberg.org/dnkl/tllist), _unless_ built as a subproject
 
 

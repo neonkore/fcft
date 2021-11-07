@@ -27,10 +27,11 @@ START_TEST(test_capabilities)
 
 #if defined(FCFT_HAVE_HARFBUZZ)
     ck_assert(caps & FCFT_CAPABILITY_GRAPHEME_SHAPING);
+    caps &= ~FCFT_CAPABILITY_GRAPHEME_SHAPING;
+#endif
+#if defined(FCFT_HAVE_HARFBUZZ) && defined(FCFT_HAVE_UTF8PROC)
     ck_assert(caps & FCFT_CAPABILITY_TEXT_RUN_SHAPING);
-
-    caps &= ~(FCFT_CAPABILITY_GRAPHEME_SHAPING |
-              FCFT_CAPABILITY_TEXT_RUN_SHAPING);
+    caps &= ~FCFT_CAPABILITY_TEXT_RUN_SHAPING;
 #endif
 
     ck_assert_int_eq(caps, 0);

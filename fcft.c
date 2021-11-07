@@ -23,6 +23,9 @@
  #include <harfbuzz/hb.h>
  #include <harfbuzz/hb-ft.h>
 #endif
+#if defined(FCFT_HAVE_UTF8PROC)
+ #include <utf8proc.h>
+#endif
 
 #include <tllist.h>
 
@@ -31,6 +34,7 @@
 #include "log.h"
 #include "fcft/stride.h"
 
+#include "emoji-data.h"
 #include "unicode-compose-table.h"
 #include "version.h"
 
@@ -137,6 +141,7 @@ struct font_priv {
 #endif
 
     tll(struct fallback) fallbacks;
+    enum fcft_emoji_presentation emoji_presentation;
     size_t ref_counter;
 };
 
@@ -158,6 +163,8 @@ fcft_capabilities(void)
 
 #if defined(FCFT_HAVE_HARFBUZZ)
     ret |= FCFT_CAPABILITY_GRAPHEME_SHAPING;
+#endif
+#if defined(FCFT_HAVE_HARFBUZZ) && defined(FCFT_HAVE_UTF8PROC)
     ret |= FCFT_CAPABILITY_TEXT_RUN_SHAPING;
 #endif
 
@@ -230,7 +237,6 @@ init(void)
 
     mtx_init(&ft_lock, mtx_plain);
     mtx_init(&font_cache_lock, mtx_plain);
-
 }
 
 static void __attribute__((destructor))
@@ -1031,6 +1037,7 @@ fcft_from_name(size_t count, const char *names[static count],
             font->glyph_cache.size = glyph_cache_initial_size;
             font->glyph_cache.count = 0;
             font->glyph_cache.table = glyph_cache_table;
+            font->emoji_presentation = FCFT_EMOJI_PRESENTATION_DEFAULT;
             font->public = primary->metrics;
 
 #if defined(FCFT_HAVE_HARFBUZZ)
@@ -1725,6 +1732,47 @@ glyph_cache_resize(struct font_priv *font)
     return true;
 }
 
+static int
+emoji_compare(const void *_key, const void *_emoji)
+{
+    const uint32_t key = *(const uint32_t *)_key;
+    const struct emoji *emoji = _emoji;
+
+    if (key < emoji->cp)
+        return -1;
+    if (key >= emoji->cp + emoji->count)
+        return 1;
+    assert(key >= emoji->cp && key < emoji->cp + emoji->count);
+    return 0;
+}
+
+static const struct emoji *
+emoji_lookup(uint32_t cp)
+{
+    return bsearch(&cp, emojis, ALEN(emojis), sizeof(emojis[0]), &emoji_compare);
+}
+
+#if defined(_DEBUG)
+static void __attribute__((constructor))
+test_emoji_compare(void)
+{
+#if defined(FCFT_HAVE_HARFBUZZ)
+    /* WHITE SMILING FACE */
+    const struct emoji *e = emoji_lookup(0x263a);
+
+    assert(e != NULL);
+    assert(0x263a >= e->cp);
+    assert(0x263a < e->cp + e->count);
+    assert(!e->emoji_presentation);
+
+    e = emoji_lookup(L'a');
+    assert(e == NULL);
+#else
+    assert(ALEN(emojis) == 0);
+#endif
+}
+#endif
+
 FCFT_EXPORT const struct fcft_glyph *
 fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
                      enum fcft_subpixel subpixel)
@@ -1766,13 +1814,54 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
     glyph->public.wc = wc;
     glyph->valid = false;
 
+    const struct emoji *emoji = emoji_lookup(wc);
+    assert(emoji == NULL || (wc >= emoji->cp && wc < emoji->cp + emoji->count));
+
+    bool force_text_presentation = false;
+    bool force_emoji_presentation = false;
+    bool enforce_presentation_style = emoji != NULL;
+
+    if (emoji != NULL) {
+        switch (font->emoji_presentation) {
+        case FCFT_EMOJI_PRESENTATION_TEXT:
+            force_text_presentation = true;
+            force_emoji_presentation = false;
+            break;
+
+        case FCFT_EMOJI_PRESENTATION_EMOJI:
+            force_text_presentation = false;
+            force_emoji_presentation = true;
+            break;
+
+        case FCFT_EMOJI_PRESENTATION_DEFAULT:
+            force_text_presentation = !emoji->emoji_presentation;
+            force_emoji_presentation = emoji->emoji_presentation;
+            break;
+        }
+    }
+
     assert(tll_length(font->fallbacks) > 0);
 
     bool no_one = true;
     bool got_glyph = false;
+
+search_fonts:
+
     tll_foreach(font->fallbacks, it) {
         if (!FcCharSetHasChar(it->item.charset, wc))
             continue;
+
+        static const FcChar8 *const lang_emoji = (const FcChar8 *)"und-zsye";
+
+        if (enforce_presentation_style && it->item.langset != NULL) {
+            bool has_lang_emoji =
+                FcLangSetHasLang(it->item.langset, lang_emoji) == FcLangEqual;
+
+            if (force_text_presentation && has_lang_emoji)
+                continue;
+            if (force_emoji_presentation && !has_lang_emoji)
+                continue;
+        }
 
         if (it->item.font == NULL) {
             struct instance *inst = malloc(sizeof(*inst));
@@ -1799,6 +1888,11 @@ fcft_glyph_rasterize(struct fcft_font *_font, wchar_t wc,
         got_glyph = glyph_for_wchar(it->item.font, wc, subpixel, glyph);
         no_one = false;
         break;
+    }
+
+    if (no_one && enforce_presentation_style) {
+        enforce_presentation_style = false;
+        goto search_fonts;
     }
 
     if (no_one) {
@@ -1922,6 +2016,140 @@ grapheme_cache_resize(struct font_priv *font)
     return true;
 }
 
+/* Must only be called while font->lock is held */
+static bool
+font_for_grapheme(struct font_priv *font,
+                  size_t len, const wchar_t cluster[static len],
+                  struct instance **inst, bool enforce_presentation_style)
+{
+    static const FcChar8 *const lang_emoji = (const FcChar8 *)"und-zsye";
+
+    tll_foreach(font->fallbacks, it) {
+        const bool has_lang_emoji = it->item.langset != NULL &&
+            FcLangSetHasLang(it->item.langset, lang_emoji) == FcLangEqual;
+
+        bool has_all_code_points = true;
+        for (size_t i = 0; i < len && has_all_code_points; i++) {
+
+            const struct emoji *emoji = emoji_lookup(cluster[i]);
+            assert(emoji == NULL || (cluster[i] >= emoji->cp &&
+                                     cluster[i] < emoji->cp + emoji->count));
+
+            if (enforce_presentation_style &&
+                emoji != NULL &&
+                (i + 1 >= len || (cluster[i + 1] != 0xfe0e &&
+                                  cluster[i + 1] != 0xfe0f))) {
+                /*
+                 * We have an emoji, that is either the last codepoint
+                 * in the grapheme, *or* is followed by a codepoint
+                 * that is *not* a presentation selector.
+                 */
+                bool force_text_presentation = false;
+                bool force_emoji_presentation = false;
+
+                switch (font->emoji_presentation) {
+                case FCFT_EMOJI_PRESENTATION_TEXT:
+                    force_text_presentation = true;
+                    force_emoji_presentation = false;
+                    break;
+
+                case FCFT_EMOJI_PRESENTATION_EMOJI:
+                    force_text_presentation = false;
+                    force_emoji_presentation = true;
+                    break;
+
+                case FCFT_EMOJI_PRESENTATION_DEFAULT:
+                    force_text_presentation = !emoji->emoji_presentation;
+                    force_emoji_presentation = emoji->emoji_presentation;
+                    break;
+                }
+
+                if (force_text_presentation && has_lang_emoji) {
+                    has_all_code_points = false;
+                    continue;
+                }
+
+                if (force_emoji_presentation && !has_lang_emoji) {
+                    has_all_code_points = false;
+                    continue;
+                }
+            }
+
+            if (cluster[i] == 0x200d) {
+                /* ZWJ */
+                continue;
+            }
+
+            if (cluster[i] == 0xfe0f) {
+                /* Explicit emoji selector */
+
+#if 0
+                /* Require colored emoji? */
+                if (!it->item.is_color) {
+                    /* Skip font if it is not a colored font */
+                    has_all_code_points = false;
+                }
+#endif
+                if (!has_lang_emoji) {
+                    /* Skip font if it isn't an emoji font */
+                    has_all_code_points = false;
+                }
+
+                continue;
+            }
+
+            else if (cluster[i] == 0xfe0e) {
+                /* Explicit text selector */
+
+                if (has_lang_emoji) {
+                    /* Skip font if it is an emoji font */
+                    has_all_code_points = false;
+                }
+
+                continue;
+            }
+
+            if (!FcCharSetHasChar(it->item.charset, cluster[i])) {
+                has_all_code_points = false;
+                break;
+            }
+        }
+
+        if (has_all_code_points) {
+            if (it->item.font == NULL) {
+                *inst = malloc(sizeof(**inst));
+                if (*inst == NULL)
+                    return false;
+
+                if (!instantiate_pattern(
+                        it->item.pattern,
+                        it->item.req_pt_size, it->item.req_px_size,
+                        *inst))
+                {
+                    /* Remove, so that we don't have to keep trying to
+                     * instantiate it */
+                    free(*inst);
+                    fallback_destroy(&it->item);
+                    tll_remove(font->fallbacks, it);
+                    continue;
+                }
+
+                it->item.font = *inst;
+            } else
+                *inst = it->item.font;
+
+            return true;
+        }
+    }
+
+    if (enforce_presentation_style)
+        return font_for_grapheme(font, len, cluster, inst, false);
+
+    /* No font found, use primary font anyway */
+    *inst = tll_front(font->fallbacks).font;
+    return *inst != NULL;
+}
+
 FCFT_EXPORT const struct fcft_grapheme *
 fcft_grapheme_rasterize(struct fcft_font *_font,
                         size_t len, const wchar_t cluster[static len],
@@ -1977,84 +2205,8 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
     grapheme->public.glyphs = NULL;
     grapheme->public.count = 0;
 
-    tll_foreach(font->fallbacks, it) {
-        bool has_all_code_points = true;
-        for (size_t i = 0; i < len && has_all_code_points; i++) {
-
-            const FcChar8 *const emoji = (const FcChar8 *)"und-zsye";
-
-            if (cluster[i] == 0x200d) {
-                /* ZWJ */
-                continue;
-            }
-
-            if (cluster[i] == 0xfe0f) {
-                /* Explicit emoji selector */
-
-#if 0
-                /* Require colored emoji? */
-                if (!it->item.is_color) {
-                    /* Skip font if it is not a colored font */
-                    has_all_code_points = false;
-                }
-#endif
-
-                if (it->item.langset != NULL &&
-                    FcLangSetHasLang(it->item.langset, emoji) != FcLangEqual)
-                {
-                    /* Skip font if it isn't an emoji font */
-                    has_all_code_points = false;
-                }
-
-                continue;
-            }
-
-            else if (cluster[i] == 0xfe0e) {
-                /* Explicit text selector */
-                if (it->item.langset != NULL &&
-                    FcLangSetHasLang(it->item.langset, emoji) == FcLangEqual)
-                {
-                    /* Skip font if it is an emoji font */
-                    has_all_code_points = false;
-                }
-
-                continue;
-            }
-
-            if (!FcCharSetHasChar(it->item.charset, cluster[i])) {
-                has_all_code_points = false;
-                break;
-            }
-        }
-
-        if (has_all_code_points) {
-            if (it->item.font == NULL) {
-                inst = malloc(sizeof(*inst));
-                if (inst == NULL)
-                    goto err;
-
-                if (!instantiate_pattern(
-                        it->item.pattern,
-                        it->item.req_pt_size, it->item.req_px_size,
-                        inst))
-                {
-                    /* Remove, so that we don't have to keep trying to
-                     * instantiate it */
-                    free(inst);
-                    fallback_destroy(&it->item);
-                    tll_remove(font->fallbacks, it);
-                    continue;
-                }
-
-                it->item.font = inst;
-            } else
-                inst = it->item.font;
-
-            break;
-        }
-    }
-
-    if (inst == NULL)
+    /* Find a font that has all codepoints in the grapheme */
+    if (!font_for_grapheme(font, len, cluster, &inst, true))
         goto err;
 
     assert(inst->hb_font != NULL);
@@ -2122,8 +2274,6 @@ fcft_grapheme_rasterize(struct fcft_font *_font,
                 (int)(pos[i].y_offset / 64. * inst->pixel_size_fixup));
 #endif
 
-        /* TODO: figure out what’s up with the ‘y’ offset (and are we
-         * really handling ‘x’ correctly?) */
         glyph->public.x += pos[i].x_offset / 64. * inst->pixel_size_fixup;
         glyph->public.y += pos[i].y_offset / 64. * inst->pixel_size_fixup;
         glyph->public.advance.x = pos[i].x_advance / 64. * inst->pixel_size_fixup;
@@ -2168,62 +2318,32 @@ err:
     mtx_unlock(&font->lock);
     return NULL;
 }
+#else /* !FCFT_HAVE_HARFBUZZ */
 
-struct text_run_context {
-    enum text_run_state {
-        TEXT_RUN_PRIMARY,
-        TEXT_RUN_PRIMARY_FORCE,
-        TEXT_RUN_FALLBACK,
-        TEXT_RUN_DONE,
-        TEXT_RUN_ERROR,
-    } state;
-
-    const uint32_t *const text;
-    const size_t len;
-    size_t ofs;
-
-    struct {
-        const struct fcft_glyph **items;
-        int *cluster;
-        size_t size;
-        size_t count;
-    } glyphs;
-
-    struct {
-        hb_direction_t dir;
-        size_t since;
-    } direction;
-};
-
-static void
-text_run_reverse_rtl(struct text_run_context *ctx)
+FCFT_EXPORT const struct fcft_grapheme *
+fcft_grapheme_rasterize(struct fcft_font *_font,
+                        size_t len, const wchar_t cluster[static len],
+                        size_t tag_count, const struct fcft_layout_tag *tags,
+                        enum fcft_subpixel subpixel)
 {
-    assert(ctx->direction.dir == HB_DIRECTION_RTL);
-
-    /* Reverse all RTL glyphs we’ve emitted so far */
-    size_t start = ctx->direction.since;
-    size_t end = ctx->glyphs.count;
-    size_t middle = start + (end - start) / 2;
-
-    LOG_DBG("reversing %zu glyphs (%zu-%zu, middle=%zu)",
-            end - start, start, end, middle);
-
-    for (size_t i = start; i < middle; i++) {
-        LOG_DBG("  swapping %zu with %zu", i, end - (i - start) - 1);
-
-        const struct fcft_glyph *tmp = ctx->glyphs.items[i];
-        ctx->glyphs.items[i] = ctx->glyphs.items[end - (i - start) - 1];
-        ctx->glyphs.items[end - (i - start) - 1] = tmp;
-    }
+    return NULL;
 }
 
-static enum text_run_state
-text_run_rasterize_partial(
-    FcCharSet *charset, struct instance *inst, enum fcft_subpixel subpixel,
-    struct text_run_context *ctx)
+#endif
+
+#if defined(FCFT_HAVE_HARFBUZZ) && defined(FCFT_HAVE_UTF8PROC)
+struct text_run {
+    struct fcft_text_run *public;
+    size_t size;
+};
+
+static bool
+rasterize_partial_run(struct text_run *run, const struct instance *inst,
+                      const uint32_t *text, size_t len,
+                      size_t run_start, size_t run_len,
+                      enum fcft_subpixel subpixel)
 {
-    hb_buffer_add_utf32(
-        inst->hb_buf, ctx->text, ctx->len, ctx->ofs, ctx->len - ctx->ofs);
+    hb_buffer_add_utf32(inst->hb_buf, text, len, run_start, run_len);
     hb_buffer_guess_segment_properties(inst->hb_buf);
 
     hb_segment_properties_t props;
@@ -2236,18 +2356,8 @@ text_run_rasterize_partial(
         props.direction != HB_DIRECTION_RTL)
     {
         LOG_ERR("unimplemented: hb_direction=%d", props.direction);
-        return TEXT_RUN_ERROR;
+        return false;
     }
-
-    if (props.direction != ctx->direction.dir) {
-        if (ctx->direction.dir == HB_DIRECTION_RTL)
-            text_run_reverse_rtl(ctx);
-
-        ctx->direction.dir = props.direction;
-        ctx->direction.since = ctx->glyphs.count;
-    }
-
-    const bool rtl = props.direction == HB_DIRECTION_RTL;
 
     hb_shape(inst->hb_font, inst->hb_buf, inst->hb_feats, inst->hb_feats_count);
 
@@ -2255,98 +2365,55 @@ text_run_rasterize_partial(
     const hb_glyph_info_t *infos = hb_buffer_get_glyph_infos(inst->hb_buf, NULL);
     const hb_glyph_position_t *poss = hb_buffer_get_glyph_positions(inst->hb_buf, NULL);
 
-    LOG_DBG("ofs=%zu", ctx->ofs);
-    LOG_DBG("info count: %u", count);
-
     for (int i = 0; i < count; i++) {
-        const hb_glyph_info_t *info = &infos[rtl ? count - i - 1 : i];
-        const hb_glyph_position_t *pos = &poss[rtl ? count - i - 1 : i];
+        const hb_glyph_info_t *info = &infos[i];
+        const hb_glyph_position_t *pos = &poss[i];
 
         LOG_DBG("#%u: codepoint=%04x, cluster=%d", i, info->codepoint, info->cluster);
 
-        if (ctx->state == TEXT_RUN_FALLBACK && info->cluster != ctx->ofs) {
-            ctx->ofs = info->cluster;
-            return TEXT_RUN_PRIMARY;
-        }
-
-        if ((info->codepoint == 0 ||
-             !FcCharSetHasChar(charset, ctx->text[info->cluster]))
-            && ctx->state != TEXT_RUN_PRIMARY_FORCE)
-        {
-            ctx->ofs = info->cluster;
-            for (ssize_t j = ctx->glyphs.count - 1; j >= 0; j--) {
-                if (ctx->glyphs.cluster[j] != info->cluster) {
-                    /* Assume they are sorted */
-                    break;
-                }
-
-                glyph_destroy(ctx->glyphs.items[j]);
-                ctx->glyphs.count--;
-            }
-            return TEXT_RUN_FALLBACK;
-        }
-
-        assert(info->codepoint != 0 || ctx->state == TEXT_RUN_PRIMARY_FORCE);
-
         struct glyph_priv *glyph = malloc(sizeof(*glyph));
         if (glyph == NULL)
-            return TEXT_RUN_ERROR;
+            return false;
 
         if (!glyph_for_index(inst, info->codepoint, subpixel, glyph)) {
             free(glyph);
             continue;
         }
 
-        assert(info->cluster < ctx->len);
-        glyph->public.wc = ctx->text[info->cluster];
+        assert(info->cluster < len);
+        glyph->public.wc = text[info->cluster];
         glyph->public.cols = wcwidth(glyph->public.wc);
 
-#if 0
-        LOG_DBG("text-run: #%zu: x: advance: %d -> %d, offset: %d -> %d",
-                ctx->ofs, glyph->public.advance.x,
-                (int)(pos->x_advance / 64. * inst->pixel_size_fixup),
-                glyph->public.x,
-                (int)(pos->x_offset / 64. * inst->pixel_size_fixup));
-        LOG_DBG("text-run: #%zu: y: advance: %d -> %d, offset: %d -> %d",
-                ctx->ofs, glyph->public.advance.y,
-                (int)(pos->y_advance / 64. * inst->pixel_size_fixup),
-                glyph->public.y,
-                (int)(pos->y_offset / 64. * inst->pixel_size_fixup));
-#endif
-
-        /* TODO: figure out what’s up with the ‘y’ offset (and are we
-         * really handling ‘x’ correctly?) */
         glyph->public.x += pos->x_offset / 64. * inst->pixel_size_fixup;
         glyph->public.y += pos->y_offset / 64. * inst->pixel_size_fixup;
         glyph->public.advance.x = pos->x_advance / 64. * inst->pixel_size_fixup;
         glyph->public.advance.y = pos->y_advance / 64. * inst->pixel_size_fixup;
 
-        if (ctx->glyphs.count >= ctx->glyphs.size) {
-            size_t new_glyphs_size = ctx->glyphs.size * 2;
+        if (run->public->count >= run->size) {
+            size_t new_glyphs_size = run->size * 2;
             const struct fcft_glyph **new_glyphs = realloc(
-                ctx->glyphs.items, new_glyphs_size * sizeof(new_glyphs[0]));
+                run->public->glyphs, new_glyphs_size * sizeof(new_glyphs[0]));
             int *new_cluster = realloc(
-                ctx->glyphs.cluster, new_glyphs_size * sizeof(new_cluster[0]));
+                run->public->cluster, new_glyphs_size * sizeof(new_cluster[0]));
 
             if (new_glyphs == NULL || new_cluster == NULL) {
                 free(new_glyphs);
                 free(new_cluster);
-                return TEXT_RUN_ERROR;
+                return false;
             }
 
-            ctx->glyphs.items = new_glyphs;
-            ctx->glyphs.cluster = new_cluster;
-            ctx->glyphs.size = new_glyphs_size;
+            run->public->glyphs = new_glyphs;
+            run->public->cluster = new_cluster;
+            run->size = new_glyphs_size;
         }
 
-        assert(ctx->glyphs.count < ctx->glyphs.size);
-        ctx->glyphs.cluster[ctx->glyphs.count] = info->cluster;
-        ctx->glyphs.items[ctx->glyphs.count] = &glyph->public;
-        ctx->glyphs.count++;
+        assert(run->public->count < run->size);
+        run->public->cluster[run->public->count] = info->cluster;
+        run->public->glyphs[run->public->count] = &glyph->public;
+        run->public->count++;
     }
 
-    ctx->ofs = ctx->len;
-    return TEXT_RUN_DONE;
+    return true;
 }
 
 FCFT_EXPORT struct fcft_text_run *
@@ -2355,149 +2422,190 @@ fcft_text_run_rasterize(
     enum fcft_subpixel subpixel)
 {
     struct font_priv *font = (struct font_priv *)_font;
+    mtx_lock(&font->lock);
 
     LOG_DBG("rasterizing a %zu character text run", len);
 
-    struct text_run_context ctx = {
-        .state = TEXT_RUN_PRIMARY,
-        .text = (const uint32_t *)text,
-        .len = len,
-
-        .glyphs = {
-            .size = len,
-            .items = malloc(len * sizeof(ctx.glyphs.items[0])),
-            .cluster = malloc(len * sizeof(ctx.glyphs.cluster[0])),
-        },
-
-        .direction = {
-            .dir = HB_DIRECTION_INVALID,
-            .since = 0,
-        },
+    struct partial_run {
+        size_t start;
+        size_t len;
+        struct instance *inst;
     };
 
-    if (ctx.glyphs.items == NULL || ctx.glyphs.cluster == NULL) {
-        free(ctx.glyphs.items);
-        free(ctx.glyphs.cluster);
-        return NULL;
+    tll(struct partial_run) pruns = tll_init();
+
+    struct text_run run = {
+        .size = len,
+        .public = malloc(sizeof(*run.public)),
+    };
+
+    if (run.public == NULL)
+        goto err;
+
+    run.public->glyphs = malloc(len * sizeof(run.public->glyphs[0]));
+    run.public->cluster = malloc(len * sizeof(run.public->cluster[0]));
+    run.public->count = 0;
+
+    if (run.public->glyphs == NULL || run.public->cluster == NULL)
+        goto err;
+
+
+    tll_push_back(pruns, ((struct partial_run){.start = 0}));
+
+    /* Split run into graphemes */
+    utf8proc_int32_t state;
+    for (size_t i = 1; i < len; i++) {
+        if (utf8proc_grapheme_break_stateful(text[i - 1], text[i], &state)) {
+            state = 0;
+
+            struct partial_run *prun = &tll_back(pruns);
+
+            assert(i > prun->start);
+            prun->len = i - prun->start;
+
+            if (!font_for_grapheme(
+                    font, prun->len, &text[prun->start], &prun->inst, true))
+            {
+                goto err;
+            }
+
+            tll_push_back(pruns, ((struct partial_run){.start = i}));
+        }
     }
 
-    mtx_lock(&font->lock);
+    /* “Close” that last run */
+    {
+        struct partial_run *prun = &tll_back(pruns);
 
-    while (ctx.state != TEXT_RUN_DONE) {
-        if (ctx.state == TEXT_RUN_FALLBACK) {
-            /* We ran out of fallback fonts, force using the primary */
-            ctx.state = TEXT_RUN_PRIMARY_FORCE;
+        assert(prun->len == 0);
+        prun->len = len - prun->start;
+
+        if (!font_for_grapheme(
+                font, prun->len, &text[prun->start], &prun->inst, true))
+        {
+            goto err;
         }
+    }
 
-        tll_foreach(font->fallbacks, it) {
-            struct instance *inst = it->item.font;
-            FcCharSet *charset = it->item.charset;
+#if defined(_DEBUG) && LOG_ENABLE_DBG
+    LOG_DBG("%zu partial runs (before merge):", tll_length(pruns));
+    tll_foreach(pruns, it) {
+        const struct partial_run *prun = &it->item;
+        LOG_DBG("  %.*ls (start=%zu, %zu chars), inst=%p",
+                (int)prun->len, &text[prun->start], prun->start,
+                prun->len, prun->inst);
+    }
+#endif
 
-            if (ctx.state != TEXT_RUN_PRIMARY_FORCE &&
-                !FcCharSetHasChar(charset, text[ctx.ofs]))
-            {
-                ctx.state = TEXT_RUN_FALLBACK;
+    /*
+     * Merge consecutive graphemes if:
+     *  - they belong to the same script (“language”)
+     *  - they have the same font instance
+     */
+    {
+        hb_buffer_t *hb_buf = hb_buffer_create();
+        if (hb_buf == NULL)
+            goto err;
+
+        struct partial_run *prev = NULL;
+        hb_script_t prev_script = HB_SCRIPT_INVALID;
+
+        tll_foreach(pruns, it) {
+            struct partial_run *prun = &it->item;
+
+            /* Get script (“language”) of grapheme */
+            hb_buffer_add_utf32(
+                hb_buf, (const uint32_t *)text, len, prun->start, prun->len);
+            hb_buffer_guess_segment_properties(hb_buf);
+
+            hb_script_t script = hb_buffer_get_script(hb_buf);
+            hb_buffer_clear_contents(hb_buf);
+
+            if (prev == NULL) {
+                prev = prun;
+                prev_script = script;
                 continue;
             }
 
-
-            if (inst == NULL) {
-                inst = malloc(sizeof(*inst));
-                if (inst == NULL)
-                    goto err;
-
-                if (!instantiate_pattern(
-                        it->item.pattern,
-                        it->item.req_pt_size, it->item.req_px_size,
-                        inst))
-                {
-                    /* Remove, so that we don't have to keep trying to
-                     * instantiate it */
-                    free(inst);
-                    fallback_destroy(&it->item);
-                    tll_remove(font->fallbacks, it);
-                    continue;
-                }
-
-                it->item.font = inst;
-            }
-
-            ctx.state = text_run_rasterize_partial(charset, inst, subpixel, &ctx);
-            hb_buffer_clear_contents(inst->hb_buf);
-
-            if (ctx.state == TEXT_RUN_PRIMARY) {
-                LOG_DBG("switching (back) to primary font at offset %zu/%zu",
-                        ctx.ofs, ctx.len);
-                break;
-            } else if (ctx.state == TEXT_RUN_FALLBACK) {
-                LOG_DBG("switching to next fallback font at offset %zu/%zu",
-                        ctx.ofs, ctx.len);
-                /* continue; */
-            } else if (ctx.state == TEXT_RUN_DONE) {
-                break;
-            } else if (ctx.state == TEXT_RUN_ERROR) {
-                goto err;
+            if (prev->inst == prun->inst && prev_script == script) {
+                prev->len += prun->len;
+                tll_remove(pruns, it);
+            } else {
+                prev = prun;
+                prev_script = script;
             }
         }
+
+        hb_buffer_destroy(hb_buf);
     }
 
-    if (ctx.direction.dir == HB_DIRECTION_RTL)
-        text_run_reverse_rtl(&ctx);
+#if defined(_DEBUG) && LOG_ENABLE_DBG
+    LOG_DBG("%zu partial runs (after merge):", tll_length(pruns));
+    tll_foreach(pruns, it) {
+        const struct partial_run *prun = &it->item;
+        LOG_DBG("  %.*ls (start=%zu, %zu chars), inst=%p",
+                (int)prun->len, &text[prun->start], prun->start,
+                prun->len, prun->inst);
+    }
+#endif
 
+    /* Shape each partial run */
+    tll_foreach(pruns, it) {
+        const struct partial_run *prun = &it->item;
+
+        bool ret = rasterize_partial_run(
+            &run, prun->inst, (const uint32_t *)text, len,
+            prun->start, prun->len, subpixel);
+
+        hb_buffer_clear_contents(prun->inst->hb_buf);
+        if (!ret)
+            goto err;
+    }
+
+    /* Re-alloc glyphs/cluster arrays */
     {
         const struct fcft_glyph **final_glyphs = realloc(
-            ctx.glyphs.items, ctx.glyphs.count * sizeof(final_glyphs[0]));
+            run.public->glyphs, run.public->count * sizeof(final_glyphs[0]));
         int *final_cluster = realloc(
-            ctx.glyphs.cluster, ctx.glyphs.count * sizeof(final_cluster[0]));
+            run.public->cluster, run.public->count * sizeof(final_cluster[0]));
+
         if ((final_glyphs == NULL || final_cluster == NULL) &&
-            ctx.glyphs.count > 0)
+            run.public->count > 0)
         {
             free(final_glyphs);
             free(final_cluster);
             goto err;
         }
 
-        ctx.glyphs.items = final_glyphs;
-        ctx.glyphs.cluster = final_cluster;
+        run.public->glyphs = final_glyphs;
+        run.public->cluster = final_cluster;
     }
 
-    LOG_DBG("glyph count: %zu", ctx.glyphs.count);
+    LOG_DBG("glyph count: %zu", run.public->count);
 
-    struct fcft_text_run *ret = malloc(sizeof(*ret));
-    if (ret == NULL)
-        goto err;
-
-    *ret = (struct fcft_text_run){
-        .glyphs = ctx.glyphs.items,
-        .cluster = ctx.glyphs.cluster,
-        .count = ctx.glyphs.count,
-    };
-
+    tll_free(pruns);
     mtx_unlock(&font->lock);
-    return ret;
+    return run.public;
 
 err:
-    for (size_t i = 0; i < ctx.glyphs.count; i++) {
-        assert(ctx.glyphs.items[i] != NULL);
-        glyph_destroy(ctx.glyphs.items[i]);
-    }
-    free(ctx.glyphs.items);
-    free(ctx.glyphs.cluster);
 
+    if (run.public != NULL) {
+        for (size_t i = 0; i < run.public->count; i++) {
+            assert(run.public->glyphs[i] != NULL);
+            glyph_destroy(run.public->glyphs[i]);
+        }
+
+        free(run.public->glyphs);
+        free(run.public->cluster);
+        free(run.public);
+    }
+
+    tll_free(pruns);
     mtx_unlock(&font->lock);
     return NULL;
 }
 
-#else /* !FCFT_HAVE_HARFBUZZ */
-
-FCFT_EXPORT const struct fcft_grapheme *
-fcft_grapheme_rasterize(struct fcft_font *_font,
-                        size_t len, const wchar_t cluster[static len],
-                        size_t tag_count, const struct fcft_layout_tag *tags,
-                        enum fcft_subpixel subpixel)
-{
-    return NULL;
-}
+#else /* !FCFT_HAVE_HARFBUZZ || !FCFT_HAVE_UTF8PROC */
 
 FCFT_EXPORT struct fcft_text_run *
 fcft_text_run_rasterize(
@@ -2714,4 +2822,12 @@ fcft_precompose(const struct fcft_font *_font, wchar_t base, wchar_t comb,
     if (composed_is_from_primary != NULL)
         *composed_is_from_primary = false;
     return (wchar_t)-1;
+}
+
+FCFT_EXPORT void
+fcft_set_emoji_presentation(struct fcft_font *_font,
+                            enum fcft_emoji_presentation presentation)
+{
+    struct font_priv *font = (struct font_priv *)_font;
+    font->emoji_presentation = presentation;
 }

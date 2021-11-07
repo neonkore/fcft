@@ -506,6 +506,7 @@ main(int argc, char *const *argv)
 
         font = fcft_from_name(tll_length(font_names), names, NULL);
         assert(font != NULL);
+        fcft_set_emoji_presentation(font, FCFT_EMOJI_PRESENTATION_DEFAULT);
 
         tll_free(font_names);
         free(copy);
