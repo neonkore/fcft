@@ -33,7 +33,6 @@
 
 * Text-run shaping now requires libutf8proc (in addition to
   HarfBuzz). Grapheme shaping still requires HarfBuzz only.
-
 * `fcft_set_emoji_presentation()` - can be used to override emojis’
   **default** presentation style.
 
@@ -45,7 +44,6 @@
   HarfBuzz only, while run shaping requires HarfBuzz **and**
   libutf8proc. Thus, enabling run shaping implicitly enables grapheme
   shaping.
-
 * `fcft_*_rasterize()`: emojis’ default presentation is now accounted
   for when searching for a font containing the emoji codepoint;
   codepoints whose default presentation is “text” will no longer
