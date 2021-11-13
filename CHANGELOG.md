@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [2.5.0](#2-5-0)
 * [2.4.6](#2-4-6)
 * [2.4.5](#2-4-5)
 * [2.4.4](#2-4-4)
@@ -28,7 +28,8 @@
 * [1.1.7](#1-1-7)
 
 
-## Unreleased
+## 2.5.0
+
 ### Added
 
 * Text-run shaping now requires libutf8proc (in addition to
@@ -51,16 +52,10 @@
   “emoji” will no longer consider non-emoji fonts.
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * `fcft_text_run_rasterize()`: much improved handling of RTL scripts
   (in mixed LTR/RTL strings in particular)
-
-
-### Security
-### Contributors
 
 
 ## 2.4.6
