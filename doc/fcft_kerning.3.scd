@@ -1,4 +1,4 @@
-fcft_kerning(3) "2.4.6" "fcft"
+fcft_kerning(3) "2.5.0" "fcft"
 
 # NAME
 
