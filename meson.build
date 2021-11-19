@@ -135,11 +135,14 @@ if not meson.is_subproject()
     fcft_lib,
     description : 'Simple font loading and glyph rasterization library')
 
-  install_data(
-    'LICENSE', 'README.md', 'CHANGELOG.md',
-    install_dir: join_paths(get_option('datadir'), 'doc', 'fcft'))
+  scdoc = dependency('scdoc', native: true, required: get_option('docs'))
+  if scdoc.found()
+    install_data(
+      'LICENSE', 'README.md', 'CHANGELOG.md',
+      install_dir: join_paths(get_option('datadir'), 'doc', 'fcft'))
 
-  subdir('doc')
+    subdir('doc')
+  endif
 endif
 
 summary(
