@@ -129,7 +129,7 @@ Build dependencies:
 * Development packages of the run-time dependencies
 * meson
 * ninja
-* scdoc
+* scdoc (_optional_, enabled automatically or disabled with `-Ddocs=disabled`)
 * [tllist](https://codeberg.org/dnkl/tllist)
 * [check](https://libcheck.github.io/check/) (_optional_, for unit tests)
 
