@@ -31,7 +31,12 @@
 
 ## Unreleased
 ### Added
+* Meson command line option `-Ddocs` to force disable or enable
+  building manual pages and installing changelog and readme files
+
 ### Changed
+* `scdoc` is optional and detected automatically
+
 ### Deprecated
 ### Removed
 ### Fixed
