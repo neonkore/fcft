@@ -31,15 +31,26 @@
 
 ## Unreleased
 ### Added
+
 * Meson command line option `-Ddocs` to force disable or enable
   building manual pages and installing changelog and readme files
 
+
 ### Changed
+
 * `scdoc` is optional and detected automatically
+* `fcft_set_scaling_filter()` now applies to color bitmap fonts only
+  (i.e. emoji fonts). Applying e.g. cubic or lanczos3 on regular text
+  glyphs simply does not look good.
+
 
 ### Deprecated
 ### Removed
 ### Fixed
+
+* `FCFT_SCALING_FILTER_CUBIC` incorrectly being mapped to “lanczos3”.
+
+
 ### Security
 ### Contributors
 

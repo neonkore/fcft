@@ -95,6 +95,7 @@ struct instance {
 
     bool antialias;
     bool embolden;
+    bool is_color;
     int render_flags_normal;
     int render_flags_subpixel;
 
@@ -111,7 +112,6 @@ struct fallback {
     FcPattern *pattern;
     FcCharSet *charset;
     FcLangSet *langset;
-    bool is_color;
     struct instance *font;
 
     /* User-requested size(s) - i.e. sizes from *base* pattern */
@@ -546,6 +546,10 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
     if (FcPatternGetBool(pattern, FC_OUTLINE, 0, &outline) != FcResultMatch)
         outline = FcTrue;
 
+    FcBool is_color;
+    if (FcPatternGetBool(pattern, FC_COLOR, 0, &is_color) != FcResultMatch)
+        is_color = FcFalse;
+
     double pixel_fixup = 1.;
     bool fixup_estimated = false;
     if (FcPatternGetDouble(pattern, "pixelsizefixupfactor", 0, &pixel_fixup) != FcResultMatch) {
@@ -684,6 +688,7 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
     font->load_flags = load_target | load_flags | FT_LOAD_COLOR;
     font->antialias = fc_antialias;
     font->embolden = fc_embolden;
+    font->is_color = is_color;
     font->render_flags_normal = render_flags_normal;
     font->render_flags_subpixel = render_flags_subpixel;
     font->pixel_size_fixup = pixel_fixup;
@@ -946,10 +951,6 @@ fcft_from_name(size_t count, const char *names[static count],
         if (FcPatternGetLangSet(pattern, FC_LANG, 0, &langset) != FcResultMatch)
             langset = NULL;
 
-        FcBool is_color;
-        if (FcPatternGetBool(pattern, FC_COLOR, 0, &is_color) != FcResultMatch)
-            is_color = FcFalse;
-
         double req_px_size = -1., req_pt_size = -1.;
         FcPatternGetDouble(base_pattern, FC_PIXEL_SIZE, 0, &req_px_size);
         FcPatternGetDouble(base_pattern, FC_SIZE, 0, &req_pt_size);
@@ -1051,7 +1052,6 @@ fcft_from_name(size_t count, const char *names[static count],
                         .pattern = pattern,
                         .charset = FcCharSetCopy(charset),
                         .langset = langset != NULL ? FcLangSetCopy(langset) : NULL,
-                        .is_color = is_color == FcTrue,
                         .font = primary,
                         .req_px_size = req_px_size,
                         .req_pt_size = req_pt_size}));
@@ -1074,10 +1074,6 @@ fcft_from_name(size_t count, const char *names[static count],
                 if (FcPatternGetLangSet(fallback_pattern, FC_LANG, 0, &fallback_langset) != FcResultMatch)
                     fallback_langset = NULL;
 
-                FcBool fallback_is_color;
-                if (FcPatternGetBool(fallback_pattern, FC_COLOR, 0, &fallback_is_color) != FcResultMatch)
-                    fallback_is_color = FcFalse;
-
                 FcPatternGetDouble(base_pattern, FC_PIXEL_SIZE, 0, &req_px_size);
                 FcPatternGetDouble(base_pattern, FC_SIZE, 0, &req_pt_size);
 
@@ -1085,7 +1081,6 @@ fcft_from_name(size_t count, const char *names[static count],
                             .pattern = fallback_pattern,
                             .charset = FcCharSetCopy(fallback_charset),
                             .langset = fallback_langset != NULL ? FcLangSetCopy(fallback_langset) : NULL,
-                            .is_color = fallback_is_color == FcTrue,
                             .req_px_size = req_px_size,
                             .req_pt_size = req_pt_size}));
             }
@@ -1096,7 +1091,6 @@ fcft_from_name(size_t count, const char *names[static count],
                         .pattern = pattern,
                         .charset = FcCharSetCopy(charset),
                         .langset = langset != NULL ? FcLangSetCopy(langset) : NULL,
-                        .is_color = is_color == FcTrue,
                         .req_px_size = req_px_size,
                         .req_pt_size = req_pt_size}));
         }
@@ -1507,7 +1501,11 @@ glyph_for_index(const struct instance *inst, uint32_t index,
         pixman_transform_from_pixman_f_transform(&_scale, &scale);
         pixman_image_set_transform(pix, &_scale);
 
-        switch (scaling_filter) {
+        const enum fcft_scaling_filter filter_to_use = inst->is_color
+            ? scaling_filter
+            : FCFT_SCALING_FILTER_BILINEAR;
+
+        switch (filter_to_use) {
         case FCFT_SCALING_FILTER_NONE:
             break;
 
@@ -1526,7 +1524,10 @@ glyph_for_index(const struct instance *inst, uint32_t index,
              *   - find out how the subsample_bit_{x,y} parameters should be set
              */
             int param_count = 0;
-            pixman_kernel_t kernel = PIXMAN_KERNEL_LANCZOS3;
+            pixman_kernel_t kernel = filter_to_use == FCFT_SCALING_FILTER_CUBIC
+                ? PIXMAN_KERNEL_CUBIC
+                : PIXMAN_KERNEL_LANCZOS3;
+
             pixman_fixed_t *params = pixman_filter_create_separable_convolution(
                 &param_count,
                 pixman_double_to_fixed(1. / inst->pixel_size_fixup),
