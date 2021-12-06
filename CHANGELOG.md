@@ -49,6 +49,8 @@
 ### Fixed
 
 * `FCFT_SCALING_FILTER_CUBIC` incorrectly being mapped to “lanczos3”.
+* Pixman errors and program freezes when scaling bitmap fonts to very
+  small sizes (https://codeberg.org/dnkl/foot/issues/830).
 
 
 ### Security
