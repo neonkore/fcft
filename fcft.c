@@ -1490,7 +1490,10 @@ glyph_for_index(const struct instance *inst, uint32_t index,
     int x = inst->face->glyph->bitmap_left;
     int y = inst->face->glyph->bitmap_top;
 
-    if (inst->pixel_size_fixup != 1.) {
+    if (inst->pixel_size_fixup == 0.)
+        x = y = width = rows = 0;
+
+    else if (inst->pixel_size_fixup != 1.) {
         struct pixman_f_transform scale;
         pixman_f_transform_init_scale(
             &scale,
