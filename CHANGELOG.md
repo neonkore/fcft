@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [2.5.1](#2-5-1)
 * [2.5.0](#2-5-0)
 * [2.4.6](#2-4-6)
 * [2.4.5](#2-4-5)
@@ -29,7 +29,8 @@
 * [1.1.7](#1-1-7)
 
 
-## Unreleased
+## 2.5.1
+
 ### Added
 
 * Meson command line option `-Ddocs` to force disable or enable
@@ -44,8 +45,6 @@
   glyphs simply does not look good.
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * `FCFT_SCALING_FILTER_CUBIC` incorrectly being mapped to “lanczos3”.
@@ -53,8 +52,9 @@
   small sizes (https://codeberg.org/dnkl/foot/issues/830).
 
 
-### Security
 ### Contributors
+
+*  Alibek Omarov
 
 
 ## 2.5.0
