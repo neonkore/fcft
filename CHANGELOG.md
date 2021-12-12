@@ -33,6 +33,11 @@
 ## Unreleased
 ### Added
 ### Changed
+
+* meson: default C standard changed from C18 to C11 (fcft does not use
+  any C18 features).
+
+
 ### Deprecated
 ### Removed
 ### Fixed
