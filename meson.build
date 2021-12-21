@@ -102,7 +102,7 @@ version = custom_target(
   'generate_version',
   build_always_stale: true,
   output: 'version.h',
-  command: [env, 'LC_ALL=C', generate_version_sh, meson.project_version(), '@SOURCE_ROOT@', '@OUTPUT@'])
+  command: [env, 'LC_ALL=C', generate_version_sh, meson.project_version(), '@CURRENT_SOURCE_DIR@', '@OUTPUT@'])
 
 fcft_lib = build_target(
   'fcft', 'fcft.c', 'fcft/fcft.h', 'fcft/stride.h', 'log.c', 'log.h',

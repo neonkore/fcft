@@ -41,6 +41,10 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Wrong version string generated when building as a subproject.
+
+
 ### Security
 ### Contributors
 
