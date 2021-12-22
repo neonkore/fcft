@@ -2457,7 +2457,7 @@ fcft_text_run_rasterize(
     tll_push_back(pruns, ((struct partial_run){.start = 0}));
 
     /* Split run into graphemes */
-    utf8proc_int32_t state;
+    utf8proc_int32_t state = 0;
     for (size_t i = 1; i < len; i++) {
         if (utf8proc_grapheme_break_stateful(text[i - 1], text[i], &state)) {
             state = 0;
