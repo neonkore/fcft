@@ -43,6 +43,8 @@
 ### Fixed
 
 * Wrong version string generated when building as a subproject.
+* Uninitialized grapheme state variable in
+  `fcft_text_run_rasterize()`.
 
 
 ### Security
