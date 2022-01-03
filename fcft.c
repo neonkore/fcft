@@ -2777,6 +2777,28 @@ err:
     return false;
 }
 
+#if defined(_DEBUG)
+static void __attribute__((constructor))
+verify_precompose_table_is_sorted(void)
+{
+    wchar_t last_base = 0, last_comb = 0;
+
+    for (size_t i = 0; i < ALEN(precompose_table); i++) {
+        wchar_t base = precompose_table[i].base;
+        wchar_t comb = precompose_table[i].comb;
+
+        assert(base >= last_base);
+        if (base != last_base)
+            last_comb = 0;
+
+        assert(comb >= last_comb);
+
+        last_base = base;
+        last_comb = comb;
+    }
+}
+#endif /* _DEBUG */
+
 FCFT_EXPORT wchar_t
 fcft_precompose(const struct fcft_font *_font, wchar_t base, wchar_t comb,
                 bool *base_is_from_primary,
