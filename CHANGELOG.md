@@ -45,6 +45,8 @@
 * Wrong version string generated when building as a subproject.
 * Uninitialized grapheme state variable in
   `fcft_text_run_rasterize()`.
+* Incorrectly sorted Unicode precompose table when building in non-C
+  locales (https://codeberg.org/dnkl/fcft/issues/44).
 
 
 ### Security
