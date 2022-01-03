@@ -81,12 +81,13 @@ if utf8proc.found()
   add_project_arguments('-DFCFT_HAVE_UTF8PROC', language: 'c')
 endif
 
+env = find_program('env', native: true)
 generate_unicode_precompose_sh = files('generate-unicode-precompose.sh')
 unicode_data = custom_target(
   'unicode-data',
   input: 'unicode/UnicodeData.txt',
   output: 'unicode-compose-table.h',
-  command: [generate_unicode_precompose_sh, '@INPUT@', '@OUTPUT@'])
+  command: [env, 'LC_ALL=C', generate_unicode_precompose_sh, '@INPUT@', '@OUTPUT@'])
 
 python = find_program('python3')
 generate_emoji_data_py = files('generate-emoji-data.py')
@@ -96,7 +97,6 @@ emoji_data = custom_target(
   output: 'emoji-data.h',
   command: [python, generate_emoji_data_py, '@INPUT@', '@OUTPUT@'])
 
-env = find_program('env', native: true)
 generate_version_sh = files('generate-version.sh')
 version = custom_target(
   'generate_version',
