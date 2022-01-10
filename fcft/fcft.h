@@ -7,6 +7,38 @@
 #include <pixman.h>
 
 /*
+ * Logging
+ *
+ * By default, fcft does not log anything at all. This can be changed
+ * by calling fcft_log_init() (typically at program start).
+ *
+ * Note that fcft_log_init() does *not* call openlog(3), even when
+ * do_syslog==true.
+ */
+enum fcft_log_colorize {
+    FCFT_LOG_COLORIZE_NEVER,
+    FCFT_LOG_COLORIZE_ALWAYS,
+    FCFT_LOG_COLORIZE_AUTO
+};
+
+/* Which log messages to show. If you enable e.g. FCFT_LOG_CLASS_INFO,
+ * then WARNINGs and ERRORs will also be shown. */
+enum fcft_log_class {
+    FCFT_LOG_CLASS_NONE,
+    FCFT_LOG_CLASS_ERROR,
+    FCFT_LOG_CLASS_WARNING,
+    FCFT_LOG_CLASS_INFO,
+    FCFT_LOG_CLASS_DEBUG
+};
+
+/* Must be called before instantiating fonts */
+bool fcft_init(enum fcft_log_colorize colorize, bool do_syslog,
+               enum fcft_log_class log_level);
+
+/* Optional, but needed for clean valgrind runs */
+void fcft_fini(void);
+
+/*
  * Defines the subpixel order to use.
  *
  * Note that this is *ignored* if antialiasing has been disabled.
@@ -134,35 +166,6 @@ enum fcft_scaling_filter {
 /* Note: this function does not clear any caches - call *before*
  * rasterizing any glyphs! */
 bool fcft_set_scaling_filter(enum fcft_scaling_filter filter);
-
-/*
- * Logging
- *
- * By default, fcft does not log anything at all. This can be changed
- * by calling fcft_log_init() (typically at program start).
- *
- * Note that fcft_log_init() does *not* call openlog(3), even when
- * do_syslog==true.
- */
-enum fcft_log_colorize {
-    FCFT_LOG_COLORIZE_NEVER,
-    FCFT_LOG_COLORIZE_ALWAYS,
-    FCFT_LOG_COLORIZE_AUTO
-};
-
-/* Which log messages to show. If you enable e.g. FCFT_LOG_CLASS_INFO,
- * then WARNINGs and ERRORs will also be shown. */
-enum fcft_log_class {
-    FCFT_LOG_CLASS_NONE,
-    FCFT_LOG_CLASS_ERROR,
-    FCFT_LOG_CLASS_WARNING,
-    FCFT_LOG_CLASS_INFO,
-    FCFT_LOG_CLASS_DEBUG
-};
-
-void fcft_log_init(
-    enum fcft_log_colorize colorize, bool do_syslog,
-    enum fcft_log_class log_level);
 
 /*
  * Emoji presentation

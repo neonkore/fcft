@@ -37,6 +37,9 @@
 
 * meson: default C standard changed from C18 to C11 (fcft does not use
   any C18 features).
+* fcft’s constructor and destructor are now part of the public API,
+  and must be explicitly called: `fcft_init()` and `fcft_fini()`. Note
+  that `fcft_init()` also handles logging initialization.
 * All `wchar_t` usage replaced with `uint32_t`.
 * layout tags removed from `fcft_grapheme_rasterize()`. These should
   be set using `fontfeature`s in the font `names` and/or `attributes`
@@ -56,6 +59,7 @@
 
 * `fcft_size_adjust()`
 * `space_advance` member from `struct fcft_font`.
+* `fcft_log_init()`. Use `fcft_init()` instead.
 
 
 ### Fixed

@@ -43,8 +43,7 @@
 #define max(x, y) ((x) > (y) ? (x) : (y))
 #define ALEN(v) (sizeof(v) / sizeof((v)[0]))
 
-static FT_Error ft_lib_err;
-static FT_Library ft_lib;
+static FT_Library ft_lib = NULL;
 static mtx_t ft_lock;
 static bool can_set_lcd_filter = false;
 static enum fcft_scaling_filter scaling_filter = FCFT_SCALING_FILTER_CUBIC;
@@ -63,6 +62,9 @@ static size_t grapheme_cache_lookups = 0;
 static size_t grapheme_cache_collisions = 0;
 #endif
 #endif
+
+void fcft_log_init(enum fcft_log_colorize _colorize, bool _do_syslog,
+                   enum fcft_log_class _log_level);
 
 struct glyph_priv {
     struct fcft_glyph public;
@@ -183,11 +185,20 @@ ft_error_string(FT_Error err)
     return "unknown error";
 }
 
-static void __attribute__((constructor))
-init(void)
+FCFT_EXPORT bool
+fcft_init(enum fcft_log_colorize colorize, bool do_syslog,
+          enum fcft_log_class log_level)
 {
+    fcft_log_init(colorize, do_syslog, log_level);
+
+    FT_Error ft_err = FT_Init_FreeType(&ft_lib);
+    if (ft_err != FT_Err_Ok) {
+        LOG_ERR("failed to initialize FreeType: %s",
+                ft_error_string(ft_err));
+        return false;
+    }
+
     FcInit();
-    ft_lib_err = FT_Init_FreeType(&ft_lib);
 
     /*
      * Some FreeType builds use the older ClearType-style subpixel
@@ -237,10 +248,11 @@ init(void)
 
     mtx_init(&ft_lock, mtx_plain);
     mtx_init(&font_cache_lock, mtx_plain);
+    return true;
 }
 
-static void __attribute__((destructor))
-fini(void)
+FCFT_EXPORT void
+fcft_fini(void)
 {
     while (tll_length(font_cache) > 0) {
         if (tll_front(font_cache).font == NULL)
@@ -254,9 +266,7 @@ fini(void)
     mtx_destroy(&font_cache_lock);
     mtx_destroy(&ft_lock);
 
-    if (ft_lib_err == FT_Err_Ok)
-        FT_Done_FreeType(ft_lib);
-
+    FT_Done_FreeType(ft_lib);
     FcFini();
 
     LOG_DBG("glyph cache: lookups=%zu, collisions=%zu",
@@ -832,11 +842,12 @@ FCFT_EXPORT struct fcft_font *
 fcft_from_name(size_t count, const char *names[static count],
                const char *attributes)
 {
-    log_version_information();
-    if (ft_lib_err != FT_Err_Ok) {
-        LOG_ERR("failed to initialize FreeType: %s", ft_error_string(ft_lib_err));
+    if (ft_lib == NULL) {
+        LOG_ERR("fcft_init() not called");
         return NULL;
     }
+
+    log_version_information();
 
     if (count == 0)
         return NULL;

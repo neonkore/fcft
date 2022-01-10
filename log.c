@@ -17,7 +17,7 @@ static bool colorize = false;
 static bool do_syslog = false;
 static enum fcft_log_class log_level = FCFT_LOG_CLASS_NONE;
 
-FCFT_EXPORT void
+void
 fcft_log_init(enum fcft_log_colorize _colorize, bool _do_syslog,
               enum fcft_log_class _log_level)
 {

@@ -377,7 +377,9 @@ int
 main(int argc, char *const *argv)
 {
     setlocale(LC_CTYPE, "en_US.UTF-8");
-    fcft_log_init(FCFT_LOG_COLORIZE_AUTO, false, FCFT_LOG_CLASS_DEBUG);
+
+    fcft_init(FCFT_LOG_COLORIZE_AUTO, false, FCFT_LOG_CLASS_DEBUG);
+    atexit(&fcft_fini);
 
     const char *prog_name = argv[0];
 
