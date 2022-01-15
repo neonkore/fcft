@@ -31,7 +31,15 @@
 
 
 ## Unreleased
+
 ### Added
+
+* `name` to `struct fcft_font`. This is the name of the **primary**
+  font (i.e. not any of the fallback fonts).
+* `font_name` to `struct fcft_glyph`. This is the name of the font the
+  glyph was loaded from, and may reference a fallback font. Note that
+  it is **always** NULL in text-run glyphs.
+
 
 ### Changed
 
@@ -47,11 +55,6 @@
 * `wc` member in `struct glyph` renamed to `cp` (CodePoint).
 * `wc` function arguments renamed to `cp` in all APIs.
 * `fcft_glyph_rasterize()` renamed to `fcft_codepoint_rasterize()`.
-* `name` to `struct fcft_font`. This is the name of the **primary**
-  font (i.e. not any of the fallback fonts).
-* `font_name` to `struct fcft_glyph`. This is the name of the font the
-  glyph was loaded from, and may reference a fallback font. Note that
-  it is **always** NULL in text-run glyphs.
 
 
 ### Deprecated
