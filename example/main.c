@@ -26,7 +26,7 @@
 #define ALEN(v) (sizeof(v) / sizeof((v)[0]))
 
 #if !defined(__STDC_UTF_32__) || !__STDC_UTF_32__
- #error "uint32_t does not use UTF-32"
+ #error "char32_t does not use UTF-32"
 #endif
 
 static struct wl_display *display;
@@ -358,6 +358,19 @@ static const struct wl_registry_listener registry_listener = {
     .global_remove = &handle_global_remove,
 };
 
+bool
+locale_is_utf8(void)
+{
+    static const char u8[] = u8"ö";
+    assert(strlen(u8) == 2);
+
+    char32_t w;
+    if (mbrtoc32(&w, u8, 2, &(mbstate_t){0}) != 2)
+        return false;
+
+    return w == U'ö';
+}
+
 static void
 usage(const char *name)
 {
@@ -376,7 +389,18 @@ usage(const char *name)
 int
 main(int argc, char *const *argv)
 {
-    setlocale(LC_CTYPE, "en_US.UTF-8");
+    const char *locale = setlocale(LC_CTYPE, "");
+    if (!locale_is_utf8()) {
+        /* Try to force an UTF-8 locale */
+        if (setlocale(LC_CTYPE, "C.UTF-8") == NULL &&
+            setlocale(LC_CTYPE, "en_US.UTF-8") == NULL)
+        {
+            fprintf(stderr, "error: locale '%s' is not UTF-8\n", locale);
+            return 1;
+        }
+    }
+
+    assert(locale_is_utf8());
 
     fcft_init(FCFT_LOG_COLORIZE_AUTO, false, FCFT_LOG_CLASS_DEBUG);
     atexit(&fcft_fini);
