@@ -1,21 +1,21 @@
-fcft_grapheme_rasterize(3) "3.0.0" "fcft"
+fcft_rasterize_grapheme_utf32(3) "3.0.0" "fcft"
 
 # NAME
 
-fcft_grapheme_rasterize - rasterize a glyph for a grapheme cluster
+fcft_rasterize_grapheme_utf32 - rasterize glyph(s) for a  grapheme cluster
 
 # SYNOPSIS
 
 *\#include <fcft/fcft.h>*
 
-*const struct fcft_grapheme \*fcft_grapheme_rasterize(*
+*const struct fcft_grapheme \*fcft_rasterize_grapheme_utf32(*
 	*struct fcft_font \**_font_*,*
 	*size_t *_len_*, const uint32\_t *_grapheme\_cluster[static len]_*,*
 	*enum fcft_subpixel *_subpixel_*);*
 
 # DESCRIPTION
 
-*fcft_grapheme_rasterize*() rasterizes the grapheme cluster _cluster_
+*fcft_rasterize_grapheme_utf32*() rasterizes the grapheme cluster _cluster_
 using the primary font, or one of the fallback fonts, in _font_.
 
 Each cluster element is an UTF-32 encoded Unicode codepoint.
@@ -25,7 +25,7 @@ starting with the primary font and then the custom fallback fonts, and
 finally the FontConfig provided fallback fonts.
 
 _subpixel_ allows you to specify which subpixel mode to use. See
-*fcft_codepoint_rasterize*() for details.
+*fcft_rasterize_char_utf32*() for details.
 
 # RETURN VALUE
 
@@ -50,14 +50,16 @@ struct fcft_grapheme {
 ```
 
 _cols_ is the number of "columns" the grapheme occupised (effectively)
-_cp_ is the same _cp_ from the *fcft_codepoint_rasterize*() call.
+_cp_ is the same _cp_ from the *fcft_rasterize_char_utf32*() call.
 
 _cols_ is the number of "columns" the glyph occupies (effectively,
 *wcswidth*(_cluster_*)*).
 
 _glyphs_ is an array of rasterized glyphs. See
-*fcft_codepoint_rasterize*() for a description of *struct fcft_glyph*.
+*fcft_rasterize_char_utf32*() for a description of *struct
+fcft_glyph*.
 
 # SEE ALSO
 
-*fcft_destroy*(), *fcft_codepoint_rasterize*()
+*fcft_destroy*(), *fcft_rasterize_char_utf32*(),
+*fcft_rasterize_text_run_utf32*()

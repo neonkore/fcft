@@ -55,7 +55,7 @@ END_TEST
 
 START_TEST(test_glyph_rasterize)
 {
-    const struct fcft_glyph *glyph = fcft_codepoint_rasterize(
+    const struct fcft_glyph *glyph = fcft_rasterize_char_utf32(
         font, U'A', FCFT_SUBPIXEL_NONE);
     ck_assert_ptr_nonnull(glyph);
     ck_assert_ptr_nonnull(glyph->pix);
@@ -118,13 +118,13 @@ text_shaping_teardown(void)
 START_TEST(test_emoji_zwj)
 {
     const uint32_t emoji[] = U"🤚🏿";
-    const struct fcft_grapheme *grapheme = fcft_grapheme_rasterize(
+    const struct fcft_grapheme *grapheme = fcft_rasterize_grapheme_utf32(
         emoji_font, ALEN(emoji) - 1, emoji, FCFT_SUBPIXEL_DEFAULT);
     ck_assert_ptr_nonnull(grapheme);
     ck_assert_int_eq(grapheme->count, 1);
 
     /* Verify grapheme was cached */
-    const struct fcft_grapheme *grapheme2 = fcft_grapheme_rasterize(
+    const struct fcft_grapheme *grapheme2 = fcft_rasterize_grapheme_utf32(
         emoji_font, ALEN(emoji) - 1, emoji, FCFT_SUBPIXEL_DEFAULT);
     ck_assert_ptr_eq(grapheme, grapheme2);
 }

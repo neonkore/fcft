@@ -1,25 +1,25 @@
-fcft_text_run_rasterize(3) "3.0.0" "fcft"
+fcft_rasterize_text_run_utf32(3) "3.0.0" "fcft"
 
 # NAME
 
-fcft_text_run_rasterize - rasterize a series of glyphs for a text string
+fcft_rasterize_text_run_utf32 - rasterize a series of glyphs for a text string
 
 # SYNOPSIS
 
 *\#include <fcft/fcft.h>*
 
-*struct fcft_text_run \*fcft_text_run_rasterize(*
+*struct fcft_text_run \*fcft_rasterize_text_run_utf32(*
 	*struct fcft_font \**_font_*, size_t *_len_*,*
 	*const uint32_t *_text_*[static len], enum fcft_subpixel *_subpixel_*);*
 
 # DESCRIPTION
 
-*fcft_text_run_rasterize*() shapes and rasterizes the UTF-32 encoded
-Unicode string _text_ into a series of glyphs using the primary font,
-and possibly one or more fallback fonts, in _font_.
+*fcft_rasterize_text_run_utf32*() shapes and rasterizes the UTF-32
+encoded Unicode string _text_ into a series of glyphs using the
+primary font, and possibly one or more fallback fonts, in _font_.
 
 _subpixel_ allows you to specify which subpixel mode to use. See
-*fcft_codepoint_rasterize*() for details.
+*fcft_rasterize_char_utf32*() for details.
 
 The string is passed to HarfBuzz for shaping, initially using the
 primary font. The shaping data is parsed, and when an unshaped
@@ -73,5 +73,5 @@ The text-run must be free:d with *fcft_text_run_destroy*().
 
 # SEE ALSO
 
-*fcft_text_run_destroy*(), *fcft_grapheme_rasterize*(),
-*fcft_codepoint_rasterize*()
+*fcft_text_run_destroy*(), *fcft_rasterize_char_utf32*(),
+*fcft_rasterize_grapheme_utf32*()

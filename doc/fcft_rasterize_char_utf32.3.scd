@@ -1,20 +1,20 @@
-fcft_codepoint_rasterize(3) "3.0.0" "fcft"
+fcft_rasterize_char_utf32(3) "3.0.0" "fcft"
 
 # NAME
 
-fcft_codepoint_rasterize - rasterize a glyph for a wide character
+fcft_rasterize_char_utf32 - rasterize a glyph for a single UTF-32 codepoint
 
 # SYNOPSIS
 
 *\#include <fcft/fcft.h>*
 
-*const struct fcft_glyph \*fcft_codepoint_rasterize(*
+*const struct fcft_glyph \*fcft_rasterize_char_utf32(*
 	*struct fcft_font \**_font_*, uint32_t *_cp_*,
 	enum fcft_subpixel *_subpixel_*);*
 
 # DESCRIPTION
 
-*fcft_codepoint_rasterize*() rasterizes the UTF-32 encoded Unicode
+*fcft_rasterize_char_utf32*() rasterizes the UTF-32 encoded Unicode
 codepoint _cp_ using the primary font, or one of the fallback fonts,
 in _font_.
 
@@ -84,7 +84,7 @@ struct fcft_glyph {
 };
 ```
 
-_cp_ is the same _cp_ from the *fcft_codepoint_rasterize*() call.
+_cp_ is the same _cp_ from the *fcft_rasterize_char_utf32*() call.
 
 _cols_ is the number of "columns" the glyph occupies (effectively,
 *wcwidth*(_cp_*)*). Note that this value will be incorrect if wide
@@ -132,4 +132,5 @@ See *fcft_from_name*()
 
 # SEE ALSO
 
-*fcft_destroy*(), *fcft_kerning*()
+*fcft_destroy*(), *fcft_kerning*(), *fcft_rasterize_grapheme_utf32*(),
+*fcft_rasterize_text_run_utf32*()

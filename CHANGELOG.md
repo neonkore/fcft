@@ -54,7 +54,9 @@
   arguments in `fcft_from_name()`.
 * `wc` member in `struct glyph` renamed to `cp` (CodePoint).
 * `wc` function arguments renamed to `cp` in all APIs.
-* `fcft_glyph_rasterize()` renamed to `fcft_codepoint_rasterize()`.
+* `fcft_glyph_rasterize()` renamed to `fcft_rasterize_char_utf32()`.
+* `fcft_grapheme_rasterize()` renamed to `fcft_rasterize_grapheme_utf32()`.
+* `fcft_text_run_rasterize()` renamed to `fcft_rasterize_text_run_utf32()`.
 
 
 ### Deprecated

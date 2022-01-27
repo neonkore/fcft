@@ -143,7 +143,7 @@ render_chars(const char32_t *text, size_t text_len,
     int text_width = 0;
 
     for (size_t i = 0; i < text_len; i++) {
-        glyphs[i] = fcft_codepoint_rasterize(font, text[i], subpixel_mode);
+        glyphs[i] = fcft_rasterize_char_utf32(font, text[i], subpixel_mode);
 
         kern[i] = 0;
         if (i > 0) {
@@ -173,7 +173,7 @@ render_graphemes(struct buffer *buf, int y, pixman_image_t *color)
     int text_width = 0;
 
     for (size_t i = 0; i < grapheme_count; i++) {
-        graphs[i] = fcft_grapheme_rasterize(
+        graphs[i] = fcft_rasterize_grapheme_utf32(
             font, graphemes[i].len, &text[graphemes[i].begin], subpixel_mode);
 
         if (graphs[i] == NULL)
@@ -204,7 +204,7 @@ render_shaped(struct buffer *buf, int y, pixman_image_t *color)
         return;
     }
 
-    struct fcft_text_run *run = fcft_text_run_rasterize(
+    struct fcft_text_run *run = fcft_rasterize_text_run_utf32(
         font, text_len, text, subpixel_mode);
 
     if (run == NULL)

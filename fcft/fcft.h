@@ -118,7 +118,7 @@ struct fcft_glyph {
 
 /* Rasterize the Unicode codepoint 'cp' using 'font'. Use the defined
  * subpixel mode *if* antialiasing is enabled for this font */
-const struct fcft_glyph *fcft_codepoint_rasterize(
+const struct fcft_glyph *fcft_rasterize_char_utf32(
     struct fcft_font *font, uint32_t cp, enum fcft_subpixel subpixel);
 
 struct fcft_grapheme {
@@ -128,7 +128,7 @@ struct fcft_grapheme {
     const struct fcft_glyph **glyphs;
 };
 
-const struct fcft_grapheme *fcft_grapheme_rasterize(
+const struct fcft_grapheme *fcft_rasterize_grapheme_utf32(
     struct fcft_font *font,
     size_t len, const uint32_t grapheme_cluster[static len],
     enum fcft_subpixel subpixel);
@@ -139,7 +139,7 @@ struct fcft_text_run {
     size_t count;
 };
 
-struct fcft_text_run *fcft_text_run_rasterize(
+struct fcft_text_run *fcft_rasterize_text_run_utf32(
     struct fcft_font *font, size_t len, const uint32_t text[static len],
     enum fcft_subpixel subpixel);
 

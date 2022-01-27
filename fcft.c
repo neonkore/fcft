@@ -1687,8 +1687,8 @@ test_emoji_compare(void)
 #endif
 
 FCFT_EXPORT const struct fcft_glyph *
-fcft_codepoint_rasterize(struct fcft_font *_font, uint32_t cp,
-                         enum fcft_subpixel subpixel)
+fcft_rasterize_char_utf32(struct fcft_font *_font, uint32_t cp,
+                          enum fcft_subpixel subpixel)
 {
     struct font_priv *font = (struct font_priv *)_font;
 
@@ -2065,9 +2065,9 @@ font_for_grapheme(struct font_priv *font,
 }
 
 FCFT_EXPORT const struct fcft_grapheme *
-fcft_grapheme_rasterize(struct fcft_font *_font,
-                        size_t len, const uint32_t cluster[static len],
-                        enum fcft_subpixel subpixel)
+fcft_rasterize_grapheme_utf32(struct fcft_font *_font,
+                              size_t len, const uint32_t cluster[static len],
+                              enum fcft_subpixel subpixel)
 {
     struct font_priv *font = (struct font_priv *)_font;
     struct instance *inst = NULL;
@@ -2234,9 +2234,9 @@ err:
 #else /* !FCFT_HAVE_HARFBUZZ */
 
 FCFT_EXPORT const struct fcft_grapheme *
-fcft_grapheme_rasterize(struct fcft_font *_font,
-                        size_t len, const uint32_t cluster[static len],
-                        enum fcft_subpixel subpixel)
+fcft_rasterize_grapheme_utf32(struct fcft_font *_font,
+                              size_t len, const uint32_t cluster[static len],
+                              enum fcft_subpixel subpixel)
 {
     return NULL;
 }
@@ -2333,7 +2333,7 @@ rasterize_partial_run(struct text_run *run, const struct instance *inst,
 }
 
 FCFT_EXPORT struct fcft_text_run *
-fcft_text_run_rasterize(
+fcft_rasterize_text_run_utf32(
     struct fcft_font *_font, size_t len, const uint32_t text[static len],
     enum fcft_subpixel subpixel)
 {
@@ -2524,7 +2524,7 @@ err:
 #else /* !FCFT_HAVE_HARFBUZZ || !FCFT_HAVE_UTF8PROC */
 
 FCFT_EXPORT struct fcft_text_run *
-fcft_text_run_rasterize(
+fcft_rasterize_text_run_utf32(
     struct fcft_font *font, size_t len, const uint32_t text[static len],
     enum fcft_subpixel subpixel)
 {
