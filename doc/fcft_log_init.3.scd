@@ -1,4 +1,4 @@
-fcft_log_init(3) "3.0.0" "fcft"
+fcft_log_init(3) "3.0.1" "fcft"
 
 # NAME
 
