@@ -37,6 +37,11 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Crash when failing to lookup the full font name
+  (https://codeberg.org/dnkl/fcft/issues/47).
+
+
 ### Security
 ### Contributors
 
