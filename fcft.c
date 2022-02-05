@@ -695,9 +695,9 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
         FT_Set_Transform(ft_face, &m, NULL);
     }
 
-    font->name = strdup((char *)full_name);
+    font->name = full_name != NULL ? strdup((char *)full_name) : NULL;
     font->path = strdup((char *)face_file);
-    if (font->name == NULL || font->path == NULL) {
+    if (font->path == NULL) {
         free(font->name);
         free(font->path);
         goto err_done_face;

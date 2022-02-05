@@ -53,7 +53,7 @@ enum fcft_subpixel {
 };
 
 struct fcft_font {
-    const char *name;  /* Primar font name */
+    const char *name;  /* Primary font name. Note: may be NULL */
 
     /* font extents */
     int height;
@@ -102,7 +102,7 @@ struct fcft_glyph {
     uint32_t cp;
     int cols;              /* wcwidth(cp) */
 
-    const char *font_name;  /* Note: always NULL in text-runs */
+    const char *font_name;  /* Note: may be NULL. Always NULL in text-runs */
     pixman_image_t *pix;
 
     int x;
