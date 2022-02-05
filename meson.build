@@ -1,5 +1,5 @@
 project('fcft', 'c',
-        version: '3.0.0',  # Don't forget to update version in man pages
+        version: '3.0.1',  # Don't forget to update version in man pages
         license: 'MIT',
         meson_version: '>=0.54.0',
         default_options: [
@@ -20,7 +20,7 @@ project('fcft', 'c',
 so_version = [
   '4',      # MAJOR: increment on non-backward compatible ABI changes
   '0',      # MINOR: increment with backward compatible ABI changes
-  '0',      # PATCH: increment with non-ABI affecting changes
+  '1',      # PATCH: increment with non-ABI affecting changes
 ]
 
 is_debug_build = get_option('buildtype').startswith('debug')
