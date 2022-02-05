@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [3.0.0](#3-0-0)
 * [2.5.1](#2-5-1)
 * [2.5.0](#2-5-0)
 * [2.4.6](#2-4-6)
@@ -30,7 +30,7 @@
 * [1.1.7](#1-1-7)
 
 
-## Unreleased
+## 3.0.0
 
 ### Added
 
@@ -59,7 +59,6 @@
 * `fcft_text_run_rasterize()` renamed to `fcft_rasterize_text_run_utf32()`.
 
 
-### Deprecated
 ### Removed
 
 * `fcft_size_adjust()`
@@ -74,10 +73,6 @@
   `fcft_text_run_rasterize()`.
 * Incorrectly sorted Unicode precompose table when building in non-C
   locales (https://codeberg.org/dnkl/fcft/issues/44).
-
-
-### Security
-### Contributors
 
 
 ## 2.5.1
