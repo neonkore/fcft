@@ -1,6 +1,7 @@
 # Changelog
 
 * [Unreleased](#unreleased)
+* [3.0.1](#3-0-1)
 * [3.0.0](#3-0-0)
 * [2.5.1](#2-5-1)
 * [2.5.0](#2-5-0)
@@ -37,13 +38,16 @@
 ### Deprecated
 ### Removed
 ### Fixed
+### Security
+### Contributors
+
+
+## 3.0.1
+
+### Fixed
 
 * Crash when failing to lookup the full font name
   (https://codeberg.org/dnkl/fcft/issues/47).
-
-
-### Security
-### Contributors
 
 
 ## 3.0.0
