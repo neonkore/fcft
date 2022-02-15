@@ -534,7 +534,7 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
     }
 
     FcChar8 *full_name = NULL;
-    if (FcPatternGetString(pattern, FC_FULLNAME, 0, &full_name) != FcResultMatch)
+    if (FcPatternGetString(pattern, FC_FULLNAME, face_index, &full_name) != FcResultMatch)
         LOG_WARN("failed to get full font name");
 
     mtx_lock(&ft_lock);

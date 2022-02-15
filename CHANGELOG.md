@@ -37,7 +37,13 @@
 ### Changed
 ### Deprecated
 ### Removed
+
 ### Fixed
+
+* `fcft_font::name`, and `fcft_glyph::font_name` not being set
+  correctly for font collections (e.g. `*.ttc` files).
+
+
 ### Security
 ### Contributors
 
