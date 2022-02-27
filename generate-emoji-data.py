@@ -114,7 +114,7 @@ for emoji in sorted(emojis.values(), key=lambda x: x.codepoint):
         last = emoji
         compacted.append(last)
 
-print(f'compacted from {len(emojis)} to {len(compacted)} entries')
+# print(f'compacted from {len(emojis)} to {len(compacted)} entries')
 
 opts.output.write('#pragma once\n')
 opts.output.write('#include <stdint.h>\n')
