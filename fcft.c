@@ -303,7 +303,7 @@ log_version_information(void)
 
     enum fcft_capabilities caps = fcft_capabilities();
 
-    static char caps_str[256];
+    char caps_str[256];
     snprintf(
         caps_str, sizeof(caps_str),
         "%cgraphemes %cruns %cassertions",
@@ -313,6 +313,9 @@ log_version_information(void)
 
     LOG_INFO("fcft: %s %s", FCFT_VERSION, caps_str);
 
+    char deps_str[128];
+    int deps_idx = 0;
+
     {
         int raw_version = FcGetVersion();
 
@@ -321,15 +324,33 @@ log_version_information(void)
         const int minor = raw_version / 100; raw_version %= 100;
         const int patch = raw_version;
 
-        LOG_INFO("fontconfig: %d.%d.%d", major, minor, patch);
+        deps_idx += snprintf(
+            &deps_str[deps_idx], sizeof(deps_str) - deps_idx,
+            "fontconfig: %d.%d.%d", major, minor, patch);
     }
 
     {
         int major, minor, patch;
         FT_Library_Version(ft_lib, &major, &minor, &patch);
-        LOG_INFO("freetype: %d.%d.%d", major, minor, patch);
+        deps_idx += snprintf(
+            &deps_str[deps_idx], sizeof(deps_str) - deps_idx,
+            ", freetype: %d.%d.%d", major, minor, patch);
     }
 
+#if defined(FCFT_HAVE_HARFBUZZ)
+    deps_idx += snprintf(
+        &deps_str[deps_idx], sizeof(deps_str) - deps_idx,
+        ", harfbuzz: %s", hb_version_string());
+#endif
+
+#if defined(FCFT_HAVE_UTF8PROC)
+    deps_idx += snprintf(
+        &deps_str[deps_idx], sizeof(deps_str) - deps_idx,
+        ", utf8proc: %s (Unicode %s)",
+        utf8proc_version(), utf8proc_unicode_version());
+#endif
+
+    LOG_INFO("%.*s", deps_idx, deps_str);
 }
 
 FCFT_EXPORT bool
