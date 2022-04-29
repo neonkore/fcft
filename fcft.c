@@ -2239,6 +2239,7 @@ fcft_rasterize_grapheme_utf32(struct fcft_font *_font,
     return &grapheme->public;
 
 err:
+    hb_buffer_clear_contents(inst->hb_buf);
     for (size_t i = 0; i < glyph_idx; i++)
         glyph_destroy(grapheme->public.glyphs[i]);
     free(grapheme->public.glyphs);
