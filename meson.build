@@ -81,30 +81,35 @@ if utf8proc.found()
   add_project_arguments('-DFCFT_HAVE_UTF8PROC', language: 'c')
 endif
 
-if get_option('svg-backend') == 'librsvg'
-  cairo = dependency('cairo')
-  librsvg = dependency('librsvg-2.0')
-  rsvg = declare_dependency(
-    sources: ['3rd-party/freetype-rsvg/rsvg-port.c',
-              '3rd-party/freetype-rsvg/rsvg-port.h'],
-    compile_args: '-Wno-deprecated-declarations',
-    dependencies: [cairo, librsvg])
-  nanosvg = declare_dependency()
-  svg_backend = 'librsvg'
-  add_project_arguments(
-    ['-DHAVE_LIBRSVG', '-DFCFT_ENABLE_SVG_LIBRSVG=1'], language: 'c')
+if freetype.version().version_compare('>=24.2.18')  # 2.12.0, TODO: double-check...
+  if get_option('svg-backend') == 'librsvg'
+    cairo = dependency('cairo')
+    librsvg = dependency('librsvg-2.0')
+    rsvg = declare_dependency(
+      sources: ['3rd-party/freetype-rsvg/rsvg-port.c',
+                '3rd-party/freetype-rsvg/rsvg-port.h'],
+      compile_args: '-Wno-deprecated-declarations',
+      dependencies: [cairo, librsvg])
+    nanosvg = declare_dependency()
+    svg_backend = 'librsvg'
+    add_project_arguments(
+      ['-DHAVE_LIBRSVG', '-DFCFT_ENABLE_SVG_LIBRSVG=1'], language: 'c')
 
-elif get_option('svg-backend') == 'nanosvg'
-  nanosvg = declare_dependency(
-    sources: ['nanosvg.c', '3rd-party/nanosvg/src/nanosvg.h',
-              'nanosvgrast.c', '3rd-party/nanosvg/src/nanosvgrast.h',
-              'svg-backend-nanosvg.c'],
-    include_directories: '3rd-party/nanosvg/src',
-    dependencies: math)
-  rsvg = declare_dependency()
-  svg_backend = 'nanosvg'
-  add_project_arguments('-DFCFT_ENABLE_SVG_NANOSVG=1', language: 'c')
-
+  elif get_option('svg-backend') == 'nanosvg'
+    nanosvg = declare_dependency(
+      sources: ['nanosvg.c', '3rd-party/nanosvg/src/nanosvg.h',
+                'nanosvgrast.c', '3rd-party/nanosvg/src/nanosvgrast.h',
+                'svg-backend-nanosvg.c'],
+      include_directories: '3rd-party/nanosvg/src',
+      dependencies: math)
+    rsvg = declare_dependency()
+    svg_backend = 'nanosvg'
+    add_project_arguments('-DFCFT_ENABLE_SVG_NANOSVG=1', language: 'c')
+  else
+    rsvg = declare_dependency()
+    nanosvg = declare_dependency()
+    svg_backend = 'disabled'
+  endif
 else
   rsvg = declare_dependency()
   nanosvg = declare_dependency()
