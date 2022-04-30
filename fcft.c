@@ -39,6 +39,13 @@
 #include "unicode-compose-table.h"
 #include "version.h"
 
+#if defined(FCFT_ENABLE_SVG_NANOSVG)
+ #include "svg-backend-nanosvg.h"
+#endif
+#if defined(FCFT_ENABLE_SVG_LIBRSVG)
+ #include "3rd-party/freetype-rsvg/rsvg-port.h"
+#endif
+
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
 #define ALEN(v) (sizeof(v) / sizeof((v)[0]))
@@ -197,6 +204,12 @@ fcft_init(enum fcft_log_colorize colorize, bool do_syslog,
                 ft_error_string(ft_err));
         return false;
     }
+
+#if defined(FCFT_ENABLE_SVG_NANOSVG)
+    FT_Property_Set(ft_lib, "ot-svg", "svg-hooks", &nanosvg_hooks);
+#elif defined(FCFT_ENABLE_SVG_LIBRSVG)
+    FT_Property_Set(ft_lib, "ot-svg", "svg-hooks", &rsvg_hooks);
+#endif
 
     FcInit();
 

@@ -1,3 +1,5 @@
+option('svg-backend', type: 'combo', choices: ['none', 'nanosvg'],
+       value: 'nanosvg', description: 'enables support for SVG glyphs (none: disable, nanosvg: bundled)')
 option(
     'docs', type: 'feature',
     description: 'Build and install documentation (man pages, readme, changelog, license etc).')

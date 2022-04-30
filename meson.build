@@ -81,6 +81,36 @@ if utf8proc.found()
   add_project_arguments('-DFCFT_HAVE_UTF8PROC', language: 'c')
 endif
 
+if get_option('svg-backend') == 'librsvg'
+  cairo = dependency('cairo')
+  librsvg = dependency('librsvg-2.0')
+  rsvg = declare_dependency(
+    sources: ['3rd-party/freetype-rsvg/rsvg-port.c',
+              '3rd-party/freetype-rsvg/rsvg-port.h'],
+    compile_args: '-Wno-deprecated-declarations',
+    dependencies: [cairo, librsvg])
+  nanosvg = declare_dependency()
+  svg_backend = 'librsvg'
+  add_project_arguments(
+    ['-DHAVE_LIBRSVG', '-DFCFT_ENABLE_SVG_LIBRSVG=1'], language: 'c')
+
+elif get_option('svg-backend') == 'nanosvg'
+  nanosvg = declare_dependency(
+    sources: ['nanosvg.c', '3rd-party/nanosvg/src/nanosvg.h',
+              'nanosvgrast.c', '3rd-party/nanosvg/src/nanosvgrast.h',
+              'svg-backend-nanosvg.c'],
+    include_directories: '3rd-party/nanosvg/src',
+    dependencies: math)
+  rsvg = declare_dependency()
+  svg_backend = 'nanosvg'
+  add_project_arguments('-DFCFT_ENABLE_SVG_NANOSVG=1', language: 'c')
+
+else
+  rsvg = declare_dependency()
+  nanosvg = declare_dependency()
+  svg_backend = 'disabled'
+endif
+
 env = find_program('env', native: true)
 generate_unicode_precompose_sh = files('generate-unicode-precompose.sh')
 unicode_data = custom_target(
@@ -105,11 +135,14 @@ version = custom_target(
   command: [env, 'LC_ALL=C', generate_version_sh, meson.project_version(), '@CURRENT_SOURCE_DIR@', '@OUTPUT@'])
 
 fcft_lib = build_target(
-  'fcft', 'fcft.c', 'fcft/fcft.h', 'fcft/stride.h', 'log.c', 'log.h',
+  'fcft',
+  'fcft.c',
+  'fcft/fcft.h', 'fcft/stride.h',
+  'log.c', 'log.h',
   unicode_data, emoji_data, version,
   target_type: meson.is_subproject() ? 'static_library' : 'library',
   version: '.'.join(so_version),
-  dependencies: [math, threads, fontconfig, freetype, harfbuzz1, harfbuzz2, utf8proc, pixman, tllist, stdthreads],
+  dependencies: [math, threads, fontconfig, freetype, harfbuzz1, harfbuzz2, utf8proc, pixman, tllist, rsvg, nanosvg, stdthreads],
   gnu_symbol_visibility: 'hidden',
   install: not meson.is_subproject())
 
@@ -147,10 +180,11 @@ endif
 
 summary(
   {
-    'Documentation': not meson.is_subproject() and scdoc.found(),
+    'OT-SVG backend': svg_backend,
     'Grapheme shaping': harfbuzz1.found() or harfbuzz2.found(),
     'Run shaping': harfbuzz2.found() and utf8proc.found(),
     'Test text shaping': get_option('test-text-shaping'),
+    'Documentation': not meson.is_subproject() and scdoc.found(),
   },
   bool_yn: true
 )
