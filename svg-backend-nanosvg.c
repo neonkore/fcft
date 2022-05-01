@@ -15,6 +15,8 @@
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
 struct state {
+    uint32_t cookie;  /* For debugging, to ensure the ‘generic’ field
+                       * is ours */
     NSVGimage *svg;
     float scale;
     unsigned short glyph_id_start;
@@ -23,23 +25,41 @@ struct state {
     float y_ofs;
 };
 
+#define COOKIE 0xfcf77fcf
+
+static void
+slot_state_finalizer(void *object)
+{
+    FT_GlyphSlot slot = object;
+    struct state *state = slot->generic.data;
+
+    assert(state == NULL || state->cookie == COOKIE);
+
+    free(state);
+    slot->generic.data = NULL;
+    slot->generic.finalizer = NULL;
+}
+
 static FT_Error
 fcft_svg_init(FT_Pointer *state)
 {
-    *state = malloc(sizeof(struct state));
-    return *state == NULL ? FT_Err_Out_Of_Memory : FT_Err_Ok;
+    *state = NULL;
+    return FT_Err_Ok;
 }
 
 static void
 fcft_svg_free(FT_Pointer *state)
 {
-    free(*state);
 }
 
 static FT_Error
 fcft_svg_render(FT_GlyphSlot slot, FT_Pointer *_state)
 {
-    struct state *state = *(struct state **)_state;
+    assert(*_state == NULL);
+
+    struct state *state = (struct state *)slot->generic.data;
+    assert(state->cookie == COOKIE);
+
     FT_Bitmap *bitmap = &slot->bitmap;
 
     /* TODO: implement this (note: we’re erroring out in preset_slot()
@@ -183,13 +203,22 @@ fcft_svg_render(FT_GlyphSlot slot, FT_Pointer *_state)
 static FT_Error
 fcft_svg_preset_slot(FT_GlyphSlot slot, FT_Bool cache, FT_Pointer *_state)
 {
-    struct state *state = *(struct state **)_state;
+    assert(*_state == NULL);
+    struct state *state = NULL;
     struct state state_dummy = {0};
 
     FT_SVG_Document  document = (FT_SVG_Document)slot->other;
     FT_Size_Metrics  metrics  = document->metrics;
 
-    if (!cache)
+    if (cache) {
+        if (slot->generic.data == NULL) {
+            slot->generic.data = calloc(1, sizeof(*state));
+            slot->generic.finalizer = &slot_state_finalizer;
+            ((struct state *)slot->generic.data)->cookie = COOKIE;
+        }
+        state = slot->generic.data;
+        assert(state->cookie == COOKIE);
+    } else
         state = &state_dummy;
 
     /* The nanosvg rasterizer does not support rasterizing specific
