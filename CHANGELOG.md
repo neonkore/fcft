@@ -50,7 +50,7 @@
 * OT-SVG support ([#49](49)). Note that FreeType does not rasterize
   SVG glyphs by itself. Instead, fcft does this via FreeType hooks,
   using a bundled [nanosvg](nanosvg) as backend. Enabled by default,
-  but can be disabled with `-Dsvg-backend=none`). FreeType >= 2.12 is
+  but can be disabled with `-Dsvg-backend=none`. FreeType >= 2.12 is
   required.
 * `FCFT_CAPABILITY_SVG` added to `fcft_capabilities()`.
 
