@@ -38,7 +38,7 @@ bottom: `fcft_text_run_rasterize()`_
 ## Requirements
 
 * fontconfig
-* freetype
+* freetype (>= 2.12 required for SVG support)
 * pixman
 * harfbuzz (optional, for grapheme and “run” shaping support)
 * libutf8proc (optional, for “run” shaping support)
@@ -51,6 +51,7 @@ bottom: `fcft_text_run_rasterize()`_
 * Antialiasing
 * Subpixel antialiasing
 * Color bitmap fonts (_emoji_ fonts)
+* OT-SVG (requires FreeType >= 2.12)
 * Font caching
 * Glyph caching
 * Kerning[^1]
@@ -152,6 +153,10 @@ If text-shaping is enabled, you might also want to enable the
 associated tests. Use `-Dtest-text-shaping=true` to do so. Note that
 these tests require an emoji font to be installed, and `fc-match
 emoji` must return that font first.
+
+SVG support is also enabled by default, using the bundled
+[nanosvg](https://github.com/memononen/nanosvg) library. You can
+disable this with `-Dsvg-backend=none`.
 
 To build the example programs, use the `-Dexamples=true` meson command
 line option.
