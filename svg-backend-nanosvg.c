@@ -181,6 +181,13 @@ fcft_svg_preset_slot(FT_GlyphSlot slot, FT_Bool cache, FT_Pointer *_state)
     if (!cache)
         state = &state_dummy;
 
+    /* The nanosvg rasterizer does not support rasterizing specific
+     * element IDs */
+    if (document->start_glyph_id != document->end_glyph_id) {
+        LOG_ERR("multi-glyph rendering is unsupported");
+        return FT_Err_Unimplemented_Feature;
+    }
+
     state->glyph_id_start = document->start_glyph_id;
     state->glyph_id_end = document->end_glyph_id;
 
@@ -192,8 +199,10 @@ fcft_svg_preset_slot(FT_GlyphSlot slot, FT_Bool cache, FT_Pointer *_state)
     state->svg = nsvgParse(svg_copy, "px", 0.);
     free(svg_copy);
 
-    if (state->svg == NULL)
+    if (state->svg == NULL) {
+        LOG_ERR("failed to parse SVG document");
         return FT_Err_Invalid_SVG_Document;
+    }
 
 #if defined(_DEBUG)
     LOG_DBG("shapes' bounds:");
