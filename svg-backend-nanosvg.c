@@ -274,12 +274,12 @@ fcft_svg_preset_slot(FT_GlyphSlot slot, FT_Bool cache, FT_Pointer *_state)
         svg_height = document->units_per_EM;
     }
 
-    float x_scale = (float)metrics.x_ppem / svg_width;
-    float y_scale = (float)metrics.y_ppem / svg_height;
+    float x_scale = (float)metrics.x_ppem / floorf(svg_width);
+    float y_scale = (float)metrics.y_ppem / floorf(svg_height);
     state->scale = x_scale < y_scale ? x_scale : y_scale;
 
-    float width = svg_width * state->scale;
-    float height = svg_height * state->scale;
+    float width = floorf(svg_width) * state->scale;
+    float height = floorf(svg_height) * state->scale;
 
     LOG_DBG(
         "dimensions: x-ppem=%hu, y-ppem=%hu, "
