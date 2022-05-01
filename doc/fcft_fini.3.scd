@@ -1,4 +1,4 @@
-fcft_fini(3) "3.0.1" "fcft"
+fcft_fini(3) "3.1.0" "fcft"
 
 # NAME
 
