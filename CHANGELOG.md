@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [3.1.0](#3-1-0)
 * [3.0.1](#3-0-1)
 * [3.0.0](#3-0-0)
 * [2.5.1](#2-5-1)
@@ -32,7 +32,7 @@
 * [1.1.7](#1-1-7)
 
 
-## Unreleased
+## 3.1.0
 
 ### Added
 
@@ -52,9 +52,6 @@
 * Minimum required meson version is now 0.58
 
 
-### Deprecated
-### Removed
-
 ### Fixed
 
 * `fcft_font::name`, and `fcft_glyph::font_name` not being set
@@ -64,10 +61,6 @@
   support ([#1056][foot-1056]).
 
 [foot-1056]: https://codeberg.org/dnkl/foot/issues/1056
-
-
-### Security
-### Contributors
 
 
 ## 3.0.1
