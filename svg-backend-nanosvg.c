@@ -15,6 +15,8 @@
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
 struct state {
+    uint32_t cookie;  /* For debugging, to ensure the ‘generic’ field
+                       * is ours */
     NSVGimage *svg;
     float scale;
     unsigned short glyph_id_start;
@@ -23,23 +25,41 @@ struct state {
     float y_ofs;
 };
 
+#define COOKIE 0xfcf77fcf
+
+static void
+slot_state_finalizer(void *object)
+{
+    FT_GlyphSlot slot = object;
+    struct state *state = slot->generic.data;
+
+    assert(state == NULL || state->cookie == COOKIE);
+
+    free(state);
+    slot->generic.data = NULL;
+    slot->generic.finalizer = NULL;
+}
+
 static FT_Error
 fcft_svg_init(FT_Pointer *state)
 {
-    *state = malloc(sizeof(struct state));
-    return *state == NULL ? FT_Err_Out_Of_Memory : FT_Err_Ok;
+    *state = NULL;
+    return FT_Err_Ok;
 }
 
 static void
 fcft_svg_free(FT_Pointer *state)
 {
-    free(*state);
 }
 
 static FT_Error
 fcft_svg_render(FT_GlyphSlot slot, FT_Pointer *_state)
 {
-    struct state *state = *(struct state **)_state;
+    assert(*_state == NULL);
+
+    struct state *state = (struct state *)slot->generic.data;
+    assert(state->cookie == COOKIE);
+
     FT_Bitmap *bitmap = &slot->bitmap;
 
     /* TODO: implement this (note: we’re erroring out in preset_slot()
@@ -183,13 +203,22 @@ fcft_svg_render(FT_GlyphSlot slot, FT_Pointer *_state)
 static FT_Error
 fcft_svg_preset_slot(FT_GlyphSlot slot, FT_Bool cache, FT_Pointer *_state)
 {
-    struct state *state = *(struct state **)_state;
+    assert(*_state == NULL);
+    struct state *state = NULL;
     struct state state_dummy = {0};
 
     FT_SVG_Document  document = (FT_SVG_Document)slot->other;
     FT_Size_Metrics  metrics  = document->metrics;
 
-    if (!cache)
+    if (cache) {
+        if (slot->generic.data == NULL) {
+            slot->generic.data = calloc(1, sizeof(*state));
+            slot->generic.finalizer = &slot_state_finalizer;
+            ((struct state *)slot->generic.data)->cookie = COOKIE;
+        }
+        state = slot->generic.data;
+        assert(state->cookie == COOKIE);
+    } else
         state = &state_dummy;
 
     /* The nanosvg rasterizer does not support rasterizing specific
@@ -304,10 +333,47 @@ fcft_svg_preset_slot(FT_GlyphSlot slot, FT_Bool cache, FT_Pointer *_state)
     float y0 =
         -(float)document->delta.y / 64 * svg_height / metrics.y_ppem;
 
+    LOG_DBG("transform: xx=%.2f, yy=%.2f, xy=%.2f, yx=%.2f, x0=%.2f, y0=%.2f",
+            xx, yy, xy, yx, x0, y0);
+
+    /*
+     * User transformations
+     *
+     * Normally, we don’t set any in fcft. There’s one exception -
+     * when FontConfig has added an FC_MATRIX pattern. This is
+     * typically done when simulating italic fonts.
+     *
+     * Preferably, we’d like to error out here, and simply skip the
+     * glyph. However, it seems FreeType ignors errors thrown from
+     * this hook. This leads to a crash in the render hook, since
+     * we’ve free:d the NSVG image.
+     *
+     * Therefore, we log a warning, and then *ignore* the
+     * transform. For the normal use case, where the transform is
+     * intended to simulate italics, it’s probably *better* to ignore
+     * it, since most SVG glyphs are emojis, which doesn’t really look
+     * good when slanted.
+     */
     if (xx != 1. || yy != 1. || xy != 0. || yx != 0. || x0 != 0. || y0 != 0.) {
-        LOG_ERR("user transformations not supported");
+        static bool have_warned = false;
+        if (!have_warned) {
+            LOG_WARN("user transformations not supported");
+            have_warned = true;
+        }
+
+#if 0   /* Spams too much */
+        LOG_WARN(
+            "user transformations not supported (%s, glyph index %04x): "
+            "xx=%.2f, yy=%.2f, xy=%.2f, yx=%.2f, x0=%.2f, y0=%.2f",
+            slot->face->family_name, slot->glyph_index,
+            xx, yy, xy, yx, x0, y0);
+#endif
+
+#if 0  /* FreeType appears to ignore errors, causing us to crash in
+        * the render hook */
         nsvgDelete(state->svg);
         return FT_Err_Unimplemented_Feature;
+#endif
     }
 
     float ascender = slot->face->size->metrics.ascender / 64.;

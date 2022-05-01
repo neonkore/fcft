@@ -586,13 +586,13 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
     FT_Face ft_face;
     FT_Error ft_err = FT_New_Face(ft_lib, (const char *)face_file, face_index, &ft_face);
     mtx_unlock(&ft_lock);
-    if (ft_err != 0) {
+    if (ft_err != FT_Err_Ok) {
         LOG_ERR("%s: failed to create FreeType face; %s",
                 face_file, ft_error_string(ft_err));
         return false;
     }
 
-    if ((ft_err = FT_Set_Pixel_Sizes(ft_face, 0, round(pixel_size))) != 0) {
+    if ((ft_err = FT_Set_Pixel_Sizes(ft_face, 0, round(pixel_size))) != FT_Err_Ok) {
         LOG_ERR("%s: failed to set character size: %s",
                 face_file, ft_error_string(ft_err));
         goto err_done_face;
@@ -1187,7 +1187,7 @@ glyph_for_index(const struct instance *inst, uint32_t index,
     uint8_t *data = NULL;
 
     FT_Error err;
-    if ((err = FT_Load_Glyph(inst->face, index, inst->load_flags)) != 0) {
+    if ((err = FT_Load_Glyph(inst->face, index, inst->load_flags)) != FT_Err_Ok) {
         LOG_ERR("%s: failed to load glyph #%d: %s",
                 inst->path, index, ft_error_string(err));
         goto err;
@@ -1244,7 +1244,7 @@ glyph_for_index(const struct instance *inst, uint32_t index,
 
         FT_Error err = FT_Library_SetLcdFilter(ft_lib, inst->lcd_filter);
 
-        if (err != 0) {
+        if (err != FT_Err_Ok) {
             LOG_ERR("failed to set LCD filter: %s", ft_error_string(err));
             mtx_unlock(&ft_lock);
             goto err;
@@ -1252,7 +1252,7 @@ glyph_for_index(const struct instance *inst, uint32_t index,
     }
 
     if (inst->face->glyph->format != FT_GLYPH_FORMAT_BITMAP) {
-        if ((err = FT_Render_Glyph(inst->face->glyph, render_flags)) != 0) {
+        if ((err = FT_Render_Glyph(inst->face->glyph, render_flags)) != FT_Err_Ok) {
             LOG_ERR("%s: failed to render glyph: %s",
                     inst->path, ft_error_string(err));
             if (unlock_ft_lock)
@@ -2711,7 +2711,7 @@ fcft_kerning(struct fcft_font *_font, uint32_t left, uint32_t right,
     FT_Error err = FT_Get_Kerning(
         primary->face, left_idx, right_idx, FT_KERNING_DEFAULT, &kerning);
 
-    if (err != 0) {
+    if (err != FT_Err_Ok) {
         LOG_WARN("%s: failed to get kerning for %lc -> %lc: %s",
                  primary->path, (int)left, (int)right, ft_error_string(err));
         goto err;

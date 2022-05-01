@@ -39,6 +39,15 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Crash when multiple SVG glyphs are rasterized in parallel (i.e. the
+  SVG backend is now thread safe) ([#51](51)).
+* Crash when rasterizing SVG glyphs with transforms (e.g. synthetic
+  slanting). Transforms are now completely ignored ([#51](51)).
+
+[51]: https://codeberg.org/dnkl/fcft/issues/51
+
+
 ### Security
 ### Contributors
 
