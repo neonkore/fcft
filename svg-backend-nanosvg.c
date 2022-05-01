@@ -42,11 +42,12 @@ fcft_svg_render(FT_GlyphSlot slot, FT_Pointer *_state)
     struct state *state = *(struct state **)_state;
     FT_Bitmap *bitmap = &slot->bitmap;
 
-    /* TODO */
+    /* TODO: implement this (note: we’re erroring out in preset_slot()
+     * if this is not true) */
     assert(state->glyph_id_start == state->glyph_id_end);
 
     /* TODO: fix logging - svg->{width,height} is not the width/height we use */
-    LOG_INFO("rendering to a %dx%d bitmap (svg size: %.2fx%.2f -> %.2fx%.2f)",
+    LOG_DBG("rendering to a %dx%d bitmap (svg size: %.2fx%.2f -> %.2fx%.2f)",
             bitmap->width, bitmap->rows,
             state->svg->width, state->svg->height,
             state->svg->width * state->scale,
