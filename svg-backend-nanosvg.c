@@ -344,7 +344,7 @@ fcft_svg_preset_slot(FT_GlyphSlot slot, FT_Bool cache, FT_Pointer *_state)
      * typically done when simulating italic fonts.
      *
      * Preferably, we’d like to error out here, and simply skip the
-     * glyph. However, it seems FreeType ignors errors thrown from
+     * glyph. However, it seems FreeType ignores errors thrown from
      * this hook. This leads to a crash in the render hook, since
      * we’ve free:d the NSVG image.
      *

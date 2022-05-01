@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [3.1.1](#3-1-1)
 * [3.1.0](#3-1-0)
 * [3.0.1](#3-0-1)
 * [3.0.0](#3-0-0)
@@ -33,11 +33,8 @@
 * [1.1.7](#1-1-7)
 
 
-## Unreleased
-### Added
-### Changed
-### Deprecated
-### Removed
+## 3.1.1
+
 ### Fixed
 
 * Crash when multiple SVG glyphs are rasterized in parallel (i.e. the
@@ -46,10 +43,6 @@
   slanting). Transforms are now completely ignored ([#51](51)).
 
 [51]: https://codeberg.org/dnkl/fcft/issues/51
-
-
-### Security
-### Contributors
 
 
 ## 3.1.0
