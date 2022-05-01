@@ -1,4 +1,4 @@
-fcft_text_run_destroy(3) "3.1.0" "fcft"
+fcft_text_run_destroy(3) "3.1.1" "fcft"
 
 # NAME
 
