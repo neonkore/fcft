@@ -333,10 +333,47 @@ fcft_svg_preset_slot(FT_GlyphSlot slot, FT_Bool cache, FT_Pointer *_state)
     float y0 =
         -(float)document->delta.y / 64 * svg_height / metrics.y_ppem;
 
+    LOG_DBG("transform: xx=%.2f, yy=%.2f, xy=%.2f, yx=%.2f, x0=%.2f, y0=%.2f",
+            xx, yy, xy, yx, x0, y0);
+
+    /*
+     * User transformations
+     *
+     * Normally, we don’t set any in fcft. There’s one exception -
+     * when FontConfig has added an FC_MATRIX pattern. This is
+     * typically done when simulating italic fonts.
+     *
+     * Preferably, we’d like to error out here, and simply skip the
+     * glyph. However, it seems FreeType ignors errors thrown from
+     * this hook. This leads to a crash in the render hook, since
+     * we’ve free:d the NSVG image.
+     *
+     * Therefore, we log a warning, and then *ignore* the
+     * transform. For the normal use case, where the transform is
+     * intended to simulate italics, it’s probably *better* to ignore
+     * it, since most SVG glyphs are emojis, which doesn’t really look
+     * good when slanted.
+     */
     if (xx != 1. || yy != 1. || xy != 0. || yx != 0. || x0 != 0. || y0 != 0.) {
-        LOG_ERR("user transformations not supported");
+        static bool have_warned = false;
+        if (!have_warned) {
+            LOG_WARN("user transformations not supported");
+            have_warned = true;
+        }
+
+#if 0   /* Spams too much */
+        LOG_WARN(
+            "user transformations not supported (%s, glyph index %04x): "
+            "xx=%.2f, yy=%.2f, xy=%.2f, yx=%.2f, x0=%.2f, y0=%.2f",
+            slot->face->family_name, slot->glyph_index,
+            xx, yy, xy, yx, x0, y0);
+#endif
+
+#if 0  /* FreeType appears to ignore errors, causing us to crash in
+        * the render hook */
         nsvgDelete(state->svg);
         return FT_Err_Unimplemented_Feature;
+#endif
     }
 
     float ascender = slot->face->size->metrics.ascender / 64.;
