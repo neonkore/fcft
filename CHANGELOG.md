@@ -59,7 +59,7 @@
 
 * `fcft_font::name`, and `fcft_glyph::font_name` not being set
   correctly for font collections (e.g. `*.ttc` files).
-* `Assertion inside HarfBuzz with `fcft_rasterize_grapheme_ut32()`
+* Assertion inside HarfBuzz with `fcft_rasterize_grapheme_ut32()`
   when the resulting glyph is an SVG image, which fcft does not yet
   support ([#1056][foot-1056]).
 
