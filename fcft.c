@@ -176,6 +176,9 @@ fcft_capabilities(void)
 #if defined(FCFT_HAVE_HARFBUZZ) && defined(FCFT_HAVE_UTF8PROC)
     ret |= FCFT_CAPABILITY_TEXT_RUN_SHAPING;
 #endif
+#if defined(FCFT_ENABLE_SVG_LIBRSVG) || defined(FCFT_ENABLE_SVG_NANOSVG)
+    ret |= FCFT_CAPABILITY_SVG;
+#endif
 
     return ret;
 }
