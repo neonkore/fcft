@@ -315,7 +315,7 @@ fcft_svg_preset_slot(FT_GlyphSlot slot, FT_Bool cache, FT_Pointer *_state)
     slot->bitmap.width = ceilf(width);
     slot->bitmap_left = min_x * state->scale +
         (metrics.x_ppem - (int)slot->bitmap.width) / 2;
-    slot->bitmap_top = ascender;
+    slot->bitmap_top = min_y != 0. ? -min_y * state->scale : ascender;
     slot->bitmap.width = ceilf(width);
     slot->bitmap.pitch = slot->bitmap.width * 4;
     slot->bitmap.pixel_mode = FT_PIXEL_MODE_BGRA;
