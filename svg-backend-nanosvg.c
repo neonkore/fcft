@@ -310,7 +310,8 @@ fcft_svg_preset_slot(FT_GlyphSlot slot, FT_Bool cache, FT_Pointer *_state)
     }
 
     float ascender = slot->face->size->metrics.ascender / 64.;
-    slot->bitmap_left = (metrics.x_ppem - width) / 2;
+    //slot->bitmap_left = (metrics.x_ppem - width) / 2;
+    slot->bitmap_left = min_x + (metrics.x_ppem - width) / 2;;
     slot->bitmap_top = ascender;
     slot->bitmap.rows = ceilf(height);
     slot->bitmap.width = ceilf(width);
