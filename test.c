@@ -39,6 +39,10 @@ START_TEST(test_capabilities)
     ck_assert(caps & FCFT_CAPABILITY_TEXT_RUN_SHAPING);
     caps &= ~FCFT_CAPABILITY_TEXT_RUN_SHAPING;
 #endif
+#if defined(FCFT_ENABLE_SVG_LIBRSVG) || defined(FCFT_ENABLE_SVG_NANOSVG)
+    ck_assert(caps & FCFT_CAPABILITY_SVG);
+    caps &= ~FCFT_CAPABILITY_SVG;
+#endif
 
     ck_assert_int_eq(caps, 0);
 }

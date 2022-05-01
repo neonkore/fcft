@@ -39,6 +39,13 @@
 #include "unicode-compose-table.h"
 #include "version.h"
 
+#if defined(FCFT_ENABLE_SVG_NANOSVG)
+ #include "svg-backend-nanosvg.h"
+#endif
+#if defined(FCFT_ENABLE_SVG_LIBRSVG)
+ #include "3rd-party/freetype-rsvg/rsvg-port.h"
+#endif
+
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
 #define ALEN(v) (sizeof(v) / sizeof((v)[0]))
@@ -169,6 +176,9 @@ fcft_capabilities(void)
 #if defined(FCFT_HAVE_HARFBUZZ) && defined(FCFT_HAVE_UTF8PROC)
     ret |= FCFT_CAPABILITY_TEXT_RUN_SHAPING;
 #endif
+#if defined(FCFT_ENABLE_SVG_LIBRSVG) || defined(FCFT_ENABLE_SVG_NANOSVG)
+    ret |= FCFT_CAPABILITY_SVG;
+#endif
 
     return ret;
 }
@@ -197,6 +207,12 @@ fcft_init(enum fcft_log_colorize colorize, bool do_syslog,
                 ft_error_string(ft_err));
         return false;
     }
+
+#if defined(FCFT_ENABLE_SVG_NANOSVG)
+    FT_Property_Set(ft_lib, "ot-svg", "svg-hooks", &nanosvg_hooks);
+#elif defined(FCFT_ENABLE_SVG_LIBRSVG)
+    FT_Property_Set(ft_lib, "ot-svg", "svg-hooks", &rsvg_hooks);
+#endif
 
     FcInit();
 
@@ -306,9 +322,17 @@ log_version_information(void)
     char caps_str[256];
     snprintf(
         caps_str, sizeof(caps_str),
-        "%cgraphemes %cruns %cassertions",
+        "%cgraphemes %cruns %csvg%s %cassertions",
         caps & FCFT_CAPABILITY_GRAPHEME_SHAPING ? '+' : '-',
         caps & FCFT_CAPABILITY_TEXT_RUN_SHAPING ? '+' : '-',
+        caps & FCFT_CAPABILITY_SVG ? '+' : '-',
+#if defined(FCFT_ENABLE_SVG_LIBRSVG)
+        "(librsvg)",
+#elif defined(FCFT_ENABLE_SVG_NANOSVG)
+        "(nanosvg)",
+#else
+        "",
+#endif
         is_assertions_enabled() ? '+' : '-');
 
     LOG_INFO("fcft: %s %s", FCFT_VERSION, caps_str);

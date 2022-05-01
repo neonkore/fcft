@@ -87,6 +87,7 @@ struct fcft_font {
 enum fcft_capabilities {
     FCFT_CAPABILITY_GRAPHEME_SHAPING = 0x1,  /* Since 2.3.0 */
     FCFT_CAPABILITY_TEXT_RUN_SHAPING = 0x2,  /* Since 2.4.0 */
+    FCFT_CAPABILITY_SVG = 0x4,               /* Since 3.1.0 */
 };
 
 enum fcft_capabilities fcft_capabilities(void);
