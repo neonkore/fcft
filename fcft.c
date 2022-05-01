@@ -322,9 +322,17 @@ log_version_information(void)
     char caps_str[256];
     snprintf(
         caps_str, sizeof(caps_str),
-        "%cgraphemes %cruns %cassertions",
+        "%cgraphemes %cruns %csvg%s %cassertions",
         caps & FCFT_CAPABILITY_GRAPHEME_SHAPING ? '+' : '-',
         caps & FCFT_CAPABILITY_TEXT_RUN_SHAPING ? '+' : '-',
+        caps & FCFT_CAPABILITY_SVG ? '+' : '-',
+#if defined(FCFT_ENABLE_SVG_LIBRSVG)
+        "(librsvg)",
+#elif defined(FCFT_ENABLE_SVG_NANOSVG)
+        "(nanosvg)",
+#else
+        "",
+#endif
         is_assertions_enabled() ? '+' : '-');
 
     LOG_INFO("fcft: %s %s", FCFT_VERSION, caps_str);
