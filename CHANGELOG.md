@@ -1,5 +1,6 @@
 # Changelog
 
+* [Unreleased](#unreleased)
 * [3.1.0](#3-1-0)
 * [3.0.1](#3-0-1)
 * [3.0.0](#3-0-0)
@@ -32,6 +33,25 @@
 * [1.1.7](#1-1-7)
 
 
+## Unreleased
+### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+
+* Crash when multiple SVG glyphs are rasterized in parallel (i.e. the
+  SVG backend is now thread safe) ([#51](51)).
+* Crash when rasterizing SVG glyphs with transforms (e.g. synthetic
+  slanting). Transforms are now completely ignored ([#51](51)).
+
+[51]: https://codeberg.org/dnkl/fcft/issues/51
+
+
+### Security
+### Contributors
+
+
 ## 3.1.0
 
 ### Added
@@ -39,7 +59,7 @@
 * OT-SVG support ([#49](49)). Note that FreeType does not rasterize
   SVG glyphs by itself. Instead, fcft does this via FreeType hooks,
   using a bundled [nanosvg](nanosvg) as backend. Enabled by default,
-  but can be disabled with `-Dsvg-backend=none`). FreeType >= 2.12 is
+  but can be disabled with `-Dsvg-backend=none`. FreeType >= 2.12 is
   required.
 * `FCFT_CAPABILITY_SVG` added to `fcft_capabilities()`.
 
