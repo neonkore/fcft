@@ -1,4 +1,5 @@
 #include <math.h>
+#include <float.h>
 #include <assert.h>
 
 #include <ft2build.h>
@@ -10,11 +11,16 @@
 #include <nanosvg.h>
 #include <nanosvgrast.h>
 
+#define min(x, y) ((x) < (y) ? (x) : (y))
+#define max(x, y) ((x) > (y) ? (x) : (y))
+
 struct state {
     NSVGimage *svg;
-    double scale;
+    float scale;
     unsigned short glyph_id_start;
     unsigned short glyph_id_end;
+    float x_ofs;
+    float y_ofs;
 };
 
 static FT_Error
@@ -39,15 +45,19 @@ fcft_svg_render(FT_GlyphSlot slot, FT_Pointer *_state)
     /* TODO */
     assert(state->glyph_id_start == state->glyph_id_end);
 
-    LOG_DBG("rendering to a %dx%d bitmap (svg size: %fx%f -> %fx%f)",
+    /* TODO: fix logging - svg->{width,height} is not the width/height we use */
+    LOG_INFO("rendering to a %dx%d bitmap (svg size: %.2fx%.2f -> %.2fx%.2f)",
             bitmap->width, bitmap->rows,
             state->svg->width, state->svg->height,
             state->svg->width * state->scale,
             state->svg->height * state->scale);
 
     NSVGrasterizer *rast = nsvgCreateRasterizer();
-    nsvgRasterize(rast, state->svg, 0, 0, state->scale, bitmap->buffer,
-                  bitmap->width, bitmap->rows, bitmap->pitch);
+    nsvgRasterize(
+        rast, state->svg,
+        state->x_ofs * state->scale, state->y_ofs * state->scale,
+        state->scale, bitmap->buffer, bitmap->width, bitmap->rows,
+        bitmap->pitch);
     nsvgDeleteRasterizer(rast);
     nsvgDelete(state->svg);
 
@@ -204,37 +214,76 @@ fcft_svg_preset_slot(FT_GlyphSlot slot, FT_Bool cache, FT_Pointer *_state)
         return FT_Err_Invalid_SVG_Document;
     }
 
-#if defined(_DEBUG)
+    /*
+     * Not sure if bug in nanosvg, but for images with negative
+     * bounds, the image size (svg->width, svg->height) is
+     * wrong. Workaround by figuring out the bounds ourselves, and
+     * calculating the size from that.
+     */
+    float min_x = FLT_MAX;
+    float min_y = FLT_MAX;
+    float max_x = FLT_MIN;
+    float max_y = FLT_MIN;
+
     LOG_DBG("shapes' bounds:");
-    for (struct NSVGshape *shape = state->svg->shapes;
+    for (const struct NSVGshape *shape = state->svg->shapes;
          shape != NULL;
          shape = shape->next)
     {
         LOG_DBG("  %s: %.2f %.2f %.2f %.2f", shape->id,
                 shape->bounds[0], shape->bounds[1], shape->bounds[2],
                 shape->bounds[3]);
-    }
+
+#if 0   /* Verify the shape’s paths’ bounds don’t exceed the shape’s bounds */
+        for (const struct NSVGpath *path = shape->paths;
+             path != NULL;
+             path = path->next)
+        {
+            assert(path->bounds[0] >= shape->bounds[0]);
+            assert(path->bounds[1] >= shape->bounds[1]);
+            assert(path->bounds[2] <= shape->bounds[2]);
+            assert(path->bounds[3] <= shape->bounds[3]);
+
+            LOG_DBG("    path: %0.2f %0.2f %0.2f %0.2f",
+                    path->bounds[0], path->bounds[1],
+                    path->bounds[2], path->bounds[3]);
+        }
 #endif
 
-    float svg_width = state->svg->width;
-    float svg_height = state->svg->height;
+        min_x = min(min_x, shape->bounds[0]);
+        min_y = min(min_y, shape->bounds[1]);
+        max_x = max(max_x, shape->bounds[2]);
+        max_y = max(max_y, shape->bounds[3]);
+    }
+
+    LOG_DBG("image bounds: min: x=%.2f, y=%.2f, max: x=%.2f, y=%.2f ",
+            min_x, min_y, max_x, max_y);
+    LOG_DBG("image size: %.2fx%.2f (calculated), %.2fx%.2f (NSVGimage)",
+            max_x - min_x, max_y - min_y, state->svg->width, state->svg->height);
+
+    /* For the rasterizer */
+    state->x_ofs = -min_x;
+    state->y_ofs = -min_y;
+
+    float svg_width = max_x - min_x;
+    float svg_height = max_y - min_y;
 
     if (svg_width == 0 || svg_height == 0) {
         svg_width = document->units_per_EM;
         svg_height = document->units_per_EM;
     }
 
-    double x_scale = (double)metrics.x_ppem / svg_width;
-    double y_scale = (double)metrics.y_ppem / svg_height;
+    float x_scale = (float)metrics.x_ppem / svg_width;
+    float y_scale = (float)metrics.y_ppem / svg_height;
     state->scale = x_scale < y_scale ? x_scale : y_scale;
 
-    double width = (int)svg_width * state->scale;
-    double height = (int)svg_height * state->scale;
+    float width = svg_width * state->scale;
+    float height = svg_height * state->scale;
 
-    LOG_DBG("dimensions: x-ppem=%d, y-ppem=%d, width=%f, height=%f, scale=%f "
-            "(svg-width=%f, svg-height=%f)",
-            metrics.x_ppem, metrics.y_ppem, width, height, state->scale,
-            svg_width, svg_height);
+    LOG_DBG(
+        "dimensions: x-ppem=%hu, y-ppem=%hu, "
+        "target width=%.2f, target height=%.2f, scale=%f",
+        metrics.x_ppem, metrics.y_ppem, width, height, state->scale);
 
     /*
      * We need to take into account any transformations applied.  The end
@@ -244,15 +293,15 @@ fcft_svg_preset_slot(FT_GlyphSlot slot, FT_Bool cache, FT_Pointer *_state)
      * then do some maths on this to get the equivalent transformation in
      * SVG coordinates.
      */
-    double xx =  (double)document->transform.xx / ( 1 << 16 );
-    double xy = -(double)document->transform.xy / ( 1 << 16 );
-    double yx = -(double)document->transform.yx / ( 1 << 16 );
-    double yy =  (double)document->transform.yy / ( 1 << 16 );
+    float xx =  (float)document->transform.xx / ( 1 << 16 );
+    float xy = -(float)document->transform.xy / ( 1 << 16 );
+    float yx = -(float)document->transform.yx / ( 1 << 16 );
+    float yy =  (float)document->transform.yy / ( 1 << 16 );
 
-    double x0 =
-        (double)document->delta.x / 64 * svg_width / metrics.x_ppem;
-    double y0 =
-        -(double)document->delta.y / 64 * svg_height / metrics.y_ppem;
+    float x0 =
+        (float)document->delta.x / 64 * svg_width / metrics.x_ppem;
+    float y0 =
+        -(float)document->delta.y / 64 * svg_height / metrics.y_ppem;
 
     if (xx != 1. || yy != 1. || xy != 0. || yx != 0. || x0 != 0. || y0 != 0.) {
         LOG_ERR("user transformations not supported");
@@ -260,15 +309,15 @@ fcft_svg_preset_slot(FT_GlyphSlot slot, FT_Bool cache, FT_Pointer *_state)
         return FT_Err_Unimplemented_Feature;
     }
 
-    double ascender = slot->face->size->metrics.ascender / 64.;
+    float ascender = slot->face->size->metrics.ascender / 64.;
     slot->bitmap_left = (metrics.x_ppem - width) / 2;
     slot->bitmap_top = ascender;
-    slot->bitmap.rows = ceil(height);
-    slot->bitmap.width = ceil(width);
+    slot->bitmap.rows = ceilf(height);
+    slot->bitmap.width = ceilf(width);
     slot->bitmap.pitch = slot->bitmap.width * 4;
     slot->bitmap.pixel_mode = FT_PIXEL_MODE_BGRA;
 
-    LOG_DBG("bitmap: x:=%d, y:=%d, width:=%d, height:=%d, scale:=%f",
+    LOG_DBG("bitmap: x=%d, y=%d, width=%d, height=%d, scale=%f",
             slot->bitmap_left, slot->bitmap_top,
             slot->bitmap.width, slot->bitmap.rows, state->scale);
 
