@@ -339,13 +339,13 @@ fcft_svg_preset_slot(FT_GlyphSlot slot, FT_Bool cache, FT_Pointer *_state)
     slot->metrics.width  = roundf(width * 64);
     slot->metrics.height = roundf(height * 64);
 
-    slot->metrics.horiBearingX = (FT_Pos)(horiBearingX * 64); /* XXX rounding? */
-    slot->metrics.horiBearingY = (FT_Pos)(horiBearingY * 64);
-    slot->metrics.vertBearingX = (FT_Pos)(vertBearingX * 64);
-    slot->metrics.vertBearingY = (FT_Pos)(vertBearingY * 64);
+    slot->metrics.horiBearingX = horiBearingX * 64; /* XXX rounding? */
+    slot->metrics.horiBearingY = horiBearingY * 64;
+    slot->metrics.vertBearingX = vertBearingX * 64;
+    slot->metrics.vertBearingY = vertBearingY * 64;
 
     if (slot->metrics.vertAdvance == 0)
-        slot->metrics.vertAdvance = (FT_Pos)(height * 1.2f * 64);
+        slot->metrics.vertAdvance = height * 1.2f * 64;
 
     if (!cache) {
         assert(state == &state_dummy);
