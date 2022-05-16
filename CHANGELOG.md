@@ -40,6 +40,13 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* SVG glyphs failing with “bad argument” if LCD subpixel rendering is
+  enabled ([#1069][foot-1069]).
+
+[foot-1069]: https://codeberg.org/dnkl/foot/issues/1069
+
+
 ### Security
 ### Contributors
 
