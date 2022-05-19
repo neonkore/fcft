@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [3.1.2](#3-1-2)
 * [3.1.1](#3-1-1)
 * [3.1.0](#3-1-0)
 * [3.0.1](#3-0-1)
@@ -34,21 +34,14 @@
 * [1.1.7](#1-1-7)
 
 
-## Unreleased
-### Added
-### Changed
-### Deprecated
-### Removed
+## 3.1.2
+
 ### Fixed
 
 * SVG glyphs failing with “bad argument” if LCD subpixel rendering is
   enabled ([#1069][foot-1069]).
 
 [foot-1069]: https://codeberg.org/dnkl/foot/issues/1069
-
-
-### Security
-### Contributors
 
 
 ## 3.1.1
