@@ -1229,6 +1229,14 @@ glyph_for_index(const struct instance *inst, uint32_t index,
         bgr = false;
     }
 
+#if FREETYPE_MAJOR >= 3 || (FREETYPE_MAJOR >= 2 && FREETYPE_MINOR >= 12)
+    if (inst->face->glyph->format == FT_GLYPH_FORMAT_SVG) {
+        /* Up to, and include, 2.12.1, FreeType rejects everything
+         * else with “bad argument” */
+        render_flags = FT_RENDER_MODE_NORMAL;
+    }
+#endif
+
     /*
      * LCD filter is per library instance, hence we need to re-set it
      * every time. But only if we need it, and only if we _can_, to
