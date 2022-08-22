@@ -1,5 +1,6 @@
 # Changelog
 
+* [Unreleased](#unreleased)
 * [3.1.2](#3-1-2)
 * [3.1.1](#3-1-1)
 * [3.1.0](#3-1-0)
@@ -32,6 +33,23 @@
 * [2.1.0](#2-1-0)
 * [2.0.0](#2-0-0)
 * [1.1.7](#1-1-7)
+
+
+## Unreleased
+### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+
+* Bitmap font glyph advance width calculation in
+  `fcft_rasterize_grapheme_utf32()` and
+  `fcft_rasterize_text_run_utf32()` when user had enabled
+  `10-scale-bitmap-fonts.conf` in FontConfig.
+
+
+### Security
+### Contributors
 
 
 ## 3.1.2
