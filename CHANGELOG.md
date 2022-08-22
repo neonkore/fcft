@@ -41,6 +41,13 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Bitmap font glyph advance width calculation in
+  `fcft_rasterize_grapheme_utf32()` and
+  `fcft_rasterize_text_run_utf32()` when user had enabled
+  `10-scale-bitmap-fonts.conf` in FontConfig.
+
+
 ### Security
 ### Contributors
 
