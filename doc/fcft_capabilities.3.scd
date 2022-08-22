@@ -1,4 +1,4 @@
-fcft_capabilities(3) "3.1.2" "fcft"
+fcft_capabilities(3) "3.1.3" "fcft"
 
 # NAME
 
