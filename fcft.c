@@ -830,11 +830,10 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
 #if defined(LOG_ENABLE_DBG) && LOG_ENABLE_DBG
     LOG_DBG("%s: size=%.2fpt/%.2fpx, dpi=%.2f, fixup-factor: %.4f, "
             "line-height: %dpx, ascent: %dpx, descent: %dpx, "
-            "x-advance (max/space): %d/%dpx, features:%s",
+            "x-advance (max): %dpx, features:%s",
             font->path, size, pixel_size, dpi, font->pixel_size_fixup,
             font->metrics.height, font->metrics.ascent, font->metrics.descent,
-            font->metrics.max_advance.x, font->metrics.space_advance.x,
-            features);
+            font->metrics.max_advance.x, features);
 #else
     LOG_INFO("%s: size=%.2fpt/%dpx, dpi=%.2f%s",
              font->path, size, (int)round(pixel_size), dpi, features);
