@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [3.1.4](#3-1-4)
 * [3.1.3](#3-1-3)
 * [3.1.2](#3-1-2)
 * [3.1.1](#3-1-1)
@@ -36,18 +36,11 @@
 * [1.1.7](#1-1-7)
 
 
-## Unreleased
-### Added
-### Changed
-### Deprecated
-### Removed
+## 3.1.4
+
 ### Fixed
 
 * Crash when failing to load an SVG glyph with multiple sub-glyphs.
-
-
-### Security
-### Contributors
 
 
 ## 3.1.3
