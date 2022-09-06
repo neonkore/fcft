@@ -42,6 +42,10 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Crash when failing to load an SVG glyph with multiple sub-glyphs.
+
+
 ### Security
 ### Contributors
 
