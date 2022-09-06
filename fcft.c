@@ -830,11 +830,10 @@ instantiate_pattern(FcPattern *pattern, double req_pt_size, double req_px_size,
 #if defined(LOG_ENABLE_DBG) && LOG_ENABLE_DBG
     LOG_DBG("%s: size=%.2fpt/%.2fpx, dpi=%.2f, fixup-factor: %.4f, "
             "line-height: %dpx, ascent: %dpx, descent: %dpx, "
-            "x-advance (max/space): %d/%dpx, features:%s",
+            "x-advance (max): %dpx, features:%s",
             font->path, size, pixel_size, dpi, font->pixel_size_fixup,
             font->metrics.height, font->metrics.ascent, font->metrics.descent,
-            font->metrics.max_advance.x, font->metrics.space_advance.x,
-            features);
+            font->metrics.max_advance.x, features);
 #else
     LOG_INFO("%s: size=%.2fpt/%dpx, dpi=%.2f%s",
              font->path, size, (int)round(pixel_size), dpi, features);
@@ -2242,8 +2241,10 @@ fcft_rasterize_grapheme_utf32(struct fcft_font *_font,
 
         glyph->public.x += pos[i].x_offset / 64. * inst->pixel_size_fixup;
         glyph->public.y += pos[i].y_offset / 64. * inst->pixel_size_fixup;
-        glyph->public.advance.x = pos[i].x_advance / 64. * inst->pixel_size_fixup;
-        glyph->public.advance.y = pos[i].y_advance / 64. * inst->pixel_size_fixup;
+        glyph->public.advance.x = pos[i].x_advance / 64.
+            * (inst->pixel_fixup_estimated ? inst->pixel_size_fixup : 1.);
+        glyph->public.advance.y = pos[i].y_advance / 64.
+            * (inst->pixel_fixup_estimated ? inst->pixel_size_fixup : 1.);
 
         grapheme->public.glyphs[glyph_idx++] = &glyph->public;
     }
@@ -2356,8 +2357,10 @@ rasterize_partial_run(struct text_run *run, const struct instance *inst,
         glyph->public.font_name = NULL;
         glyph->public.x += pos->x_offset / 64. * inst->pixel_size_fixup;
         glyph->public.y += pos->y_offset / 64. * inst->pixel_size_fixup;
-        glyph->public.advance.x = pos->x_advance / 64. * inst->pixel_size_fixup;
-        glyph->public.advance.y = pos->y_advance / 64. * inst->pixel_size_fixup;
+        glyph->public.advance.x = pos->x_advance / 64. *
+            (inst->pixel_fixup_estimated ? inst->pixel_size_fixup : 1.);
+        glyph->public.advance.y = pos->y_advance / 64. *
+            (inst->pixel_fixup_estimated ? inst->pixel_size_fixup : 1.);
 
         if (run->public->count >= run->size) {
             size_t new_glyphs_size = run->size * 2;

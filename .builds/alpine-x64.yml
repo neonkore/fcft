@@ -19,8 +19,8 @@ packages:
   - py3-pip
 
 sources:
-  - https://codeberg.org/dnkl/tllist
-  - https://codeberg.org/dnkl/fcft
+  - https://git.sr.ht/~dnkl/tllist
+  - https://git.sr.ht/~dnkl/fcft
 
 # triggers:
 #   - action: email

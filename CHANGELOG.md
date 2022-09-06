@@ -1,5 +1,7 @@
 # Changelog
 
+* [Unreleased](#unreleased)
+* [3.1.3](#3-1-3)
 * [3.1.2](#3-1-2)
 * [3.1.1](#3-1-1)
 * [3.1.0](#3-1-0)
@@ -32,6 +34,30 @@
 * [2.1.0](#2-1-0)
 * [2.0.0](#2-0-0)
 * [1.1.7](#1-1-7)
+
+
+## Unreleased
+### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+
+* Crash when failing to load an SVG glyph with multiple sub-glyphs.
+
+
+### Security
+### Contributors
+
+
+## 3.1.3
+
+### Fixed
+
+* Bitmap font glyph advance width calculation in
+  `fcft_rasterize_grapheme_utf32()` and
+  `fcft_rasterize_text_run_utf32()` when user had enabled
+  `10-scale-bitmap-fonts.conf` in FontConfig.
 
 
 ## 3.1.2
