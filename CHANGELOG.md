@@ -40,6 +40,11 @@
 ## Unreleased
 ### Added
 ### Changed
+
+* SVG: user transformations are now ignored, instead of returning
+  _”unimplemented feature”_ error.
+
+
 ### Deprecated
 ### Removed
 ### Fixed
