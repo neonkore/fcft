@@ -376,7 +376,7 @@ fcft_svg_preset_slot(FT_GlyphSlot slot, FT_Bool cache, FT_Pointer *_state)
             xx, yy, xy, yx, x0, y0);
 #endif
 
-#if 1
+#if 0
         nsvgDelete(state->svg);
         state->error = FT_Err_Unimplemented_Feature;
         return FT_Err_Unimplemented_Feature;
