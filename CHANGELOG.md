@@ -48,6 +48,26 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Reverted “fixed: bitmap font glyph advance width calculation”.
+
+  It appears that HarfBuzz <= 5.1 calculated glyph advance widths
+  incorrectly for bitmap fonts, when bitmap font scaling has been
+  enabled (`pixelsizefixupfactor` has been set in FontConfig).
+
+  fcft-3.1.3 compensated for this when calculating the glyphs’ advance
+  widths.
+
+  HarfBuzz >= 5.2 changed how it calculates the advance widths, and
+  fcft’s compensation now causes and excessive advance width.
+
+  Thus, the patch from fcft-3.1.3 has been reverted.
+
+  [#163][fuzzel-163]
+
+[fuzzel-163]: https://codeberg.org/dnkl/fuzzel/issues/163
+
+
 ### Security
 ### Contributors
 

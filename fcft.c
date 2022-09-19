@@ -2241,10 +2241,8 @@ fcft_rasterize_grapheme_utf32(struct fcft_font *_font,
 
         glyph->public.x += pos[i].x_offset / 64. * inst->pixel_size_fixup;
         glyph->public.y += pos[i].y_offset / 64. * inst->pixel_size_fixup;
-        glyph->public.advance.x = pos[i].x_advance / 64.
-            * (inst->pixel_fixup_estimated ? inst->pixel_size_fixup : 1.);
-        glyph->public.advance.y = pos[i].y_advance / 64.
-            * (inst->pixel_fixup_estimated ? inst->pixel_size_fixup : 1.);
+        glyph->public.advance.x = pos[i].x_advance / 64. * inst->pixel_size_fixup;
+        glyph->public.advance.y = pos[i].y_advance / 64. * inst->pixel_size_fixup;
 
         grapheme->public.glyphs[glyph_idx++] = &glyph->public;
     }
@@ -2357,10 +2355,8 @@ rasterize_partial_run(struct text_run *run, const struct instance *inst,
         glyph->public.font_name = NULL;
         glyph->public.x += pos->x_offset / 64. * inst->pixel_size_fixup;
         glyph->public.y += pos->y_offset / 64. * inst->pixel_size_fixup;
-        glyph->public.advance.x = pos->x_advance / 64. *
-            (inst->pixel_fixup_estimated ? inst->pixel_size_fixup : 1.);
-        glyph->public.advance.y = pos->y_advance / 64. *
-            (inst->pixel_fixup_estimated ? inst->pixel_size_fixup : 1.);
+        glyph->public.advance.x = pos->x_advance / 64. * inst->pixel_size_fixup;
+        glyph->public.advance.y = pos->y_advance / 64. * inst->pixel_size_fixup;
 
         if (run->public->count >= run->size) {
             size_t new_glyphs_size = run->size * 2;
