@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [3.1.5](#3-1-5)
 * [3.1.4](#3-1-4)
 * [3.1.3](#3-1-3)
 * [3.1.2](#3-1-2)
@@ -37,16 +37,14 @@
 * [1.1.7](#1-1-7)
 
 
-## Unreleased
-### Added
+## 3.1.5
+
 ### Changed
 
 * SVG: user transformations are now ignored, instead of returning
   _”unimplemented feature”_ error.
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * Reverted “fixed: bitmap font glyph advance width calculation”.
@@ -66,10 +64,6 @@
   [#163][fuzzel-163]
 
 [fuzzel-163]: https://codeberg.org/dnkl/fuzzel/issues/163
-
-
-### Security
-### Contributors
 
 
 ## 3.1.4
