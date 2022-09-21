@@ -21,29 +21,16 @@ primary font, and possibly one or more fallback fonts, in _font_.
 _subpixel_ allows you to specify which subpixel mode to use. See
 *fcft_rasterize_char_utf32*() for details.
 
-The string is passed to HarfBuzz for shaping, initially using the
-primary font. The shaping data is parsed, and when an unshaped
-codepoint is encountered, it is retried with the first fallback
-font. If that fails too, the next fallback font is tried. After
-successfully shaping the failed codepoint, the primary font is used to
-shape the rest of the string. This continues until the entire string
-has been shaped.
+The string is first segmented into grapheme clusters using
+utf8proc. Each grapheme is assigned a font using the normal font
+lookup rules (see *fcft_rasterize_char_utf32*()).
 
-There is limited support for right-to-left
-scripts. *hb_buffer_guess_segment_properties*() is used to guess
-whether to use left-to-right, or right-to-left, logic, and this is
-done each time we try to shape a part of the string.
+Next, HarfBuzz is used to guess each grapheme's script
+(~language). Consecutiv graphemes that both have been assigned the
+same font, and belong to the same script are merged into a "partial"
+text run.
 
-As a consequence, the result of mixed LTR and RTL strings depends on
-the font; if the font has glyphs for all characters in the string,
-*hb_buffer_guess_segment_properties*() is only called once, on the
-entire string. Meaning the entire string is subject to either LTR, or
-RTL logic, but not both.
-
-If the (primary) font does not have glyphs for all characters, then
-*hb_buffer_guess_segment_properties*() will be called for each segment
-where shaping failed. In this case, parts of the string may be treated
-as LTR while others are treated as RTL.
+Finally, each partial text run is shaped with HarfBuzz.
 
 # RETURN VALUE
 
