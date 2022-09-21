@@ -52,7 +52,7 @@ struct fcft_grapheme {
 _cols_ is the number of "columns" the glyph occupies (effectively,
 *wcswidth*(_cluster_*)*).
 
-_glyphs_ is an array of rasterized glyphs. See
+_glyphs_ is an array of _count_ rasterized glyphs. See
 *fcft_rasterize_char_utf32*() for a description of *struct
 fcft_glyph*.
 
