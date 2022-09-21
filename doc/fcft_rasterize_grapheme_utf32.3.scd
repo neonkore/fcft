@@ -49,9 +49,6 @@ struct fcft_grapheme {
 };
 ```
 
-_cols_ is the number of "columns" the grapheme occupised (effectively)
-_cp_ is the same _cp_ from the *fcft_rasterize_char_utf32*() call.
-
 _cols_ is the number of "columns" the glyph occupies (effectively,
 *wcswidth*(_cluster_*)*).
 
