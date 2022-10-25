@@ -116,6 +116,8 @@ render_glyphs(struct buffer *buf, int *x, const int *y, pixman_image_t *color,
 {
     for (size_t i = 0; i < count; i++) {
         const struct fcft_glyph *g = glyphs[i];
+        if (g == NULL)
+            continue;
 
         if (kern != NULL)
             *x += kern[i];
@@ -144,6 +146,8 @@ render_chars(const char32_t *text, size_t text_len,
 
     for (size_t i = 0; i < text_len; i++) {
         glyphs[i] = fcft_rasterize_char_utf32(font, text[i], subpixel_mode);
+        if (glyphs[i] == NULL)
+            continue;
 
         kern[i] = 0;
         if (i > 0) {
