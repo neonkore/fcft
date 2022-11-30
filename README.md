@@ -42,7 +42,7 @@ Top: `fcft_glyph_rasterize()`
 
 Middle: `fcft_grapheme_rasterize()`
 : Glyphs are rasterized grapheme by grapheme. Here, graphemes are
-  shaped correclty (e.g. the family emoji), but ligatures and RTL
+  shaped correctly (e.g. the family emoji), but ligatures and RTL
   scripts are still not rendered correctly.
 
 Bottom: `fcft_text_run_rasterize()`
