@@ -419,7 +419,7 @@ main(int argc, char *const *argv)
         {NULL,         no_argument,       NULL, '\0'},
     };
 
-    const char *user_text = u8"hello world <<<🇸🇪 👨‍👩‍👧‍👦 👩🏿>>>";
+    const char *user_text = u8"hello world | ligatures: fi | اَلْعَرَبِيَّةُ | עִבְרִית‎ | graphemes: 👨‍👩‍👧‍👦 🇸🇪";
     const char *font_list = "serif:size=24";
 
     while (true) {
