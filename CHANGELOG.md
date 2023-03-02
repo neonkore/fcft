@@ -40,6 +40,9 @@
 
 ## Unreleased
 ### Added
+
+* nanosvg updated to 9da543e (2022-12-04)
+
 ### Changed
 ### Deprecated
 ### Removed
