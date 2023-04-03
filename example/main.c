@@ -245,6 +245,17 @@ xdg_surface_configure(void *data, struct xdg_surface *xdg_surface,
     struct buffer *buf = shm_get_buffer(shm, w, h, 0xdeadbeef);
     assert(buf != NULL);
 
+    /*
+     * Set clip region to the entire surface size. This allows us to
+     * render without considering wether things are outside the buffer
+     * or not.
+     */
+
+    pixman_region32_t clip;
+    pixman_region32_init_rect(&clip, 0, 0, buf->width, buf->height);
+    pixman_image_set_clip_region32(buf->pix, &clip);
+    pixman_region32_fini(&clip);
+
     /* Background */
     pixman_image_fill_rectangles(
         PIXMAN_OP_SRC, buf->pix, &bg, 1,
