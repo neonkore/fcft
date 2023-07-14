@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased][#unreleased]
+* [3.1.6][#3-1-6]
 * [3.1.5](#3-1-5)
 * [3.1.4](#3-1-4)
 * [3.1.3](#3-1-3)
@@ -38,17 +38,11 @@
 * [1.1.7](#1-1-7)
 
 
-## Unreleased
+## 3.1.6
+
 ### Added
 
 * nanosvg updated to 9da543e (2022-12-04)
-
-### Changed
-### Deprecated
-### Removed
-### Fixed
-### Security
-### Contributors
 
 
 ## 3.1.5

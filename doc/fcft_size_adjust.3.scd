@@ -1,4 +1,4 @@
-fcft_size_adjust(3) "3.1.5" "fcft"
+fcft_size_adjust(3) "3.1.6" "fcft"
 
 # NAME
 
