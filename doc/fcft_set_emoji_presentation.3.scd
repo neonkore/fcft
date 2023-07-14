@@ -1,4 +1,4 @@
-fcft_set_emoji_presentation(3) "3.1.5" "fcft"
+fcft_set_emoji_presentation(3) "3.1.6" "fcft"
 
 # NAME
 
