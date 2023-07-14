@@ -31,8 +31,23 @@ support may not be (and perhaps never will be) sufficient for
 
 ![screenshot](screenshot.png "Screenshot showing the three rasterization methods")
 
-_Top: `fcft_glyph_rasterize()`, middle: `fcft_grapheme_rasterize()`,
-bottom: `fcft_text_run_rasterize()`_
+The screenshot above is the output of the example program shipped with
+the fcft sources (but not built by default). It showcases the three
+different levels, at which fcft can rasterize glyphs:
+
+Top: `fcft_glyph_rasterize()`
+: Glyphs are rasterized character by character; no ligatures, no
+  grapheme shaping, and right-to-left scripts are not rendered
+  correctly.
+
+Middle: `fcft_grapheme_rasterize()`
+: Glyphs are rasterized grapheme by grapheme. Here, graphemes are
+  shaped correctly (e.g. the family emoji), but ligatures and RTL
+  scripts are still not rendered correctly.
+
+Bottom: `fcft_text_run_rasterize()`
+: The entire string is rasterized in one go. This means full shaping
+  is applied; ligatures, graphemes, and RTL scripts.
 
 
 ## Requirements

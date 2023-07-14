@@ -1,5 +1,8 @@
 # Changelog
 
+* [Unreleased][#unreleased]
+* [3.1.5](#3-1-5)
+* [3.1.4](#3-1-4)
 * [3.1.3](#3-1-3)
 * [3.1.2](#3-1-2)
 * [3.1.1](#3-1-1)
@@ -33,6 +36,55 @@
 * [2.1.0](#2-1-0)
 * [2.0.0](#2-0-0)
 * [1.1.7](#1-1-7)
+
+
+## Unreleased
+### Added
+
+* nanosvg updated to 9da543e (2022-12-04)
+
+### Changed
+### Deprecated
+### Removed
+### Fixed
+### Security
+### Contributors
+
+
+## 3.1.5
+
+### Changed
+
+* SVG: user transformations are now ignored, instead of returning
+  _”unimplemented feature”_ error.
+
+
+### Fixed
+
+* Reverted “fixed: bitmap font glyph advance width calculation”.
+
+  It appears that HarfBuzz <= 5.1 calculated glyph advance widths
+  incorrectly for bitmap fonts, when bitmap font scaling has been
+  enabled (`pixelsizefixupfactor` has been set in FontConfig).
+
+  fcft-3.1.3 compensated for this when calculating the glyphs’ advance
+  widths.
+
+  HarfBuzz >= 5.2 changed how it calculates the advance widths, and
+  fcft’s compensation now causes and excessive advance width.
+
+  Thus, the patch from fcft-3.1.3 has been reverted.
+
+  [#163][fuzzel-163]
+
+[fuzzel-163]: https://codeberg.org/dnkl/fuzzel/issues/163
+
+
+## 3.1.4
+
+### Fixed
+
+* Crash when failing to load an SVG glyph with multiple sub-glyphs.
 
 
 ## 3.1.3

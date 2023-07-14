@@ -1,4 +1,4 @@
-fcft_rasterize_grapheme_utf32(3) "3.1.3" "fcft"
+fcft_rasterize_grapheme_utf32(3) "3.1.5" "fcft"
 
 # NAME
 
@@ -49,13 +49,10 @@ struct fcft_grapheme {
 };
 ```
 
-_cols_ is the number of "columns" the grapheme occupised (effectively)
-_cp_ is the same _cp_ from the *fcft_rasterize_char_utf32*() call.
-
 _cols_ is the number of "columns" the glyph occupies (effectively,
 *wcswidth*(_cluster_*)*).
 
-_glyphs_ is an array of rasterized glyphs. See
+_glyphs_ is an array of _count_ rasterized glyphs. See
 *fcft_rasterize_char_utf32*() for a description of *struct
 fcft_glyph*.
 

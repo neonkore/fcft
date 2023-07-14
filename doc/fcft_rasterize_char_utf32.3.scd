@@ -1,4 +1,4 @@
-fcft_rasterize_char_utf32(3) "3.1.3" "fcft"
+fcft_rasterize_char_utf32(3) "3.1.5" "fcft"
 
 # NAME
 
@@ -99,7 +99,7 @@ factors, but will be one of *PIXMAN\_a1*, *PIXMAN\_a8*,
 	glyph is an un-antialiased bitmask. Use as a mask when blending.
 
 	*PIXMAN\_a8* corresponds to *FT\_PIXEL\_MODE\_GRAY*. I.e. the
-	glyph is a grayscale antialiased bitmask. use as a mask when
+	glyph is a grayscale antialiased bitmask. Use as a mask when
 	blending.
 
 	*PIXMAN\_x8r8g8b8* corresponds to either *FT\_PIXEL\_MODE\_LCD* or

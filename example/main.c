@@ -116,6 +116,8 @@ render_glyphs(struct buffer *buf, int *x, const int *y, pixman_image_t *color,
 {
     for (size_t i = 0; i < count; i++) {
         const struct fcft_glyph *g = glyphs[i];
+        if (g == NULL)
+            continue;
 
         if (kern != NULL)
             *x += kern[i];
@@ -144,6 +146,8 @@ render_chars(const char32_t *text, size_t text_len,
 
     for (size_t i = 0; i < text_len; i++) {
         glyphs[i] = fcft_rasterize_char_utf32(font, text[i], subpixel_mode);
+        if (glyphs[i] == NULL)
+            continue;
 
         kern[i] = 0;
         if (i > 0) {
@@ -240,6 +244,17 @@ xdg_surface_configure(void *data, struct xdg_surface *xdg_surface,
 
     struct buffer *buf = shm_get_buffer(shm, w, h, 0xdeadbeef);
     assert(buf != NULL);
+
+    /*
+     * Set clip region to the entire surface size. This allows us to
+     * render without considering wether things are outside the buffer
+     * or not.
+     */
+
+    pixman_region32_t clip;
+    pixman_region32_init_rect(&clip, 0, 0, buf->width, buf->height);
+    pixman_image_set_clip_region32(buf->pix, &clip);
+    pixman_region32_fini(&clip);
 
     /* Background */
     pixman_image_fill_rectangles(
@@ -415,7 +430,7 @@ main(int argc, char *const *argv)
         {NULL,         no_argument,       NULL, '\0'},
     };
 
-    const char *user_text = u8"hello world <<<🇸🇪 👨‍👩‍👧‍👦 👩🏿>>>";
+    const char *user_text = u8"hello world | ligatures: fi | اَلْعَرَبِيَّةُ | עִבְרִית‎ | graphemes: 👨‍👩‍👧‍👦 🇸🇪";
     const char *font_list = "serif:size=24";
 
     while (true) {

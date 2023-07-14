@@ -23,6 +23,7 @@ struct state {
     unsigned short glyph_id_end;
     float x_ofs;
     float y_ofs;
+    FT_Error error;
 };
 
 #define COOKIE 0xfcf77fcf
@@ -59,6 +60,9 @@ fcft_svg_render(FT_GlyphSlot slot, FT_Pointer *_state)
 
     struct state *state = (struct state *)slot->generic.data;
     assert(state->cookie == COOKIE);
+
+    if (state->error != FT_Err_Ok)
+        return state->error;
 
     FT_Bitmap *bitmap = &slot->bitmap;
 
@@ -217,6 +221,7 @@ fcft_svg_preset_slot(FT_GlyphSlot slot, FT_Bool cache, FT_Pointer *_state)
             ((struct state *)slot->generic.data)->cookie = COOKIE;
         }
         state = slot->generic.data;
+        state->error = FT_Err_Ok;
         assert(state->cookie == COOKIE);
     } else
         state = &state_dummy;
@@ -225,6 +230,7 @@ fcft_svg_preset_slot(FT_GlyphSlot slot, FT_Bool cache, FT_Pointer *_state)
      * element IDs */
     if (document->start_glyph_id != document->end_glyph_id) {
         LOG_ERR("multi-glyph rendering is unsupported");
+        state->error = FT_Err_Unimplemented_Feature;
         return FT_Err_Unimplemented_Feature;
     }
 
@@ -241,6 +247,7 @@ fcft_svg_preset_slot(FT_GlyphSlot slot, FT_Bool cache, FT_Pointer *_state)
 
     if (state->svg == NULL) {
         LOG_ERR("failed to parse SVG document");
+        state->error = FT_Err_Invalid_SVG_Document;
         return FT_Err_Invalid_SVG_Document;
     }
 
@@ -369,9 +376,9 @@ fcft_svg_preset_slot(FT_GlyphSlot slot, FT_Bool cache, FT_Pointer *_state)
             xx, yy, xy, yx, x0, y0);
 #endif
 
-#if 0  /* FreeType appears to ignore errors, causing us to crash in
-        * the render hook */
+#if 0
         nsvgDelete(state->svg);
+        state->error = FT_Err_Unimplemented_Feature;
         return FT_Err_Unimplemented_Feature;
 #endif
     }

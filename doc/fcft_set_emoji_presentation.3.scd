@@ -1,4 +1,4 @@
-fcft_set_emoji_presentation(3) "3.1.3" "fcft"
+fcft_set_emoji_presentation(3) "3.1.5" "fcft"
 
 # NAME
 
@@ -17,15 +17,15 @@ fcft_set_emoji_presentation - configures the default emoji presentation
 style to use with emojis with both a text presentation, and an emoji
 presentation style.
 
+These emojis can be followed by an (invisible) variation
+selector. When they are not followed by a selector, the implementation
+must choose a style.
+
 One example of such an emoji is U+263A - WHITE SMILING FACE:
 
 - unqualified: ☺
 - text: ☺︎
 - emoji: ☺️
-
-These emojis can be followed by an (invisible) variation
-selector. When they are not followed by a selector, the implementation
-must choose a style.
 
 The Unicode standard defines the default presentation styles, and this
 is what fcft defaults to.
@@ -58,5 +58,5 @@ called before rasterizing any glyphs.
 
 # SEE ALSO
 
-*fcft_glyph_rasterize*(), *fcft_grapheme_rasterize*(),
-*fcft_text_run_rasterize*()
+*fcft_rasterize_char_utf32*(), *fcft_rasterize_grapheme_utf32*(),
+*fcft_rasterize_text_run_utf32*()
